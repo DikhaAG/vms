@@ -12,3 +12,12 @@ Default five canonical triage roles (`needs-triage`, `needs-info`, `ready-for-ag
 
 Single-context layout (`GLOSSARY.md` and `docs/adr/` at the repo root). See `docs/agents/domain.md`.
 
+### Coding standards
+
+Judgement-call conventions for `/code-review`, module boundaries, and Next.js/HikCentral contracts. See `CODING_STANDARDS.md`.
+
+### HikCentral API reference
+
+Chapter and line-number index into the 33k-line HikCentral OpenAPI V3.1.1 Developer Guide. See `docs/reference/README.md`.
+
+
