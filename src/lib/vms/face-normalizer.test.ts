@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   stripDataUriPrefix,
+  assertRawBase64Photo,
   toJpegDataUri,
   toPngDataUri,
   isFacePhotoSizeValid,
@@ -48,6 +49,24 @@ describe("Face Normalizer Utility", () => {
       expect(stripDataUriPrefix(`  data:image/jpeg;base64,${raw}  \n`)).toBe(
         raw,
       );
+    });
+  });
+
+  describe("assertRawBase64Photo", () => {
+    it("does not throw for valid raw base64 string", () => {
+      expect(() => assertRawBase64Photo("/9j/4AAQSkZJRg==")).not.toThrow();
+    });
+
+    it("throws clear error when passed data:image/jpeg;base64, URI", () => {
+      expect(() =>
+        assertRawBase64Photo("data:image/jpeg;base64,/9j/4AAQSkZJRg=="),
+      ).toThrowError(/Upstream HikCentral wire requires raw Base64/);
+    });
+
+    it("throws clear error when passed data:image/png;base64, URI", () => {
+      expect(() =>
+        assertRawBase64Photo("data:image/png;base64,iVBORw0KGgoAAA=="),
+      ).toThrowError(/Biometric face photo contains data URI scheme/);
     });
   });
 

@@ -33,6 +33,19 @@ export function stripDataUriPrefix(input: string): string {
 }
 
 /**
+ * Hard runtime guard asserting that a photo string is raw Base64 and does not
+ * leak any data URI scheme (e.g. "data:image/...;base64,") into upstream wire payloads.
+ */
+export function assertRawBase64Photo(photo: string): void {
+  const trimmed = photo.trim();
+  if (trimmed.startsWith("data:") || trimmed.includes(";base64,")) {
+    throw new Error(
+      "Biometric face photo contains data URI scheme. Upstream HikCentral wire requires raw Base64 without 'data:image/...;base64,' prefix."
+    );
+  }
+}
+
+/**
  * Ensures a Base64 string has the valid "data:image/jpeg;base64," prefix
  * for rendering in browser <img> or Next.js Image components.
  */

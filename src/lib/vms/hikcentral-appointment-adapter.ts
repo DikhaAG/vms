@@ -5,7 +5,7 @@ import {
   type HikCentralClient,
 } from "../hikcentral/client";
 import type { PreRegistrationMode, StubScenario } from "./vms-contract";
-import { stripDataUriPrefix } from "./face-normalizer";
+import { stripDataUriPrefix, assertRawBase64Photo } from "./face-normalizer";
 
 export interface HikCentralAppointmentParams {
   userId?: string;
@@ -112,6 +112,9 @@ export async function dispatchHikCentralAppointment(
   const cleanFaceData = params.facePhotoData
     ? stripDataUriPrefix(params.facePhotoData)
     : undefined;
+  if (cleanFaceData) {
+    assertRawBase64Photo(cleanFaceData);
+  }
 
   const wirePayload: Record<string, unknown> = {
     receptionistId: params.hostId,
