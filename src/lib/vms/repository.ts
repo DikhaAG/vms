@@ -16,6 +16,8 @@ import type {
 import type {
   CheckOutAuditEvent,
   DoorTapEvent,
+  FacilityDoor,
+  VisitLastSeenDoor,
 } from "./checkout-contract";
 import type { VisitorProfile } from "./group-contract";
 
@@ -114,6 +116,14 @@ export interface IVmsRepository {
   checkOutVisit(visitId: string, checkOutData: CheckOutVisitParams): Promise<Visit>;
   saveCheckOutEvent(event: CheckOutAuditEvent): Promise<void>;
   listCheckOutEvents(visitId?: string): Promise<CheckOutAuditEvent[]>;
+
+  // Facility door topology operations
+  getDoor(doorIndexCode: string): Promise<FacilityDoor | undefined>;
+  getDoorByName(doorName: string, facilityId?: string): Promise<FacilityDoor | undefined>;
+  findDoor(codeOrName: string, facilityId?: string): Promise<FacilityDoor | undefined>;
+  listDoors(facilityId?: string): Promise<FacilityDoor[]>;
+  saveDoor(door: FacilityDoor): Promise<void>;
+  saveDoors(doors: FacilityDoor[]): Promise<void>;
 
   // Group visits and visitor profile management
   findVisitorProfileByCertificate(
@@ -277,6 +287,113 @@ export const DEFAULT_HOSTS: HostEmployee[] = [
   },
 ];
 
+export const DEFAULT_DOORS: FacilityDoor[] = [
+  // Jakarta Corporate HQ
+  {
+    id: "door-jkt-turnstile-1",
+    facilityId: "fac-jakarta",
+    doorIndexCode: "door-turnstile-1",
+    doorName: "Lobby Main SpeedGate A",
+    accessType: "DUAL_DIRECTION",
+    isPerimeter: true,
+  },
+  {
+    id: "door-jkt-turnstile-lobby",
+    facilityId: "fac-jakarta",
+    doorIndexCode: "door-turnstile-lobby",
+    doorName: "Lobby Main SpeedGate B",
+    accessType: "DUAL_DIRECTION",
+    isPerimeter: true,
+  },
+  {
+    id: "door-jkt-turnstile-main",
+    facilityId: "fac-jakarta",
+    doorIndexCode: "door-turnstile-main",
+    doorName: "Visitor Turnstile 01",
+    accessType: "DUAL_DIRECTION",
+    isPerimeter: true,
+  },
+  {
+    id: "door-jkt-3f-lobby",
+    facilityId: "fac-jakarta",
+    doorIndexCode: "door-jkt-3f-el",
+    doorName: "3F Elevator Lobby Door",
+    accessType: "DUAL_DIRECTION",
+    isPerimeter: false,
+  },
+  {
+    id: "door-jkt-boardroom",
+    facilityId: "fac-jakarta",
+    doorIndexCode: "door-jkt-br-east",
+    doorName: "Boardroom East Access",
+    accessType: "SINGLE_DIRECTION_IN",
+    isPerimeter: false,
+    roomTimeoutMinutes: 60,
+  },
+  {
+    id: "door-jkt-basement-airlock",
+    facilityId: "fac-jakarta",
+    doorIndexCode: "door-jkt-b1-al",
+    doorName: "Basement AirLock",
+    accessType: "DUAL_DIRECTION",
+    isPerimeter: false,
+  },
+  {
+    id: "door-jkt-dc-server-01",
+    facilityId: "fac-jakarta",
+    doorIndexCode: "door-jkt-dc-01",
+    doorName: "DC Server Room 01",
+    accessType: "SINGLE_DIRECTION_IN",
+    isPerimeter: false,
+    roomTimeoutMinutes: 120,
+  },
+  // Bali Innovation Center
+  {
+    id: "door-bali-main-entrance",
+    facilityId: "fac-bali",
+    doorIndexCode: "door-bali-main",
+    doorName: "Main Entrance Turnstile",
+    accessType: "DUAL_DIRECTION",
+    isPerimeter: true,
+  },
+  {
+    id: "door-bali-lab-sliding",
+    facilityId: "fac-bali",
+    doorIndexCode: "door-bali-lab",
+    doorName: "Lab Wing Sliding Door",
+    accessType: "SINGLE_DIRECTION_IN",
+    isPerimeter: false,
+    roomTimeoutMinutes: 90,
+  },
+  // Jayapura Logistics Hub
+  {
+    id: "door-jay-gate-1",
+    facilityId: "fac-jayapura",
+    doorIndexCode: "door-gate-1",
+    doorName: "Loading Gate 01",
+    accessType: "DUAL_DIRECTION",
+    isPerimeter: true,
+  },
+  {
+    id: "door-jay-dispatch-door",
+    facilityId: "fac-jayapura",
+    doorIndexCode: "door-jay-dispatch",
+    doorName: "Dispatch Office Door",
+    accessType: "SINGLE_DIRECTION_IN",
+    isPerimeter: false,
+    roomTimeoutMinutes: 45,
+  },
+  // Generic test door
+  {
+    id: "door-generic-1",
+    facilityId: "fac-jakarta",
+    doorIndexCode: "door-1",
+    doorName: "Door 1",
+    accessType: "DUAL_DIRECTION",
+    isPerimeter: false,
+  },
+];
+
 export class InMemoryVmsRepository implements IVmsRepository {
   private facilities = new Map<string, Facility>();
   private visits = new Map<string, Visit>();
@@ -288,12 +405,14 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private checkOutEvents: CheckOutAuditEvent[] = [];
   private visitorProfiles = new Map<string, VisitorProfile>();
   private hosts = new Map<string, HostEmployee>();
+  private doors = new Map<string, FacilityDoor>();
 
   constructor(
     initialFacilities: Facility[] = DEFAULT_FACILITIES,
     initialAccessLevels: AccessLevel[] = DEFAULT_ACCESS_LEVELS,
     initialVisitorProfiles: VisitorProfile[] = DEFAULT_VISITOR_PROFILES,
     initialHosts: HostEmployee[] = DEFAULT_HOSTS,
+    initialDoors: FacilityDoor[] = DEFAULT_DOORS,
   ) {
     for (const f of initialFacilities) {
       this.facilities.set(f.id, structuredClone(f));
@@ -306,6 +425,9 @@ export class InMemoryVmsRepository implements IVmsRepository {
     }
     for (const h of initialHosts) {
       this.hosts.set(h.id, structuredClone(h));
+    }
+    for (const d of initialDoors) {
+      this.doors.set(d.doorIndexCode, structuredClone(d));
     }
   }
 
@@ -616,19 +738,54 @@ export class InMemoryVmsRepository implements IVmsRepository {
       throw new Error(`Visit not found: ${tapEvent.visitId}`);
     }
 
+    const isImplicit = Boolean(tapEvent.isImplicit || tapEvent.implicit);
+    const direction = tapEvent.direction ?? "in";
+    const inAndOutType = tapEvent.inAndOutType ?? (direction === "in" ? 1 : 2);
+
+    // Auto-enrich door metadata if available
+    const door =
+      this.doors.get(tapEvent.doorIndexCode) ||
+      Array.from(this.doors.values()).find(
+        (d) =>
+          tapEvent.doorName &&
+          d.doorName.toLowerCase() === tapEvent.doorName.toLowerCase(),
+      );
+
+    const doorName = tapEvent.doorName ?? door?.doorName;
+    const isPerimeter = tapEvent.isPerimeter ?? door?.isPerimeter ?? false;
+
     const eventToStore: DoorTapEvent = {
       ...tapEvent,
       id:
         tapEvent.id ||
         `tap-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       tappedAtUtc: tapEvent.tappedAtUtc || new Date().toISOString(),
+      direction,
+      doorName,
+      inAndOutType,
+      isPerimeter,
+      isImplicit: isImplicit || undefined,
+      implicit: isImplicit || undefined,
+      transitionNote: tapEvent.transitionNote,
     };
     this.doorTapEvents.push(structuredClone(eventToStore));
 
-    const newTapCount = (existing.tapCount ?? 0) + 1;
+    // Implicit taps do not increment tapCount against the visitor's tap quota
+    const newTapCount = (existing.tapCount ?? 0) + (isImplicit ? 0 : 1);
+
+    const updatedLastSeenDoor: VisitLastSeenDoor = {
+      doorIndexCode: eventToStore.doorIndexCode,
+      doorName: eventToStore.doorName,
+      tappedAtUtc: eventToStore.tappedAtUtc,
+      direction: eventToStore.direction,
+      accessType: door?.accessType,
+      isPerimeter: eventToStore.isPerimeter,
+    };
+
     const updatedVisit: Visit = {
       ...existing,
       tapCount: newTapCount,
+      lastSeenDoor: updatedLastSeenDoor,
       updatedAtUtc: new Date().toISOString(),
     };
     this.visits.set(tapEvent.visitId, structuredClone(updatedVisit));
@@ -825,6 +982,55 @@ export class InMemoryVmsRepository implements IVmsRepository {
       );
     }
     return list.map((h) => structuredClone(h));
+  }
+
+  async getDoor(doorIndexCode: string): Promise<FacilityDoor | undefined> {
+    const door = this.doors.get(doorIndexCode);
+    return door ? structuredClone(door) : undefined;
+  }
+
+  async getDoorByName(
+    doorName: string,
+    facilityId?: string,
+  ): Promise<FacilityDoor | undefined> {
+    const lower = doorName.trim().toLowerCase();
+    for (const door of this.doors.values()) {
+      if (door.doorName.toLowerCase() === lower) {
+        if (!facilityId || door.facilityId === facilityId) {
+          return structuredClone(door);
+        }
+      }
+    }
+    return undefined;
+  }
+
+  async findDoor(
+    codeOrName: string,
+    facilityId?: string,
+  ): Promise<FacilityDoor | undefined> {
+    const byCode = this.doors.get(codeOrName);
+    if (byCode && (!facilityId || byCode.facilityId === facilityId)) {
+      return structuredClone(byCode);
+    }
+    return this.getDoorByName(codeOrName, facilityId);
+  }
+
+  async listDoors(facilityId?: string): Promise<FacilityDoor[]> {
+    let list = Array.from(this.doors.values());
+    if (facilityId) {
+      list = list.filter((d) => d.facilityId === facilityId);
+    }
+    return list.map((d) => structuredClone(d));
+  }
+
+  async saveDoor(door: FacilityDoor): Promise<void> {
+    this.doors.set(door.doorIndexCode, structuredClone(door));
+  }
+
+  async saveDoors(doors: FacilityDoor[]): Promise<void> {
+    for (const d of doors) {
+      this.doors.set(d.doorIndexCode, structuredClone(d));
+    }
   }
 }
 

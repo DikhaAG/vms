@@ -108,6 +108,7 @@ export class ActiveMonitoringService {
         status: visit.status,
         appointRecordId: visit.hikCentral?.appointRecordId,
         accessLevelIds: visit.accessLevelIds,
+        lastSeenDoor: visit.lastSeenDoor,
       });
     }
 
@@ -135,7 +136,78 @@ export class ActiveMonitoringService {
       );
     }
 
-    const tapResult = await this.repository.recordDoorTap(tapData);
+    // Lookup door topology metadata
+    const door =
+      (await this.repository.findDoor(tapData.doorIndexCode, visit.facilityId)) ||
+      (tapData.doorName
+        ? await this.repository.getDoorByName(tapData.doorName, visit.facilityId)
+        : undefined) ||
+      (await this.repository.findDoor(tapData.doorIndexCode));
+
+    // Door directionality validation: SINGLE_DIRECTION_IN doors have no exit reader
+    const isImplicit = Boolean(tapData.isImplicit || tapData.implicit);
+    if (
+      door &&
+      door.accessType === "SINGLE_DIRECTION_IN" &&
+      tapData.direction === "out" &&
+      !isImplicit
+    ) {
+      throw new Error(
+        `Door ${door.doorName || door.doorIndexCode} is configured as SINGLE_DIRECTION_IN and does not allow manual exit taps.`,
+      );
+    }
+
+    const enrichedTapData: DoorTapEvent = {
+      ...tapData,
+      doorName: tapData.doorName ?? door?.doorName,
+      isPerimeter: tapData.isPerimeter ?? door?.isPerimeter ?? false,
+      inAndOutType:
+        tapData.inAndOutType ?? (tapData.direction === "in" ? 1 : 2),
+    };
+
+    // Implicit room transition:
+    // If visitor's last seen location was a SINGLE_DIRECTION_IN door and they now scan
+    // into a different room, log an implicit departure breadcrumb from the previous door.
+    if (
+      visit.lastSeenDoor &&
+      visit.lastSeenDoor.doorIndexCode !== enrichedTapData.doorIndexCode &&
+      visit.lastSeenDoor.direction === "in"
+    ) {
+      const prevDoor =
+        (await this.repository.findDoor(visit.lastSeenDoor.doorIndexCode, visit.facilityId)) ||
+        (visit.lastSeenDoor.doorName
+          ? await this.repository.getDoorByName(visit.lastSeenDoor.doorName, visit.facilityId)
+          : undefined) ||
+        (await this.repository.findDoor(visit.lastSeenDoor.doorIndexCode));
+
+      const isPrevSingleDirection =
+        visit.lastSeenDoor.accessType === "SINGLE_DIRECTION_IN" ||
+        prevDoor?.accessType === "SINGLE_DIRECTION_IN";
+
+      if (isPrevSingleDirection) {
+        const prevDoorName =
+          visit.lastSeenDoor.doorName || prevDoor?.doorName || visit.lastSeenDoor.doorIndexCode;
+        const currentDoorName =
+          enrichedTapData.doorName || enrichedTapData.doorIndexCode;
+
+        const implicitExitEvent: DoorTapEvent = {
+          visitId,
+          doorIndexCode: visit.lastSeenDoor.doorIndexCode,
+          doorName: prevDoorName,
+          direction: "out",
+          inAndOutType: 2,
+          isImplicit: true,
+          implicit: true,
+          isPerimeter: prevDoor?.isPerimeter ?? false,
+          transitionNote: `Implicit departure from ${prevDoorName} upon entry to ${currentDoorName}`,
+          tappedAtUtc: enrichedTapData.tappedAtUtc,
+        };
+
+        await this.repository.recordDoorTap(implicitExitEvent);
+      }
+    }
+
+    const tapResult = await this.repository.recordDoorTap(enrichedTapData);
     const quotaExceeded = isTapQuotaExceeded(
       tapResult.tapCount,
       tapResult.visit.tapQuota,

@@ -166,6 +166,196 @@ describe("ActiveMonitoringService", () => {
         ),
       ).rejects.toThrow(/not found/i);
     });
+
+    describe("door directionality & perimeter crossings (Ticket 01)", () => {
+      it("rejects manual 'out' tap on a SINGLE_DIRECTION_IN door", async () => {
+        await expect(
+          service.recordTapAndEnforceQuota(
+            "vis-active-2",
+            {
+              visitId: "vis-active-2",
+              doorIndexCode: "door-jkt-dc-01",
+              doorName: "DC Server Room 01",
+              direction: "out",
+              tappedAtUtc: "2026-11-13T09:15:00.000Z",
+            },
+            { mode: "stub" },
+          ),
+        ).rejects.toThrow(/SINGLE_DIRECTION_IN/i);
+      });
+
+      it("allows 'in' tap on a SINGLE_DIRECTION_IN door and flags perimeter crossing correctly", async () => {
+        // Perimeter tap on turnstile
+        const perimRes = await service.recordTapAndEnforceQuota(
+          "vis-active-2",
+          {
+            visitId: "vis-active-2",
+            doorIndexCode: "door-turnstile-1",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:10:00.000Z",
+          },
+          { mode: "stub" },
+        );
+        expect(perimRes.event.isPerimeter).toBe(true);
+        expect(perimRes.event.inAndOutType).toBe(1);
+
+        // Single-direction interior room tap
+        const roomRes = await service.recordTapAndEnforceQuota(
+          "vis-active-2",
+          {
+            visitId: "vis-active-2",
+            doorIndexCode: "door-jkt-dc-01",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:20:00.000Z",
+          },
+          { mode: "stub" },
+        );
+        expect(roomRes.event.isPerimeter).toBe(false);
+        expect(roomRes.event.doorName).toBe("DC Server Room 01");
+        expect(roomRes.event.inAndOutType).toBe(1);
+      });
+    });
+
+    describe("implicit room transitions (Ticket 01)", () => {
+      it("logs implicit departure from single-direction door when scanning into a different room without depleting tap quota", async () => {
+        // Step 1: Bob enters single-direction DC Server Room 01 (tapCount becomes 1)
+        const tap1 = await service.recordTapAndEnforceQuota(
+          "vis-active-2",
+          {
+            visitId: "vis-active-2",
+            doorIndexCode: "door-jkt-dc-01",
+            doorName: "DC Server Room 01",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:20:00.000Z",
+          },
+          { mode: "stub" },
+        );
+        expect(tap1.tapCount).toBe(1);
+        expect(tap1.visit.lastSeenDoor?.doorIndexCode).toBe("door-jkt-dc-01");
+        expect(tap1.visit.lastSeenDoor?.direction).toBe("in");
+        expect(tap1.visit.lastSeenDoor?.accessType).toBe("SINGLE_DIRECTION_IN");
+
+        // Step 2: Bob scans into Boardroom East Access (a different room)
+        const tap2 = await service.recordTapAndEnforceQuota(
+          "vis-active-2",
+          {
+            visitId: "vis-active-2",
+            doorIndexCode: "door-jkt-br-east",
+            doorName: "Boardroom East Access",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:40:00.000Z",
+          },
+          { mode: "stub" },
+        );
+
+        // Tap count increments only once for the physical tap (now 2), NOT for the implicit exit!
+        expect(tap2.tapCount).toBe(2);
+        expect(tap2.visit.lastSeenDoor?.doorIndexCode).toBe("door-jkt-br-east");
+        expect(tap2.visit.lastSeenDoor?.doorName).toBe("Boardroom East Access");
+
+        // Step 3: Inspect event history - verify implicit departure event was logged
+        const events = await repo.listDoorTapEvents("vis-active-2");
+        expect(events).toHaveLength(3);
+
+        // Sorted descending by tappedAtUtc: [New Entry, Implicit Exit, Old Entry]
+        const entryBoardroom = events.find((e) => e.doorIndexCode === "door-jkt-br-east");
+        const implicitExit = events.find((e) => e.doorIndexCode === "door-jkt-dc-01" && e.direction === "out");
+        const entryDc = events.find((e) => e.doorIndexCode === "door-jkt-dc-01" && e.direction === "in");
+
+        expect(entryBoardroom).toBeDefined();
+        expect(entryBoardroom?.direction).toBe("in");
+
+        expect(implicitExit).toBeDefined();
+        expect(implicitExit?.isImplicit).toBe(true);
+        expect(implicitExit?.implicit).toBe(true);
+        expect(implicitExit?.direction).toBe("out");
+        expect(implicitExit?.inAndOutType).toBe(2);
+        expect(implicitExit?.transitionNote).toMatch(/implicit departure from dc server room 01 upon entry to boardroom east access/i);
+
+        expect(entryDc).toBeDefined();
+        expect(entryDc?.direction).toBe("in");
+      });
+
+      it("does NOT log implicit departure when transitioning from a DUAL_DIRECTION door", async () => {
+        // Step 1: Alice taps into Lobby Main SpeedGate A (DUAL_DIRECTION)
+        await service.recordTapAndEnforceQuota(
+          "vis-active-2",
+          {
+            visitId: "vis-active-2",
+            doorIndexCode: "door-turnstile-1",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:10:00.000Z",
+          },
+          { mode: "stub" },
+        );
+
+        // Step 2: Alice taps into 3F Elevator Lobby Door
+        await service.recordTapAndEnforceQuota(
+          "vis-active-2",
+          {
+            visitId: "vis-active-2",
+            doorIndexCode: "door-jkt-3f-el",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:15:00.000Z",
+          },
+          { mode: "stub" },
+        );
+
+        const events = await repo.listDoorTapEvents("vis-active-2");
+        expect(events).toHaveLength(2);
+        expect(events.some((e) => e.isImplicit || e.implicit)).toBe(false);
+      });
+
+      it("does NOT log implicit departure when scanning the same single-direction door again", async () => {
+        // Re-tapping into same room
+        await service.recordTapAndEnforceQuota(
+          "vis-active-2",
+          {
+            visitId: "vis-active-2",
+            doorIndexCode: "door-jkt-dc-01",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:20:00.000Z",
+          },
+          { mode: "stub" },
+        );
+
+        await service.recordTapAndEnforceQuota(
+          "vis-active-2",
+          {
+            visitId: "vis-active-2",
+            doorIndexCode: "door-jkt-dc-01",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:25:00.000Z",
+          },
+          { mode: "stub" },
+        );
+
+        const events = await repo.listDoorTapEvents("vis-active-2");
+        expect(events).toHaveLength(2);
+        expect(events.some((e) => e.isImplicit || e.implicit)).toBe(false);
+      });
+
+      it("enriches ActiveVisitSummary with lastSeenDoor metadata", async () => {
+        await service.recordTapAndEnforceQuota(
+          "vis-active-2",
+          {
+            visitId: "vis-active-2",
+            doorIndexCode: "door-jkt-dc-01",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:30:00.000Z",
+          },
+          { mode: "stub" },
+        );
+
+        const summaries = await service.getActiveVisits("fac-bali");
+        const bob = summaries.find((s) => s.visitId === "vis-active-2");
+        expect(bob?.lastSeenDoor).toBeDefined();
+        expect(bob?.lastSeenDoor?.doorIndexCode).toBe("door-jkt-dc-01");
+        expect(bob?.lastSeenDoor?.doorName).toBe("DC Server Room 01");
+        expect(bob?.lastSeenDoor?.accessType).toBe("SINGLE_DIRECTION_IN");
+        expect(bob?.lastSeenDoor?.direction).toBe("in");
+      });
+    });
   });
 
   describe("performCheckOut", () => {

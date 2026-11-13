@@ -1,13 +1,17 @@
 import { describe, it, expect } from "vitest";
 import {
+  DOOR_ACCESS_TYPES,
   DOOR_DIRECTIONS,
   evaluateOverstayStatus,
+  isDoorAccessType,
   isDoorDirection,
   isTapQuotaExceeded,
   validateCheckOutInput,
   validateDoorTapInput,
+  validateFacilityDoorInput,
   type CheckOutInput,
   type DoorTapEvent,
+  type FacilityDoor,
 } from "./checkout-contract";
 import type { Visit } from "./vms-contract";
 
@@ -20,6 +24,71 @@ describe("checkout-contract", () => {
       expect(isDoorDirection("unknown")).toBe(false);
       expect(isDoorDirection(123)).toBe(false);
       expect(isDoorDirection(null)).toBe(false);
+    });
+  });
+
+  describe("DOOR_ACCESS_TYPES and isDoorAccessType", () => {
+    it("defines valid tuple and derives runtime guard for access types", () => {
+      expect(DOOR_ACCESS_TYPES).toEqual(["DUAL_DIRECTION", "SINGLE_DIRECTION_IN"]);
+      expect(isDoorAccessType("DUAL_DIRECTION")).toBe(true);
+      expect(isDoorAccessType("SINGLE_DIRECTION_IN")).toBe(true);
+      expect(isDoorAccessType("ONE_WAY")).toBe(false);
+      expect(isDoorAccessType("BI_DIRECTIONAL")).toBe(false);
+      expect(isDoorAccessType(123)).toBe(false);
+      expect(isDoorAccessType(null)).toBe(false);
+    });
+  });
+
+  describe("validateFacilityDoorInput", () => {
+    it("accepts valid facility door configuration", () => {
+      const valid: FacilityDoor = {
+        id: "door-jkt-1",
+        facilityId: "fac-jakarta",
+        doorIndexCode: "door-turnstile-1",
+        doorName: "Main Entrance Turnstile",
+        accessType: "DUAL_DIRECTION",
+        isPerimeter: true,
+        roomTimeoutMinutes: 60,
+      };
+
+      const res = validateFacilityDoorInput(valid);
+      expect(res.valid).toBe(true);
+      if (res.valid) {
+        expect(res.input.facilityId).toBe("fac-jakarta");
+        expect(res.input.doorIndexCode).toBe("door-turnstile-1");
+        expect(res.input.accessType).toBe("DUAL_DIRECTION");
+        expect(res.input.isPerimeter).toBe(true);
+        expect(res.input.roomTimeoutMinutes).toBe(60);
+      }
+    });
+
+    it("defaults accessType to DUAL_DIRECTION if omitted and isPerimeter to false", () => {
+      const res = validateFacilityDoorInput({
+        facilityId: "fac-jakarta",
+        doorIndexCode: "door-inner-1",
+        doorName: "Inner Meeting Room",
+      });
+      expect(res.valid).toBe(true);
+      if (res.valid) {
+        expect(res.input.accessType).toBe("DUAL_DIRECTION");
+        expect(res.input.isPerimeter).toBe(false);
+      }
+    });
+
+    it("rejects invalid accessType or missing required fields", () => {
+      const res = validateFacilityDoorInput({
+        facilityId: "",
+        doorIndexCode: "",
+        doorName: "",
+        accessType: "INVALID_TYPE",
+      });
+      expect(res.valid).toBe(false);
+      if (!res.valid) {
+        expect(res.errors.facilityId).toBeDefined();
+        expect(res.errors.doorIndexCode).toBeDefined();
+        expect(res.errors.doorName).toBeDefined();
+        expect(res.errors.accessType).toMatch(/must be 'DUAL_DIRECTION' or 'SINGLE_DIRECTION_IN'/i);
+      }
     });
   });
 
@@ -197,6 +266,94 @@ describe("checkout-contract", () => {
       if (!res.valid) {
         expect(res.errors.visitId).toBeDefined();
         expect(res.errors.doorIndexCode).toBeDefined();
+      }
+    });
+
+    it("maps inAndOutType 1 to 'in' and 2 to 'out' accurately", () => {
+      const resIn = validateDoorTapInput({
+        visitId: "vis-101",
+        doorIndexCode: "door-turnstile-1",
+        inAndOutType: 1,
+      });
+      expect(resIn.valid).toBe(true);
+      if (resIn.valid) {
+        expect(resIn.input.direction).toBe("in");
+        expect(resIn.input.inAndOutType).toBe(1);
+      }
+
+      const resOut = validateDoorTapInput({
+        visitId: "vis-101",
+        doorIndexCode: "door-turnstile-1",
+        inAndOutType: 2,
+      });
+      expect(resOut.valid).toBe(true);
+      if (resOut.valid) {
+        expect(resOut.input.direction).toBe("out");
+        expect(resOut.input.inAndOutType).toBe(2);
+      }
+    });
+
+    it("infers inAndOutType when only direction is provided", () => {
+      const resIn = validateDoorTapInput({
+        visitId: "vis-101",
+        doorIndexCode: "door-turnstile-1",
+        direction: "in",
+      });
+      expect(resIn.valid).toBe(true);
+      if (resIn.valid) {
+        expect(resIn.input.inAndOutType).toBe(1);
+      }
+
+      const resOut = validateDoorTapInput({
+        visitId: "vis-101",
+        doorIndexCode: "door-turnstile-1",
+        direction: "out",
+      });
+      expect(resOut.valid).toBe(true);
+      if (resOut.valid) {
+        expect(resOut.input.inAndOutType).toBe(2);
+      }
+    });
+
+    it("rejects conflicting inAndOutType and direction or invalid inAndOutType", () => {
+      const mismatch = validateDoorTapInput({
+        visitId: "vis-101",
+        doorIndexCode: "door-turnstile-1",
+        direction: "in",
+        inAndOutType: 2,
+      });
+      expect(mismatch.valid).toBe(false);
+      if (!mismatch.valid) {
+        expect(mismatch.errors.inAndOutType).toMatch(/does not match/i);
+      }
+
+      const invalidCode = validateDoorTapInput({
+        visitId: "vis-101",
+        doorIndexCode: "door-turnstile-1",
+        inAndOutType: 99,
+      });
+      expect(invalidCode.valid).toBe(false);
+      if (!invalidCode.valid) {
+        expect(invalidCode.errors.inAndOutType).toBeDefined();
+      }
+    });
+
+    it("preserves isPerimeter, isImplicit, implicit, and transitionNote metadata", () => {
+      const res = validateDoorTapInput({
+        visitId: "vis-101",
+        doorIndexCode: "door-jkt-dc-01",
+        doorName: "DC Server Room 01",
+        direction: "out",
+        isPerimeter: false,
+        isImplicit: true,
+        transitionNote: "Implicit departure upon scanning into Room B",
+      });
+      expect(res.valid).toBe(true);
+      if (res.valid) {
+        expect(res.input.isPerimeter).toBe(false);
+        expect(res.input.isImplicit).toBe(true);
+        expect(res.input.implicit).toBe(true);
+        expect(res.input.transitionNote).toBe("Implicit departure upon scanning into Room B");
       }
     });
   });

@@ -4,12 +4,12 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Facility door definitions support `accessType: "DUAL_DIRECTION" | "SINGLE_DIRECTION_IN"`, `isPerimeter: boolean`, and optional `roomTimeoutMinutes: number`.
-- [ ] In-memory and persistent repository stores provide lookup for door topology metadata by `doorIndexCode` and `doorName`.
-- [ ] Ingestion of door tap events validates door directionality and records `inAndOutType` accurately.
-- [ ] When a visitor whose last seen location was a single-direction door scans into a different room, the system logs an implicit departure breadcrumb from the previous door before logging entry to the new door.
-- [ ] Taps on outer perimeter doors (`isPerimeter: true`) are flagged as perimeter crossing events.
-- [ ] Unit tests verify single vs dual-direction event handling, implicit exit transitions, and perimeter tagging.
+- [x] Facility door definitions support `accessType: "DUAL_DIRECTION" | "SINGLE_DIRECTION_IN"`, `isPerimeter: boolean`, and optional `roomTimeoutMinutes: number`.
+- [x] In-memory and persistent repository stores provide lookup for door topology metadata by `doorIndexCode` and `doorName`.
+- [x] Ingestion of door tap events validates door directionality and records `inAndOutType` accurately.
+- [x] When a visitor whose last seen location was a single-direction door scans into a different room, the system logs an implicit departure breadcrumb from the previous door before logging entry to the new door.
+- [x] Taps on outer perimeter doors (`isPerimeter: true`) are flagged as perimeter crossing events.
+- [x] Unit tests verify single vs dual-direction event handling, implicit exit transitions, and perimeter tagging.
 

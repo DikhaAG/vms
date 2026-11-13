@@ -835,4 +835,143 @@ describe("InMemoryVmsRepository", () => {
       expect(queried[0].id).toBe("emp-999");
     });
   });
+
+  describe("door topology metadata operations (Ticket 01)", () => {
+    it("has pre-seeded default doors across facilities", async () => {
+      const doors = await repo.listDoors();
+      expect(doors.length).toBeGreaterThan(0);
+
+      const jakartaDoors = await repo.listDoors("fac-jakarta");
+      expect(jakartaDoors.length).toBeGreaterThan(0);
+      expect(jakartaDoors.every((d) => d.facilityId === "fac-jakarta")).toBe(true);
+
+      const dcRoom = jakartaDoors.find((d) => d.doorIndexCode === "door-jkt-dc-01");
+      expect(dcRoom).toBeDefined();
+      expect(dcRoom?.accessType).toBe("SINGLE_DIRECTION_IN");
+      expect(dcRoom?.isPerimeter).toBe(false);
+
+      const turnstile = jakartaDoors.find((d) => d.doorIndexCode === "door-turnstile-1");
+      expect(turnstile).toBeDefined();
+      expect(turnstile?.accessType).toBe("DUAL_DIRECTION");
+      expect(turnstile?.isPerimeter).toBe(true);
+    });
+
+    it("getDoor retrieves door by doorIndexCode", async () => {
+      const door = await repo.getDoor("door-turnstile-1");
+      expect(door).toBeDefined();
+      expect(door?.doorName).toBe("Lobby Main SpeedGate A");
+      expect(door?.accessType).toBe("DUAL_DIRECTION");
+      expect(door?.isPerimeter).toBe(true);
+
+      const unknown = await repo.getDoor("non-existent-door");
+      expect(unknown).toBeUndefined();
+    });
+
+    it("getDoorByName retrieves door case-insensitively and filters by facility", async () => {
+      const door = await repo.getDoorByName("dc server room 01", "fac-jakarta");
+      expect(door).toBeDefined();
+      expect(door?.doorIndexCode).toBe("door-jkt-dc-01");
+      expect(door?.accessType).toBe("SINGLE_DIRECTION_IN");
+
+      const wrongFac = await repo.getDoorByName("DC Server Room 01", "fac-bali");
+      expect(wrongFac).toBeUndefined();
+    });
+
+    it("findDoor resolves by either doorIndexCode or doorName", async () => {
+      const byCode = await repo.findDoor("door-jkt-dc-01");
+      expect(byCode).toBeDefined();
+      expect(byCode?.doorName).toBe("DC Server Room 01");
+
+      const byName = await repo.findDoor("DC Server Room 01");
+      expect(byName).toBeDefined();
+      expect(byName?.doorIndexCode).toBe("door-jkt-dc-01");
+    });
+
+    it("saveDoor and saveDoors persist new doors and updates", async () => {
+      await repo.saveDoor({
+        id: "door-custom-1",
+        facilityId: "fac-jakarta",
+        doorIndexCode: "door-lab-99",
+        doorName: "Secret AI Lab",
+        accessType: "SINGLE_DIRECTION_IN",
+        isPerimeter: false,
+        roomTimeoutMinutes: 30,
+      });
+
+      const retrieved = await repo.getDoor("door-lab-99");
+      expect(retrieved).toBeDefined();
+      expect(retrieved?.doorName).toBe("Secret AI Lab");
+      expect(retrieved?.accessType).toBe("SINGLE_DIRECTION_IN");
+
+      await repo.saveDoors([
+        {
+          id: "door-custom-2",
+          facilityId: "fac-bali",
+          doorIndexCode: "door-pool-1",
+          doorName: "Pool Access",
+          accessType: "DUAL_DIRECTION",
+          isPerimeter: true,
+        },
+      ]);
+
+      const poolDoor = await repo.getDoor("door-pool-1");
+      expect(poolDoor).toBeDefined();
+      expect(poolDoor?.doorName).toBe("Pool Access");
+    });
+
+    it("recordDoorTap enriches metadata, sets inAndOutType, updates lastSeenDoor, and handles implicit taps", async () => {
+      await repo.saveVisit({
+        id: "vis-topo-1",
+        facilityId: "fac-jakarta",
+        visitorGivenName: "Alice",
+        visitorFamilyName: "Smith",
+        visitReasonType: 0,
+        scheduledStartTimeUtc: "2026-11-13T08:00:00.000Z",
+        scheduledEndTimeUtc: "2026-11-13T10:00:00.000Z",
+        scheduledStartTimeFacility: "2026-11-13T15:00:00+07:00",
+        scheduledEndTimeFacility: "2026-11-13T17:00:00+07:00",
+        actualCheckInTimeUtc: "2026-11-13T08:02:00.000Z",
+        status: "CHECKED_IN",
+        tapCount: 1,
+        createdAtUtc: "2026-11-13T07:00:00.000Z",
+        updatedAtUtc: "2026-11-13T08:02:00.000Z",
+      });
+
+      // 1. Regular Entry tap on perimeter door
+      const res1 = await repo.recordDoorTap({
+        visitId: "vis-topo-1",
+        doorIndexCode: "door-turnstile-1",
+        direction: "in",
+        tappedAtUtc: "2026-11-13T08:30:00.000Z",
+      });
+
+      expect(res1.event.inAndOutType).toBe(1);
+      expect(res1.event.isPerimeter).toBe(true);
+      expect(res1.visit.lastSeenDoor).toBeDefined();
+      expect(res1.visit.lastSeenDoor?.doorIndexCode).toBe("door-turnstile-1");
+      expect(res1.visit.lastSeenDoor?.direction).toBe("in");
+      expect(res1.visit.lastSeenDoor?.isPerimeter).toBe(true);
+      expect(res1.visit.lastSeenDoor?.accessType).toBe("DUAL_DIRECTION");
+      expect(res1.tapCount).toBe(2); // vis-topo-1 started with tapCount 1
+
+      // 2. Implicit Departure event does NOT increment tapCount against quota
+      const res2 = await repo.recordDoorTap({
+        visitId: "vis-topo-1",
+        doorIndexCode: "door-jkt-dc-01",
+        doorName: "DC Server Room 01",
+        direction: "out",
+        isImplicit: true,
+        transitionNote: "Implicit exit upon room transition",
+        tappedAtUtc: "2026-11-13T08:45:00.000Z",
+      });
+
+      expect(res2.event.inAndOutType).toBe(2);
+      expect(res2.event.isImplicit).toBe(true);
+      expect(res2.event.implicit).toBe(true);
+      expect(res2.tapCount).toBe(2); // NOT incremented for implicit tap!
+      expect(res2.visit.tapCount).toBe(2);
+      expect(res2.visit.lastSeenDoor?.doorIndexCode).toBe("door-jkt-dc-01");
+      expect(res2.visit.lastSeenDoor?.direction).toBe("out");
+    });
+  });
 });

@@ -9,6 +9,21 @@ import {
   type TapQuotaConfig,
 } from "./access-level-contract";
 import { isValidIanaTimezone } from "./timezone";
+import {
+  DOOR_ACCESS_TYPES,
+  isDoorAccessType,
+  type DoorAccessType,
+  type FacilityDoor,
+  type VisitLastSeenDoor,
+} from "./checkout-contract";
+
+export {
+  DOOR_ACCESS_TYPES,
+  isDoorAccessType,
+  type DoorAccessType,
+  type FacilityDoor,
+  type VisitLastSeenDoor,
+};
 
 export const VISIT_STATUSES = [
   "DRAFT",
@@ -129,6 +144,7 @@ export interface Visit {
   approvalRecord?: ApprovalRecord;
   accessLevelIds?: string[];
   tapQuota?: TapQuotaConfig;
+  lastSeenDoor?: VisitLastSeenDoor;
   createdAtUtc: string;
   updatedAtUtc: string;
 }

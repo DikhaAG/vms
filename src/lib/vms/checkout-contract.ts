@@ -22,6 +22,38 @@ export function isDoorDirection(value: unknown): value is DoorDirection {
   );
 }
 
+export const DOOR_ACCESS_TYPES = [
+  "DUAL_DIRECTION",
+  "SINGLE_DIRECTION_IN",
+] as const;
+export type DoorAccessType = (typeof DOOR_ACCESS_TYPES)[number];
+
+export function isDoorAccessType(value: unknown): value is DoorAccessType {
+  return (
+    typeof value === "string" &&
+    (DOOR_ACCESS_TYPES as readonly string[]).includes(value)
+  );
+}
+
+export interface FacilityDoor {
+  id?: string;
+  facilityId: string;
+  doorIndexCode: string;
+  doorName: string;
+  accessType: DoorAccessType;
+  isPerimeter: boolean;
+  roomTimeoutMinutes?: number;
+}
+
+export interface VisitLastSeenDoor {
+  doorIndexCode: string;
+  doorName?: string;
+  tappedAtUtc: string;
+  direction: DoorDirection;
+  accessType?: DoorAccessType;
+  isPerimeter?: boolean;
+}
+
 export interface DoorTapEvent {
   id?: string;
   visitId: string;
@@ -29,6 +61,11 @@ export interface DoorTapEvent {
   doorName?: string;
   tappedAtUtc: string;
   direction: DoorDirection;
+  inAndOutType?: number;
+  isPerimeter?: boolean;
+  isImplicit?: boolean;
+  implicit?: boolean;
+  transitionNote?: string;
 }
 
 export interface CheckOutInput {
@@ -88,6 +125,7 @@ export interface ActiveVisitSummary {
   status: VisitStatus;
   appointRecordId?: string;
   accessLevelIds?: string[];
+  lastSeenDoor?: VisitLastSeenDoor;
 }
 
 export interface OverstayEvaluation {
@@ -223,6 +261,73 @@ export function validateCheckOutInput(raw: unknown): ValidationResult<CheckOutIn
 }
 
 /**
+ * Pure validator for FacilityDoor input.
+ */
+export function validateFacilityDoorInput(raw: unknown): ValidationResult<FacilityDoor> {
+  const errors: Record<string, string> = {};
+
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return { valid: false, errors: { _global: "Door configuration must be an object." } };
+  }
+
+  const rec = raw as Record<string, unknown>;
+
+  if (typeof rec.facilityId !== "string" || !rec.facilityId.trim()) {
+    errors.facilityId = "Facility ID is required.";
+  }
+
+  if (typeof rec.doorIndexCode !== "string" || !rec.doorIndexCode.trim()) {
+    errors.doorIndexCode = "Door index code is required.";
+  }
+
+  if (typeof rec.doorName !== "string" || !rec.doorName.trim()) {
+    errors.doorName = "Door name is required.";
+  }
+
+  let accessType: DoorAccessType = "DUAL_DIRECTION";
+  if (rec.accessType !== undefined) {
+    if (!isDoorAccessType(rec.accessType)) {
+      errors.accessType = "Access type must be 'DUAL_DIRECTION' or 'SINGLE_DIRECTION_IN'.";
+    } else {
+      accessType = rec.accessType;
+    }
+  }
+
+  const isPerimeter = Boolean(rec.isPerimeter);
+
+  let roomTimeoutMinutes: number | undefined;
+  if (rec.roomTimeoutMinutes !== undefined) {
+    if (typeof rec.roomTimeoutMinutes === "number" && rec.roomTimeoutMinutes > 0) {
+      roomTimeoutMinutes = rec.roomTimeoutMinutes;
+    } else {
+      errors.roomTimeoutMinutes = "Room timeout must be a positive number of minutes.";
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return { valid: false, errors };
+  }
+
+  const id =
+    typeof rec.id === "string" && rec.id.trim()
+      ? rec.id.trim()
+      : `door-${(rec.doorIndexCode as string).trim()}`;
+
+  return {
+    valid: true,
+    input: {
+      id,
+      facilityId: (rec.facilityId as string).trim(),
+      doorIndexCode: (rec.doorIndexCode as string).trim(),
+      doorName: (rec.doorName as string).trim(),
+      accessType,
+      isPerimeter,
+      roomTimeoutMinutes,
+    },
+  };
+}
+
+/**
  * Pure validator for DoorTapEvent input.
  */
 export function validateDoorTapInput(raw: unknown): ValidationResult<DoorTapEvent> {
@@ -243,13 +348,48 @@ export function validateDoorTapInput(raw: unknown): ValidationResult<DoorTapEven
   }
 
   let direction: DoorDirection = "in";
+  let hasExplicitDirection = false;
   if (rec.direction !== undefined) {
     if (!isDoorDirection(rec.direction)) {
       errors.direction = "Direction must be 'in' or 'out'.";
     } else {
       direction = rec.direction;
+      hasExplicitDirection = true;
     }
   }
+
+  let inAndOutType: number | undefined;
+  if (rec.inAndOutType !== undefined) {
+    if (rec.inAndOutType !== 1 && rec.inAndOutType !== 2) {
+      errors.inAndOutType = "inAndOutType must be 1 (entry) or 2 (exit).";
+    } else {
+      inAndOutType = rec.inAndOutType as number;
+      if (hasExplicitDirection) {
+        if (
+          (direction === "in" && inAndOutType !== 1) ||
+          (direction === "out" && inAndOutType !== 2)
+        ) {
+          errors.inAndOutType = `inAndOutType (${inAndOutType}) does not match direction '${direction}'.`;
+        }
+      } else {
+        direction = inAndOutType === 1 ? "in" : "out";
+      }
+    }
+  } else {
+    inAndOutType = direction === "in" ? 1 : 2;
+  }
+
+  const isPerimeter =
+    typeof rec.isPerimeter === "boolean" ? rec.isPerimeter : undefined;
+  const isImplicit =
+    typeof rec.isImplicit === "boolean"
+      ? rec.isImplicit
+      : typeof rec.implicit === "boolean"
+        ? rec.implicit
+        : undefined;
+  const implicit = isImplicit;
+  const transitionNote =
+    typeof rec.transitionNote === "string" ? rec.transitionNote.trim() : undefined;
 
   const tappedAtUtc =
     typeof rec.tappedAtUtc === "string" && rec.tappedAtUtc.trim()
@@ -268,6 +408,11 @@ export function validateDoorTapInput(raw: unknown): ValidationResult<DoorTapEven
       doorName: typeof rec.doorName === "string" ? rec.doorName.trim() : undefined,
       tappedAtUtc,
       direction,
+      inAndOutType,
+      isPerimeter,
+      isImplicit,
+      implicit,
+      transitionNote,
     },
   };
 }

@@ -99,4 +99,24 @@ describe("POST /api/vms/active-visits/[visitId]/tap", () => {
     expect(json.ok).toBe(false);
     expect(json.errors.doorIndexCode).toBeDefined();
   });
+
+  it("returns 400 when attempting an exit tap on a SINGLE_DIRECTION_IN door", async () => {
+    const req = new Request(`http://localhost:3000/api/vms/active-visits/${visitId}/tap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        doorIndexCode: "door-jkt-dc-01",
+        direction: "out",
+      }),
+    });
+
+    const context = { params: Promise.resolve({ visitId }) };
+    const res = await POST(req, context);
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.ok).toBe(false);
+    expect(json.error.kind).toBe("validation");
+    expect(json.error.message).toMatch(/SINGLE_DIRECTION_IN/i);
+  });
 });

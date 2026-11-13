@@ -108,6 +108,23 @@ export async function POST(
       );
     }
 
+    if (
+      error instanceof Error &&
+      (error.message.includes("SINGLE_DIRECTION_IN") ||
+        error.message.includes("single-direction"))
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            kind: "validation",
+            message: error.message,
+          },
+        },
+        { status: 400 },
+      );
+    }
+
     if (error instanceof HikCentralError) {
       return NextResponse.json(
         {
