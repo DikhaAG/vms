@@ -116,7 +116,23 @@ export async function createPreRegistration(
     facility.timezone,
   );
 
-  // 4. Dispatch to HikCentral OpenAPI
+  // 4. Resolve access levels & tap quota for physical synchronization
+  let resolvedAccessLevels: Array<{ id: string; name: string }> | undefined;
+  if (input.accessLevelIds && input.accessLevelIds.length > 0) {
+    const facilityLevels = await repository.listAccessLevels(facility.id);
+    const levelMap = new Map(facilityLevels.map((al) => [al.id, al.name]));
+    resolvedAccessLevels = input.accessLevelIds.map((id) => ({
+      id,
+      name: levelMap.get(id) ?? "Access Level",
+    }));
+  }
+
+  const qrCodeValidNum =
+    input.tapQuota?.mode === "limited"
+      ? (input.tapQuota.maxTaps ?? 1)
+      : 0;
+
+  // 5. Dispatch to HikCentral OpenAPI
   let hikResult: HikCentralAppointmentSuccess;
   try {
     hikResult = await dispatchAppointment(
@@ -133,6 +149,8 @@ export async function createPreRegistration(
         certificateType: input.certificateType,
         certificateNo: input.certificateNo,
         facePhotoData: input.facePhoto,
+        accessLevels: resolvedAccessLevels,
+        qrCodeValidNum,
       },
       {
         mode: input.mode,
@@ -178,6 +196,8 @@ export async function createPreRegistration(
     status: visitStatus,
     monitoringListFlag: monitoringFlag,
     facePhoto: input.facePhoto ? toJpegDataUri(input.facePhoto) : undefined,
+    accessLevelIds: input.accessLevelIds,
+    tapQuota: input.tapQuota,
     credentialSyncStatus: "Applied",
     hikCentral: {
       appointRecordId: hikResult.appointRecordId,

@@ -198,4 +198,48 @@ describe("createPreRegistration", () => {
     expect(result.visit?.facePhoto).toBe(faceDataUri);
     expect(result.visit?.credentialSyncStatus).toBe("Applied");
   });
+
+  it("passes accessLevels and tapQuota to dispatcher and persists them on Visit", async () => {
+    let dispatchedParams: HikCentralAppointmentParams | undefined;
+    const mockDispatcher = async (
+      params: HikCentralAppointmentParams,
+    ): Promise<HikCentralAppointmentSuccess> => {
+      dispatchedParams = params;
+      return {
+        appointRecordId: "mock-rec-acc-1",
+        visitorId: "mock-vis-acc-1",
+      };
+    };
+
+    const inputWithAccessAndQuota: CreatePreRegistrationInput = {
+      ...baseInput,
+      accessLevelIds: ["acc-jkt-lobby", "acc-jkt-exec"],
+      tapQuota: {
+        mode: "limited",
+        maxTaps: 4,
+      },
+    };
+
+    const result = await createPreRegistration(inputWithAccessAndQuota, {
+      repository: repo,
+      appointmentDispatcher: mockDispatcher,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.visit?.accessLevelIds).toEqual([
+      "acc-jkt-lobby",
+      "acc-jkt-exec",
+    ]);
+    expect(result.visit?.tapQuota).toEqual({
+      mode: "limited",
+      maxTaps: 4,
+    });
+
+    // Check dispatched params
+    expect(dispatchedParams?.accessLevels).toEqual([
+      { id: "acc-jkt-lobby", name: "Lobby & 1st Floor Turnstiles" },
+      { id: "acc-jkt-exec", name: "Executive Floor 3" },
+    ]);
+    expect(dispatchedParams?.qrCodeValidNum).toBe(4);
+  });
 });

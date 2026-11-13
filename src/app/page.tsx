@@ -81,6 +81,29 @@ export default function HomePage() {
       </section>
 
       <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">
+            Dynamic Access Level Management
+          </h2>
+          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+            Ticket 05
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-neutral-600">
+          Security Administrator interface to bundle physical turnstiles, elevator floors, and time schedule templates
+          into reusable Access Levels, and configure precise door tap quotas.
+        </p>
+        <div className="mt-4">
+          <Link
+            href="/vms/access-levels"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+          >
+            Manage Dynamic Access Levels &rarr;
+          </Link>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
         <h2 className="text-sm font-semibold text-neutral-900">Prototypes</h2>
         <p className="mt-1 text-xs text-neutral-600">
           Verify foundation signing and HTTP client wiring before building

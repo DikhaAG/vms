@@ -34,13 +34,20 @@ import {
   processBrowserImageFile,
   toJpegDataUri,
 } from "@/lib/vms/face-normalizer";
+import {
+  TIME_SCHEDULE_LABELS,
+  type AccessLevel,
+  type TapQuotaMode,
+} from "@/lib/vms/access-level-contract";
 
 interface PreRegistrationFormProps {
   initialFacilities: Facility[];
+  initialAccessLevels?: AccessLevel[];
 }
 
 export function PreRegistrationForm({
   initialFacilities,
+  initialAccessLevels,
 }: PreRegistrationFormProps) {
   const formId = useId();
 
@@ -48,6 +55,63 @@ export function PreRegistrationForm({
   const [selectedFacilityId, setSelectedFacilityId] = useState<string>(
     initialFacilities[0]?.id ?? "fac-jakarta",
   );
+
+  // Access Levels & Tap Quota States
+  const [accessLevels, setAccessLevels] = useState<AccessLevel[]>(
+    initialAccessLevels ?? [],
+  );
+  const [selectedAccessLevelIds, setSelectedAccessLevelIds] = useState<string[]>(
+    () => {
+      const initialFacilityId = initialFacilities[0]?.id ?? "fac-jakarta";
+      const defaults = (initialAccessLevels ?? []).filter(
+        (al) => al.facilityId === initialFacilityId && al.isDefault,
+      );
+      return defaults.length > 0
+        ? defaults.map((d) => d.id)
+        : (initialAccessLevels ?? [])
+            .filter((al) => al.facilityId === initialFacilityId)
+            .slice(0, 1)
+            .map((d) => d.id);
+    },
+  );
+  const [tapQuotaMode, setTapQuotaMode] = useState<TapQuotaMode>("unlimited");
+  const [maxTaps, setMaxTaps] = useState<number>(2);
+
+  // Re-fetch or synchronize access levels when facility changes
+  useEffect(() => {
+    let ignore = false;
+    async function loadFacilityAccessLevels() {
+      try {
+        const res = await fetch(
+          `/api/vms/access-levels?facilityId=${selectedFacilityId}`,
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!ignore && data.ok && Array.isArray(data.accessLevels)) {
+          setAccessLevels((prev) => {
+            const others = prev.filter(
+              (al) => al.facilityId !== selectedFacilityId,
+            );
+            return [...others, ...data.accessLevels];
+          });
+          const facilityLevels: AccessLevel[] = data.accessLevels;
+          const defaultLevel =
+            facilityLevels.find((l) => l.isDefault) ?? facilityLevels[0];
+          if (defaultLevel) {
+            setSelectedAccessLevelIds([defaultLevel.id]);
+          } else {
+            setSelectedAccessLevelIds([]);
+          }
+        }
+      } catch {
+        // Fallback to local filtering
+      }
+    }
+    loadFacilityAccessLevels();
+    return () => {
+      ignore = true;
+    };
+  }, [selectedFacilityId]);
 
   // Form Fields
   const [visitorFamilyName, setVisitorFamilyName] = useState("Pratama");
@@ -332,6 +396,12 @@ export function PreRegistrationForm({
       scheduledStartTime,
       scheduledEndTime,
       facePhoto: facePhoto || undefined,
+      accessLevelIds:
+        selectedAccessLevelIds.length > 0 ? selectedAccessLevelIds : undefined,
+      tapQuota: {
+        mode: tapQuotaMode,
+        maxTaps: tapQuotaMode === "limited" ? maxTaps : 0,
+      },
       mode,
       ...(mode === "stub" ? { stubScenario } : {}),
     };
@@ -901,10 +971,174 @@ export function PreRegistrationForm({
           </div>
         </fieldset>
 
-        {/* Section 6: Execution & Simulation Controls */}
+        {/* Section 6: Dynamic Access Levels & Tap Quota */}
+        <fieldset className="space-y-4 border-t border-neutral-100 pt-6">
+          <div className="flex items-center justify-between">
+            <legend className="text-sm font-semibold text-neutral-900">
+              6. Dynamic Access Levels & Tap Quota
+            </legend>
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+              Ticket 05
+            </span>
+          </div>
+          <p className="text-xs text-neutral-600">
+            Select physical access zones for this visit and configure the turnstile tap limit (mapped to HikCentral <span className="font-mono">qrCodeValidNum</span>).
+          </p>
+
+          <div className="space-y-3">
+            <span className="block text-xs font-medium text-neutral-700">
+              Available Access Levels for Selected Facility
+            </span>
+
+            {(() => {
+              const facilityLevels = accessLevels.filter(
+                (l) => l.facilityId === selectedFacilityId,
+              );
+              if (facilityLevels.length === 0) {
+                return (
+                  <p className="text-xs text-neutral-500 italic">
+                    No access levels configured for this facility. Default lobby gate access will apply.
+                  </p>
+                );
+              }
+              return (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {facilityLevels.map((lvl) => {
+                    const isChecked = selectedAccessLevelIds.includes(lvl.id);
+                    return (
+                      <label
+                        key={lvl.id}
+                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-xs transition ${
+                          isChecked
+                            ? "border-neutral-900 bg-neutral-50/80 ring-1 ring-neutral-900"
+                            : "border-neutral-200 hover:border-neutral-300 bg-white"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedAccessLevelIds((prev) => [...prev, lvl.id]);
+                            } else {
+                              setSelectedAccessLevelIds((prev) =>
+                                prev.filter((id) => id !== lvl.id),
+                              );
+                            }
+                          }}
+                          className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-neutral-900">
+                              {lvl.name}
+                            </span>
+                            {lvl.isDefault ? (
+                              <span className="rounded bg-emerald-100 px-1.5 py-0.2 text-[9px] font-bold text-emerald-800">
+                                Default
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 text-neutral-500 line-clamp-1">
+                            {lvl.description || "Physical access level"}
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-600">
+                              {TIME_SCHEDULE_LABELS[lvl.timeScheduleId] ?? `Schedule ${lvl.timeScheduleId}`}
+                            </span>
+                            <span className="rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-600 font-mono">
+                              {lvl.doors.length} {lvl.doors.length === 1 ? "door" : "doors"}
+                            </span>
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Tap Quota Selection */}
+          <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50/50 p-4">
+            <span className="block text-xs font-semibold text-neutral-800">
+              Turnstile & Door Tap Quota
+            </span>
+            <p className="mt-0.5 text-xs text-neutral-500">
+              Limit physical turnstile and door scan entries for issued QR credentials.
+            </p>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label
+                className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-xs transition ${
+                  tapQuotaMode === "unlimited"
+                    ? "border-neutral-900 bg-white ring-1 ring-neutral-900"
+                    : "border-neutral-200 bg-white hover:border-neutral-300"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="tap-quota-mode"
+                  value="unlimited"
+                  checked={tapQuotaMode === "unlimited"}
+                  onChange={() => setTapQuotaMode("unlimited")}
+                  className="mt-0.5 h-4 w-4 text-neutral-900 focus:ring-neutral-900"
+                />
+                <div>
+                  <span className="font-semibold text-neutral-900">
+                    Unlimited Entries (0)
+                  </span>
+                  <p className="mt-0.5 text-neutral-500">
+                    Visitor can tap turnstiles and doors freely throughout their scheduled visit window.
+                  </p>
+                </div>
+              </label>
+
+              <label
+                className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-xs transition ${
+                  tapQuotaMode === "limited"
+                    ? "border-neutral-900 bg-white ring-1 ring-neutral-900"
+                    : "border-neutral-200 bg-white hover:border-neutral-300"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="tap-quota-mode"
+                  value="limited"
+                  checked={tapQuotaMode === "limited"}
+                  onChange={() => setTapQuotaMode("limited")}
+                  className="mt-0.5 h-4 w-4 text-neutral-900 focus:ring-neutral-900"
+                />
+                <div className="flex-1">
+                  <span className="font-semibold text-neutral-900">
+                    Exact Tap Limit
+                  </span>
+                  <p className="mt-0.5 text-neutral-500">
+                    Limit turnstile / door unlocks (1 to 1000 taps).
+                  </p>
+                  {tapQuotaMode === "limited" ? (
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        max={1000}
+                        value={maxTaps}
+                        onChange={(e) => setMaxTaps(Math.max(1, Math.min(1000, Number(e.target.value))))}
+                        className="w-24 rounded border border-neutral-300 px-2 py-1 text-xs font-semibold text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-hidden"
+                      />
+                      <span className="text-xs text-neutral-600">taps total</span>
+                    </div>
+                  ) : null}
+                </div>
+              </label>
+            </div>
+          </div>
+        </fieldset>
+
+        {/* Section 7: Execution & Simulation Controls */}
         <fieldset className="space-y-4 border-t border-neutral-100 pt-6">
           <legend className="text-sm font-semibold text-neutral-900">
-            6. Execution Mode & Integration Simulation
+            7. Execution Mode & Integration Simulation
           </legend>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -1125,6 +1359,47 @@ export function PreRegistrationForm({
                       {createdVisit.scheduledStartTimeUtc} &rarr;{" "}
                       {createdVisit.scheduledEndTimeUtc}
                     </span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="border-t border-neutral-100 pt-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+                  Access Permissions & Tap Quota
+                </h3>
+                <div className="mt-2 space-y-1.5 text-xs text-neutral-700">
+                  <p>
+                    <span className="font-medium text-neutral-500">
+                      Assigned Access Levels:
+                    </span>{" "}
+                    {createdVisit.accessLevelIds && createdVisit.accessLevelIds.length > 0 ? (
+                      <span className="font-semibold text-neutral-900">
+                        {createdVisit.accessLevelIds
+                          .map(
+                            (id) =>
+                              accessLevels.find((l) => l.id === id)?.name ?? id,
+                          )
+                          .join(", ")}
+                      </span>
+                    ) : (
+                      <span className="italic text-neutral-400">
+                        Default Lobby Gate only
+                      </span>
+                    )}
+                  </p>
+                  <p>
+                    <span className="font-medium text-neutral-500">
+                      Tap Quota:
+                    </span>{" "}
+                    {createdVisit.tapQuota?.mode === "limited" ? (
+                      <span className="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 font-semibold text-amber-800">
+                        {createdVisit.tapQuota.maxTaps} physical entry taps authorized
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-800">
+                        Unlimited taps during visit hours
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>

@@ -21,6 +21,8 @@ export interface HikCentralAppointmentParams {
   certificateType?: number;
   certificateNo?: string;
   facePhotoData?: string;
+  accessLevels?: Array<{ id: string | number; name?: string }>;
+  qrCodeValidNum?: number;
 }
 
 export interface HikCentralAppointmentSuccess {
@@ -110,12 +112,26 @@ export async function dispatchHikCentralAppointment(
     ? stripDataUriPrefix(params.facePhotoData)
     : undefined;
 
-  const wirePayload = {
+  const wirePayload: Record<string, unknown> = {
     receptionistId: params.hostId,
     appointStartTime: params.appointStartTime,
     appointEndTime: params.appointEndTime,
     visitReasonType: params.visitReasonType,
     visitReasonDetail: params.visitReasonDetail ?? "null",
+    ...(params.accessLevels && params.accessLevels.length > 0
+      ? {
+          accessInfo: {
+            accessLevelList: params.accessLevels.map((al) => ({
+              accessLevel: {
+                id: al.id,
+                baseInfo: {
+                  name: al.name ?? "Access Level",
+                },
+              },
+            })),
+          },
+        }
+      : {}),
     visitorInfoList: [
       {
         VisitorInfo: {
@@ -126,7 +142,7 @@ export async function dispatchHikCentralAppointment(
           certificateType: params.certificateType,
           certificateNo: params.certificateNo,
           accessInfo: {
-            qrCodeValidNum: 0,
+            qrCodeValidNum: params.qrCodeValidNum ?? 0,
           },
           ...(cleanFaceData
             ? {

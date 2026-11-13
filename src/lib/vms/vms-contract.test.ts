@@ -122,5 +122,42 @@ describe("vms-contract", () => {
         expect(result.errors.scheduledEndTime).toContain("must be after");
       }
     });
+    it("validates optional accessLevelIds and tapQuota", () => {
+      const withAccessAndQuota = {
+        ...validInput,
+        accessLevelIds: ["acc-lobby-all", "acc-exec-fl3"],
+        tapQuota: {
+          mode: "limited",
+          maxTaps: 5,
+        },
+      };
+      const result = validatePreRegistrationInput(withAccessAndQuota);
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        expect(result.input.accessLevelIds).toEqual([
+          "acc-lobby-all",
+          "acc-exec-fl3",
+        ]);
+        expect(result.input.tapQuota).toEqual({
+          mode: "limited",
+          maxTaps: 5,
+        });
+      }
+    });
+
+    it("rejects invalid tapQuota on pre-registration input", () => {
+      const invalidQuota = {
+        ...validInput,
+        tapQuota: {
+          mode: "limited",
+          maxTaps: 0,
+        },
+      };
+      const result = validatePreRegistrationInput(invalidQuota);
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors["tapQuota.maxTaps"]).toBeDefined();
+      }
+    });
   });
 });

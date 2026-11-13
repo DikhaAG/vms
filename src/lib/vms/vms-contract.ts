@@ -4,6 +4,10 @@
  */
 
 import type { MonitoringListFlag, ApprovalRecord } from "./approval-contract";
+import {
+  validateTapQuota,
+  type TapQuotaConfig,
+} from "./access-level-contract";
 
 export const VISIT_STATUSES = [
   "DRAFT",
@@ -101,6 +105,8 @@ export interface Visit {
   invitationToken?: string;
   monitoringListFlag?: MonitoringListFlag;
   approvalRecord?: ApprovalRecord;
+  accessLevelIds?: string[];
+  tapQuota?: TapQuotaConfig;
   createdAtUtc: string;
   updatedAtUtc: string;
 }
@@ -120,6 +126,8 @@ export interface CreatePreRegistrationInput {
   scheduledStartTime: string;
   scheduledEndTime: string;
   facePhoto?: string;
+  accessLevelIds?: string[];
+  tapQuota?: TapQuotaConfig;
   mode?: PreRegistrationMode;
   stubScenario?: StubScenario;
 }
@@ -373,6 +381,31 @@ export function validatePreRegistrationInput(raw: unknown): ValidationOutcome {
     }
   }
 
+  // Access Levels (optional)
+  let accessLevelIds: string[] | undefined;
+  if (record.accessLevelIds !== undefined && record.accessLevelIds !== null) {
+    if (Array.isArray(record.accessLevelIds)) {
+      accessLevelIds = record.accessLevelIds
+        .map((id) => (typeof id === "string" ? id.trim() : ""))
+        .filter(Boolean);
+    } else {
+      errors.accessLevelIds = "accessLevelIds must be an array of strings.";
+    }
+  }
+
+  // Tap Quota (optional)
+  let tapQuota: TapQuotaConfig | undefined;
+  if (record.tapQuota !== undefined && record.tapQuota !== null) {
+    const quotaValidation = validateTapQuota(record.tapQuota);
+    if (quotaValidation.valid) {
+      tapQuota = quotaValidation.quota;
+    } else {
+      for (const [key, msg] of Object.entries(quotaValidation.errors)) {
+        errors[`tapQuota.${key}`] = msg;
+      }
+    }
+  }
+
   // Mode and stubScenario
   let mode: PreRegistrationMode | undefined;
   if (record.mode !== undefined && record.mode !== null) {
@@ -413,6 +446,8 @@ export function validatePreRegistrationInput(raw: unknown): ValidationOutcome {
       scheduledStartTime,
       scheduledEndTime,
       facePhoto,
+      accessLevelIds,
+      tapQuota,
       mode,
       stubScenario,
     },

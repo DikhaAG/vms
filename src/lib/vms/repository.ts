@@ -1,6 +1,7 @@
 import type { CredentialSyncStatus, Facility, Visit, VisitStatus } from "./vms-contract";
 import type { InvitationToken } from "./invitation-contract";
 import type { ApprovalRecord } from "./approval-contract";
+import type { AccessLevel } from "./access-level-contract";
 
 export interface ListVisitsFilter {
   facilityId?: string;
@@ -44,6 +45,12 @@ export interface IVmsRepository {
     token: string,
     consumedAtUtc?: string,
   ): Promise<InvitationToken>;
+
+  // Access level management
+  listAccessLevels(facilityId?: string): Promise<AccessLevel[]>;
+  getAccessLevel(id: string): Promise<AccessLevel | undefined>;
+  saveAccessLevel(accessLevel: AccessLevel): Promise<void>;
+  deleteAccessLevel(id: string): Promise<void>;
 }
 
 export const DEFAULT_FACILITIES: Facility[] = [
@@ -70,15 +77,75 @@ export const DEFAULT_FACILITIES: Facility[] = [
   },
 ];
 
+export const DEFAULT_ACCESS_LEVELS: AccessLevel[] = [
+  {
+    id: "acc-jkt-lobby",
+    facilityId: "fac-jakarta",
+    name: "Lobby & 1st Floor Turnstiles",
+    description: "Standard ground floor turnstile and visitor reception access",
+    doors: ["Lobby Main SpeedGate A", "Lobby Main SpeedGate B", "Visitor Turnstile 01"],
+    floors: ["1F"],
+    timeScheduleId: 2,
+    isDefault: true,
+  },
+  {
+    id: "acc-jkt-exec",
+    facilityId: "fac-jakarta",
+    name: "Executive Floor 3",
+    description: "C-suite suites, boardroom, and VIP meeting lounge",
+    doors: ["3F Elevator Lobby Door", "Boardroom East Access"],
+    floors: ["3F"],
+    timeScheduleId: 2,
+    isDefault: false,
+  },
+  {
+    id: "acc-jkt-dc",
+    facilityId: "fac-jakarta",
+    name: "Technical Datacenter",
+    description: "Secured server hall and mission-critical network ops room",
+    doors: ["Basement AirLock", "DC Server Room 01"],
+    floors: ["B1"],
+    timeScheduleId: 1,
+    isDefault: false,
+  },
+  {
+    id: "acc-bali-main",
+    facilityId: "fac-bali",
+    name: "Innovation Hub General Access",
+    description: "Co-working space, open lab, and auditorium",
+    doors: ["Main Entrance Turnstile", "Lab Wing Sliding Door"],
+    floors: ["1F", "2F"],
+    timeScheduleId: 2,
+    isDefault: true,
+  },
+  {
+    id: "acc-jay-warehouse",
+    facilityId: "fac-jayapura",
+    name: "Logistics Hub & Warehouse",
+    description: "Loading dock, logistics office, and dispatch floor",
+    doors: ["Loading Gate 01", "Dispatch Office Door"],
+    floors: ["1F"],
+    timeScheduleId: 1,
+    isDefault: true,
+  },
+];
+
 export class InMemoryVmsRepository implements IVmsRepository {
   private facilities = new Map<string, Facility>();
   private visits = new Map<string, Visit>();
   private invitationTokens = new Map<string, InvitationToken>();
   private approvalRecords: ApprovalRecord[] = [];
+  private accessLevels = new Map<string, AccessLevel>();
 
-  constructor(initialFacilities: Facility[] = DEFAULT_FACILITIES) {
+  constructor(
+    initialFacilities: Facility[] = DEFAULT_FACILITIES,
+    initialAccessLevels: AccessLevel[] = DEFAULT_ACCESS_LEVELS,
+  ) {
     for (const f of initialFacilities) {
       this.facilities.set(f.id, structuredClone(f));
+    }
+    for (const al of initialAccessLevels) {
+      this.accessLevels.set(al.id, structuredClone(al));
     }
   }
 
@@ -229,6 +296,27 @@ export class InMemoryVmsRepository implements IVmsRepository {
     };
     this.invitationTokens.set(token, structuredClone(updated));
     return structuredClone(updated);
+  }
+
+  async listAccessLevels(facilityId?: string): Promise<AccessLevel[]> {
+    let list = Array.from(this.accessLevels.values());
+    if (facilityId) {
+      list = list.filter((al) => al.facilityId === facilityId);
+    }
+    return list.map((al) => structuredClone(al));
+  }
+
+  async getAccessLevel(id: string): Promise<AccessLevel | undefined> {
+    const level = this.accessLevels.get(id);
+    return level ? structuredClone(level) : undefined;
+  }
+
+  async saveAccessLevel(accessLevel: AccessLevel): Promise<void> {
+    this.accessLevels.set(accessLevel.id, structuredClone(accessLevel));
+  }
+
+  async deleteAccessLevel(id: string): Promise<void> {
+    this.accessLevels.delete(id);
   }
 }
 

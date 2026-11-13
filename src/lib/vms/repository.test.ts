@@ -322,4 +322,48 @@ describe("InMemoryVmsRepository", () => {
       expect(logs[0].id).toBe("app-rec-002");
     });
   });
+
+  describe("access levels", () => {
+    it("has pre-seeded default access levels for facilities", async () => {
+      const allLevels = await repo.listAccessLevels();
+      expect(allLevels.length).toBeGreaterThanOrEqual(3);
+
+      const jakartaLevels = await repo.listAccessLevels("fac-jakarta");
+      expect(jakartaLevels.length).toBeGreaterThanOrEqual(2);
+      expect(jakartaLevels.some((l) => l.name.includes("Lobby"))).toBe(true);
+      expect(jakartaLevels.some((l) => l.isDefault)).toBe(true);
+    });
+
+    it("can save, retrieve, update, and delete access levels", async () => {
+      const newLevel = {
+        id: "acc-test-1",
+        facilityId: "fac-jakarta",
+        name: "Server Room B",
+        description: "Restricted rack access",
+        doors: ["Door B1-01", "Door B1-02"],
+        floors: ["B1"],
+        timeScheduleId: 1 as const,
+        isDefault: false,
+      };
+
+      await repo.saveAccessLevel(newLevel);
+      const retrieved = await repo.getAccessLevel("acc-test-1");
+      expect(retrieved).toBeDefined();
+      expect(retrieved?.name).toBe("Server Room B");
+      expect(retrieved?.doors).toEqual(["Door B1-01", "Door B1-02"]);
+
+      // Update
+      await repo.saveAccessLevel({
+        ...newLevel,
+        name: "Server Room B Updated",
+      });
+      const updated = await repo.getAccessLevel("acc-test-1");
+      expect(updated?.name).toBe("Server Room B Updated");
+
+      // Delete
+      await repo.deleteAccessLevel("acc-test-1");
+      const deleted = await repo.getAccessLevel("acc-test-1");
+      expect(deleted).toBeUndefined();
+    });
+  });
 });

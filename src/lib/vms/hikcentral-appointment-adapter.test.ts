@@ -172,6 +172,82 @@ describe("dispatchHikCentralAppointment", () => {
       ]);
     });
 
+    it("attaches accessLevelList and sets qrCodeValidNum on wirePayload", async () => {
+      let recordedBody: unknown;
+
+      const mockClient: HikCentralClient = {
+        async post<TResponse, TBody = unknown>(
+          _path: string,
+          body?: TBody,
+        ): Promise<HikCentralResponse<TResponse>> {
+          recordedBody = body;
+          return {
+            code: "0",
+            msg: "Success",
+            data: {
+              appointRecordId: "hik-rec-acc-1",
+              visitorId: "hik-vis-acc-1",
+            } as TResponse,
+          };
+        },
+      };
+
+      await dispatchHikCentralAppointment(
+        {
+          ...baseParams,
+          accessLevels: [
+            { id: "acc-jkt-lobby", name: "Lobby Turnstiles" },
+            { id: "acc-jkt-exec", name: "Executive Floor 3" },
+          ],
+          qrCodeValidNum: 3,
+        },
+        {
+          mode: "live",
+          client: mockClient,
+        },
+      );
+
+      const body = recordedBody as {
+        accessInfo?: {
+          accessLevelList?: Array<{
+            accessLevel: {
+              id: string | number;
+              baseInfo?: {
+                name?: string;
+              };
+            };
+          }>;
+        };
+        visitorInfoList: Array<{
+          VisitorInfo: {
+            accessInfo?: {
+              qrCodeValidNum?: number;
+            };
+          };
+        }>;
+      };
+
+      expect(body.accessInfo?.accessLevelList).toEqual([
+        {
+          accessLevel: {
+            id: "acc-jkt-lobby",
+            baseInfo: {
+              name: "Lobby Turnstiles",
+            },
+          },
+        },
+        {
+          accessLevel: {
+            id: "acc-jkt-exec",
+            baseInfo: {
+              name: "Executive Floor 3",
+            },
+          },
+        },
+      ]);
+      expect(body.visitorInfoList[0].VisitorInfo.accessInfo?.qrCodeValidNum).toBe(3);
+    });
+
     it("throws if HikCentral response data is missing even when code is 0", async () => {
       const mockClient: HikCentralClient = {
         async post<TResponse>(): Promise<HikCentralResponse<TResponse>> {

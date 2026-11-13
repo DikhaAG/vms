@@ -10,6 +10,7 @@ export const metadata = {
 
 export default async function PreRegistrationPage() {
   const facilities = await defaultVmsRepository.listFacilities();
+  const accessLevels = await defaultVmsRepository.listAccessLevels();
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -39,7 +40,10 @@ export default async function PreRegistrationPage() {
         </p>
       </div>
 
-      <PreRegistrationForm initialFacilities={facilities} />
+      <PreRegistrationForm
+        initialFacilities={facilities}
+        initialAccessLevels={accessLevels}
+      />
     </main>
   );
 }
