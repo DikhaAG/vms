@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { GET as getFacilities } from "@/app/api/vms/facilities/route";
 import { POST as postPreRegistration } from "@/app/api/vms/pre-registration/route";
 import { POST as postRetrySync } from "@/app/api/vms/credentials/retry-sync/route";
+import { GET as getApprovals } from "@/app/api/vms/approvals/route";
+import { POST as postApprovalDecision } from "@/app/api/vms/approvals/[visitId]/route";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import type { Facility, PreRegistrationResult } from "@/lib/vms/vms-contract";
 import {
@@ -327,5 +329,114 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
       params: Promise.resolve({ token }),
     });
     expect(metaAfterConsumed.status).toBe(410);
+  });
+
+  it("executes the end-to-end approval workflow with monitoring list interception and security escalation", async () => {
+    // 1. Submit normal pre-registration
+    const normalReq = new Request("http://localhost:3000/api/vms/pre-registration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        facilityId: "fac-jakarta",
+        hostId: "emp-001",
+        hostName: "Budi Santoso",
+        visitorFamilyName: "Suryono",
+        visitorGivenName: "Agus",
+        certificateType: 111,
+        certificateNo: "3171000000000088",
+        visitReasonType: 3,
+        scheduledStartTime: "2026-11-20T10:00:00",
+        scheduledEndTime: "2026-11-20T12:00:00",
+        mode: "stub",
+        stubScenario: "success",
+      }),
+    });
+
+    const normalRes = await postPreRegistration(normalReq);
+    expect(normalRes.status).toBe(201);
+    const normalData = await normalRes.json();
+    const normalVisitId = normalData.visit.id;
+    expect(normalData.visit.status).toBe("PENDING_APPROVAL");
+
+    // 2. Submit blacklisted pre-registration
+    const blacklistedReq = new Request("http://localhost:3000/api/vms/pre-registration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        facilityId: "fac-jakarta",
+        hostId: "emp-001",
+        hostName: "Budi Santoso",
+        visitorFamilyName: "Denial",
+        visitorGivenName: "Subject",
+        certificateType: 111,
+        certificateNo: "FLAGGED-ID-9999",
+        visitReasonType: 0,
+        scheduledStartTime: "2026-11-20T14:00:00",
+        scheduledEndTime: "2026-11-20T16:00:00",
+        mode: "stub",
+        stubScenario: "monitoring-list-flagged",
+      }),
+    });
+
+    const blacklistedRes = await postPreRegistration(blacklistedReq);
+    expect(blacklistedRes.status).toBe(201);
+    const blacklistedData = await blacklistedRes.json();
+    const blacklistedVisitId = blacklistedData.visit.id;
+    // Status immediately escalated to SECURITY_ESCALATED
+    expect(blacklistedData.visit.status).toBe("SECURITY_ESCALATED");
+    expect(blacklistedData.visit.monitoringListFlag?.isFlagged).toBe(true);
+
+    // 3. Approver checks queue
+    const queueReq = new Request("http://localhost:3000/api/vms/approvals?facilityId=fac-jakarta");
+    const queueRes = await getApprovals(queueReq);
+    expect(queueRes.status).toBe(200);
+    const queueData = await queueRes.json();
+    expect(queueData.data.pendingVisits.some((v: { id: string }) => v.id === normalVisitId)).toBe(true);
+    expect(queueData.data.escalatedVisits.some((v: { id: string }) => v.id === blacklistedVisitId)).toBe(true);
+
+    // 4. Approve normal visit
+    const approveReq = new Request(
+      `http://localhost:3000/api/vms/approvals/${normalVisitId}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "approve",
+          comment: "Approved for meeting",
+          approverName: "Department Manager",
+        }),
+      },
+    );
+    const approveRes = await postApprovalDecision(approveReq, {
+      params: Promise.resolve({ visitId: normalVisitId }),
+    });
+    expect(approveRes.status).toBe(200);
+    const approveData = await approveRes.json();
+    expect(approveData.data.visit.status).toBe("APPROVED");
+    expect(approveData.data.visit.credentialSyncStatus).toBe("Applied");
+    expect(approveData.data.approvalRecord.action).toBe("approve");
+
+    // 5. Reject blacklisted visit with mandatory reason
+    const rejectReq = new Request(
+      `http://localhost:3000/api/vms/approvals/${blacklistedVisitId}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reject",
+          comment: "Security audit confirmed prohibited status. Entry denied.",
+          approverName: "Chief Security Officer",
+          approverRole: "Security Officer",
+        }),
+      },
+    );
+    const rejectRes = await postApprovalDecision(rejectReq, {
+      params: Promise.resolve({ visitId: blacklistedVisitId }),
+    });
+    expect(rejectRes.status).toBe(200);
+    const rejectData = await rejectRes.json();
+    expect(rejectData.data.visit.status).toBe("REJECTED");
+    expect(rejectData.data.approvalRecord.previousStatus).toBe("SECURITY_ESCALATED");
+    expect(rejectData.data.approvalRecord.action).toBe("reject");
   });
 });

@@ -3,9 +3,12 @@
  * Free of Node.js dependencies and process.env reads — safe for Client Components.
  */
 
+import type { MonitoringListFlag, ApprovalRecord } from "./approval-contract";
+
 export const VISIT_STATUSES = [
   "DRAFT",
   "PENDING_APPROVAL",
+  "SECURITY_ESCALATED",
   "APPROVED",
   "CHECKED_IN",
   "CHECKED_OUT",
@@ -46,6 +49,7 @@ export const STUB_SCENARIOS = [
   "face-quality-failed",
   "sync-failed",
   "sync-pending",
+  "monitoring-list-flagged",
 ] as const;
 export type StubScenario = (typeof STUB_SCENARIOS)[number];
 
@@ -95,6 +99,8 @@ export interface Visit {
   credentialSyncStatus?: CredentialSyncStatus;
   hikCentral?: HikCentralVisitReference;
   invitationToken?: string;
+  monitoringListFlag?: MonitoringListFlag;
+  approvalRecord?: ApprovalRecord;
   createdAtUtc: string;
   updatedAtUtc: string;
 }

@@ -28,6 +28,7 @@ export interface HikCentralAppointmentSuccess {
   visitorId: string;
   appointCode?: string;
   qrCodeImage?: string;
+  watchListInfo?: unknown[];
 }
 
 export interface DispatchAppointmentOptions {
@@ -73,11 +74,28 @@ export async function dispatchHikCentralAppointment(
     }
 
     const pseudoId = Math.random().toString(36).substring(2, 9);
+    const isMonitoringFlagged = scenario === "monitoring-list-flagged";
     return {
       appointRecordId: `apt-rec-${pseudoId}`,
       visitorId: `vis-${pseudoId}`,
       appointCode: Math.floor(1000 + Math.random() * 9000).toString(),
       qrCodeImage: STUB_QR_PNG_BASE64,
+      watchListInfo: isMonitoringFlagged
+        ? [
+            {
+              ID: `wl-${pseudoId}`,
+              enableRegister: 0,
+              rejectNum: 1,
+              visitorType: 1,
+              type: "Deny Entry",
+              remark:
+                "Security Alert: Individual certificate flagged on facility denial list",
+              visitorTypeName: "High Risk Individual",
+              identiFicationType: params.certificateType ?? 111,
+              identiFiyCode: params.certificateNo ?? "FLAGGED-ID-001",
+            },
+          ]
+        : undefined,
     };
   }
 
@@ -159,10 +177,17 @@ export async function dispatchHikCentralAppointment(
     rawQrImage = data.qrCodeImage.replace(/^data:image\/[a-zA-Z]+;base64,/, "");
   }
 
+  const rawWatchList = Array.isArray(data.watchListInfo)
+    ? data.watchListInfo
+    : Array.isArray(data.watchlistInfo)
+      ? data.watchlistInfo
+      : undefined;
+
   return {
     appointRecordId: data.appointRecordId,
     visitorId: data.visitorId,
     appointCode: rawAppointCode,
     qrCodeImage: rawQrImage,
+    watchListInfo: rawWatchList,
   };
 }

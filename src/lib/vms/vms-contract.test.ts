@@ -13,7 +13,9 @@ describe("vms-contract", () => {
   describe("type guards", () => {
     it("identifies valid visit statuses", () => {
       expect(isVisitStatus("PENDING_APPROVAL")).toBe(true);
+      expect(isVisitStatus("SECURITY_ESCALATED")).toBe(true);
       expect(isVisitStatus("APPROVED")).toBe(true);
+      expect(isVisitStatus("REJECTED")).toBe(true);
       expect(isVisitStatus("INVALID_STATUS")).toBe(false);
     });
 

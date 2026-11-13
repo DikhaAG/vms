@@ -15,6 +15,7 @@ import {
 import { defaultVmsRepository, type IVmsRepository } from "./repository";
 import { HikCentralError } from "../hikcentral/client";
 import { toJpegDataUri } from "./face-normalizer";
+import { parseMonitoringListFlag } from "./hikcentral-approval-adapter";
 
 export interface PreRegistrationServiceDeps {
   repository?: IVmsRepository;
@@ -153,6 +154,9 @@ export async function createPreRegistration(
 
   // 5. Build and persist Visit record
   const currentTimeIso = getNow().toISOString();
+  const monitoringFlag = parseMonitoringListFlag(hikResult);
+  const visitStatus = monitoringFlag ? "SECURITY_ESCALATED" : "PENDING_APPROVAL";
+
   const visit: Visit = {
     id: generateId(),
     facilityId: facility.id,
@@ -171,7 +175,8 @@ export async function createPreRegistration(
     scheduledEndTimeUtc: endUtc.toISOString(),
     scheduledStartTimeFacility,
     scheduledEndTimeFacility,
-    status: "PENDING_APPROVAL",
+    status: visitStatus,
+    monitoringListFlag: monitoringFlag,
     facePhoto: input.facePhoto ? toJpegDataUri(input.facePhoto) : undefined,
     credentialSyncStatus: "Applied",
     hikCentral: {

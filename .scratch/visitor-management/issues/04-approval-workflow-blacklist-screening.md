@@ -4,14 +4,23 @@
 
 **Blocked by:** 01: Facility Setup & Multi-Timezone Host Pre-Registration Tracer Bullet
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Monitoring list screening integration via `POST /artemis/api/visitor/v2/appointment` response matching and blacklist query endpoints.
-- [ ] Security escalation state and review queue for flagged identity numbers.
-- [ ] Approver dashboard listing pending visits with visitor details, host information, photo preview, and decision actions.
-- [ ] State transition engine enforcing `PENDING_APPROVAL -> APPROVED | REJECTED` with required rejection comments.
-- [ ] Credential arming trigger upon approval, updating HikCentral approval state when configured.
-- [ ] Tests covering approval state machine, unauthorized transitions, monitoring list intercept, and audit trail logging.
+- [x] Monitoring list screening integration via `POST /artemis/api/visitor/v2/appointment` response matching and blacklist query endpoints.
+- [x] Security escalation state and review queue for flagged identity numbers.
+- [x] Approver dashboard listing pending visits with visitor details, host information, photo preview, and decision actions.
+- [x] State transition engine enforcing `PENDING_APPROVAL -> APPROVED | REJECTED` with required rejection comments.
+- [x] Credential arming trigger upon approval, updating HikCentral approval state when configured.
+- [x] Tests covering approval state machine, unauthorized transitions, monitoring list intercept, and audit trail logging.
 
 ## Comments
 
+- Implemented isomorphic `approval-contract.ts` with runtime guards, `ApprovalAction`, `ApprovalRecord`, `MonitoringListFlag`, and pure input validator `validateApprovalDecision`.
+- Updated `VisitStatus` in `vms-contract.ts` to include `SECURITY_ESCALATED`.
+- Implemented `hikcentral-approval-adapter.ts` with `parseMonitoringListFlag` (anti-corruption translation for `identiFiyCode` -> `certificateNo`) and `syncApprovalToHikCentral` (`POST /artemis/api/visitor/v1/visitorapprovalflow/status`).
+- Wired monitoring list interception into `pre-registration-service.ts` and `self-registration-service.ts` to automatically flag and escalate visits with matching identity credentials.
+- Implemented `IVmsRepository` methods for `getVisitsByStatus`, `saveApprovalRecord`, `listApprovalRecords`, and atomic `updateVisitStatusWithApproval`.
+- Implemented `approval-service.ts` with `listPendingApprovals` and `decideApproval` enforcing state transitions, mandatory rejection reasons, and credential arming.
+- Implemented API route handlers `GET /api/vms/approvals` and `POST /api/vms/approvals/[visitId]`.
+- Implemented responsive Approver UI at `/vms/approvals` with tabs for Pending Approvals vs Security Escalated / Blacklist Review, persona switching, visit card inspections, and rejection modals.
+- Comprehensive unit and integration test coverage across 25 test files (202 tests) passing with 0 errors.

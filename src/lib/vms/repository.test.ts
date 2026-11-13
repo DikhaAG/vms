@@ -187,4 +187,139 @@ describe("InMemoryVmsRepository", () => {
       ).rejects.toThrow("already consumed");
     });
   });
+
+  describe("approvals and status queries", () => {
+    const pendingVisit1: Visit = {
+      id: "vis-p1",
+      facilityId: "fac-jakarta",
+      facilityName: "Jakarta Corporate HQ",
+      visitorFamilyName: "Aditya",
+      visitorGivenName: "Budi",
+      visitReasonType: 0,
+      scheduledStartTimeUtc: "2026-11-13T10:00:00Z",
+      scheduledEndTimeUtc: "2026-11-13T12:00:00Z",
+      scheduledStartTimeFacility: "2026-11-13T17:00:00+07:00",
+      scheduledEndTimeFacility: "2026-11-13T19:00:00+07:00",
+      status: "PENDING_APPROVAL",
+      createdAtUtc: "2026-11-13T09:00:00Z",
+      updatedAtUtc: "2026-11-13T09:00:00Z",
+    };
+
+    const escalatedVisit: Visit = {
+      id: "vis-esc",
+      facilityId: "fac-jakarta",
+      facilityName: "Jakarta Corporate HQ",
+      visitorFamilyName: "Blacklisted",
+      visitorGivenName: "John",
+      certificateType: 111,
+      certificateNo: "FLAGGED-999",
+      visitReasonType: 0,
+      scheduledStartTimeUtc: "2026-11-13T10:00:00Z",
+      scheduledEndTimeUtc: "2026-11-13T12:00:00Z",
+      scheduledStartTimeFacility: "2026-11-13T17:00:00+07:00",
+      scheduledEndTimeFacility: "2026-11-13T19:00:00+07:00",
+      status: "SECURITY_ESCALATED",
+      monitoringListFlag: {
+        isFlagged: true,
+        flaggedAtUtc: "2026-11-13T09:05:00Z",
+        reason: "Matched facility denial list",
+      },
+      createdAtUtc: "2026-11-13T09:05:00Z",
+      updatedAtUtc: "2026-11-13T09:05:00Z",
+    };
+
+    const approvedVisit: Visit = {
+      ...pendingVisit1,
+      id: "vis-app1",
+      status: "APPROVED",
+      facilityId: "fac-bali",
+    };
+
+    it("retrieves visits filtered by a single status or multiple statuses", async () => {
+      await repo.saveVisit(pendingVisit1);
+      await repo.saveVisit(escalatedVisit);
+      await repo.saveVisit(approvedVisit);
+
+      const pendingOnly = await repo.getVisitsByStatus("PENDING_APPROVAL");
+      expect(pendingOnly).toHaveLength(1);
+      expect(pendingOnly[0].id).toBe("vis-p1");
+
+      const reviewQueue = await repo.getVisitsByStatus([
+        "PENDING_APPROVAL",
+        "SECURITY_ESCALATED",
+      ]);
+      expect(reviewQueue).toHaveLength(2);
+      expect(reviewQueue.map((v) => v.id)).toContain("vis-p1");
+      expect(reviewQueue.map((v) => v.id)).toContain("vis-esc");
+
+      // Filter by facility as well
+      const baliQueue = await repo.getVisitsByStatus(
+        ["PENDING_APPROVAL", "APPROVED"],
+        "fac-bali",
+      );
+      expect(baliQueue).toHaveLength(1);
+      expect(baliQueue[0].id).toBe("vis-app1");
+    });
+
+    it("saves and lists approval audit records for visits", async () => {
+      await repo.saveVisit(pendingVisit1);
+
+      const approvalRecord = {
+        id: "app-rec-001",
+        visitId: "vis-p1",
+        action: "approve" as const,
+        previousStatus: "PENDING_APPROVAL" as const,
+        newStatus: "APPROVED" as const,
+        approverId: "mgr-007",
+        approverName: "Sarah Connor",
+        approverRole: "Department Manager",
+        comment: "Authorized for client session.",
+        decidedAtUtc: "2026-11-13T09:30:00Z",
+        hikCentralSyncStatus: "synced" as const,
+      };
+
+      await repo.saveApprovalRecord(approvalRecord);
+
+      const recordsForVisit = await repo.listApprovalRecords("vis-p1");
+      expect(recordsForVisit).toHaveLength(1);
+      expect(recordsForVisit[0].approverName).toBe("Sarah Connor");
+      expect(recordsForVisit[0].action).toBe("approve");
+
+      const allRecords = await repo.listApprovalRecords();
+      expect(allRecords).toHaveLength(1);
+    });
+
+    it("updates visit status with approval record atomically", async () => {
+      await repo.saveVisit(pendingVisit1);
+
+      const approvalRecord = {
+        id: "app-rec-002",
+        visitId: "vis-p1",
+        action: "approve" as const,
+        previousStatus: "PENDING_APPROVAL" as const,
+        newStatus: "APPROVED" as const,
+        approverId: "mgr-007",
+        approverName: "Sarah Connor",
+        decidedAtUtc: "2026-11-13T09:35:00Z",
+      };
+
+      const updated = await repo.updateVisitStatusWithApproval("vis-p1", {
+        newStatus: "APPROVED",
+        approvalRecord,
+        credentialSyncStatus: "Applied",
+      });
+
+      expect(updated.status).toBe("APPROVED");
+      expect(updated.credentialSyncStatus).toBe("Applied");
+      expect(updated.approvalRecord?.id).toBe("app-rec-002");
+
+      const retrieved = await repo.getVisit("vis-p1");
+      expect(retrieved?.status).toBe("APPROVED");
+      expect(retrieved?.approvalRecord?.approverName).toBe("Sarah Connor");
+
+      const logs = await repo.listApprovalRecords("vis-p1");
+      expect(logs).toHaveLength(1);
+      expect(logs[0].id).toBe("app-rec-002");
+    });
+  });
 });

@@ -1,9 +1,16 @@
-import type { Facility, Visit } from "./vms-contract";
+import type { CredentialSyncStatus, Facility, Visit, VisitStatus } from "./vms-contract";
 import type { InvitationToken } from "./invitation-contract";
+import type { ApprovalRecord } from "./approval-contract";
 
 export interface ListVisitsFilter {
   facilityId?: string;
   status?: string;
+}
+
+export interface UpdateVisitApprovalParams {
+  newStatus: VisitStatus;
+  approvalRecord: ApprovalRecord;
+  credentialSyncStatus?: CredentialSyncStatus;
 }
 
 export interface IVmsRepository {
@@ -14,6 +21,18 @@ export interface IVmsRepository {
   listVisits(filter?: ListVisitsFilter): Promise<Visit[]>;
   saveVisit(visit: Visit): Promise<void>;
   updateVisit(id: string, updates: Partial<Visit>): Promise<Visit>;
+
+  // Approval and review queue operations
+  getVisitsByStatus(
+    statuses: VisitStatus | VisitStatus[],
+    facilityId?: string,
+  ): Promise<Visit[]>;
+  saveApprovalRecord(record: ApprovalRecord): Promise<void>;
+  listApprovalRecords(visitId?: string): Promise<ApprovalRecord[]>;
+  updateVisitStatusWithApproval(
+    visitId: string,
+    decision: UpdateVisitApprovalParams,
+  ): Promise<Visit>;
 
   // Invitation token management
   createInvitationToken(invitation: InvitationToken): Promise<void>;
@@ -55,6 +74,7 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private facilities = new Map<string, Facility>();
   private visits = new Map<string, Visit>();
   private invitationTokens = new Map<string, InvitationToken>();
+  private approvalRecords: ApprovalRecord[] = [];
 
   constructor(initialFacilities: Facility[] = DEFAULT_FACILITIES) {
     for (const f of initialFacilities) {
@@ -106,6 +126,62 @@ export class InMemoryVmsRepository implements IVmsRepository {
       updatedAtUtc: new Date().toISOString(),
     };
     this.visits.set(id, structuredClone(updated));
+    return structuredClone(updated);
+  }
+
+  async getVisitsByStatus(
+    statuses: VisitStatus | VisitStatus[],
+    facilityId?: string,
+  ): Promise<Visit[]> {
+    const targetStatuses = Array.isArray(statuses) ? statuses : [statuses];
+    let list = Array.from(this.visits.values()).filter((v) =>
+      targetStatuses.includes(v.status),
+    );
+    if (facilityId) {
+      list = list.filter((v) => v.facilityId === facilityId);
+    }
+    return list.map((v) => structuredClone(v));
+  }
+
+  async saveApprovalRecord(record: ApprovalRecord): Promise<void> {
+    this.approvalRecords.push(structuredClone(record));
+  }
+
+  async listApprovalRecords(visitId?: string): Promise<ApprovalRecord[]> {
+    let list = this.approvalRecords;
+    if (visitId) {
+      list = list.filter((r) => r.visitId === visitId);
+    }
+    // Return latest first
+    return list
+      .map((r) => structuredClone(r))
+      .sort(
+        (a, b) =>
+          new Date(b.decidedAtUtc).getTime() -
+          new Date(a.decidedAtUtc).getTime(),
+      );
+  }
+
+  async updateVisitStatusWithApproval(
+    visitId: string,
+    decision: UpdateVisitApprovalParams,
+  ): Promise<Visit> {
+    const existing = this.visits.get(visitId);
+    if (!existing) {
+      throw new Error(`Visit not found: ${visitId}`);
+    }
+
+    await this.saveApprovalRecord(decision.approvalRecord);
+
+    const updated: Visit = {
+      ...existing,
+      status: decision.newStatus,
+      approvalRecord: structuredClone(decision.approvalRecord),
+      credentialSyncStatus:
+        decision.credentialSyncStatus ?? existing.credentialSyncStatus,
+      updatedAtUtc: new Date().toISOString(),
+    };
+    this.visits.set(visitId, structuredClone(updated));
     return structuredClone(updated);
   }
 

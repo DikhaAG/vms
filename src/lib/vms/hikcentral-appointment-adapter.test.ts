@@ -33,6 +33,18 @@ describe("dispatchHikCentralAppointment", () => {
       expect(result.qrCodeImage).toBeDefined();
     });
 
+    it("returns watchListInfo when stubScenario is monitoring-list-flagged", async () => {
+      const result = await dispatchHikCentralAppointment(baseParams, {
+        mode: "stub",
+        stubScenario: "monitoring-list-flagged",
+      });
+
+      expect(result.appointRecordId).toMatch(/^apt-rec-/);
+      expect(result.watchListInfo).toBeDefined();
+      expect(Array.isArray(result.watchListInfo)).toBe(true);
+      expect(result.watchListInfo).toHaveLength(1);
+    });
+
     it("throws appropriate error on auth-error stub scenario", async () => {
       await expect(
         dispatchHikCentralAppointment(baseParams, {

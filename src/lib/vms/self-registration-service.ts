@@ -21,6 +21,7 @@ import {
 } from "./face-normalizer";
 import { HikCentralError } from "../hikcentral/client";
 import type { Visit } from "./vms-contract";
+import { parseMonitoringListFlag } from "./hikcentral-approval-adapter";
 
 export interface SelfRegistrationServiceDeps {
   repository?: IVmsRepository;
@@ -161,6 +162,9 @@ export async function processSelfRegistration(
       : `data:image/png;base64,${hikResult.qrCodeImage}`
     : undefined;
 
+  const monitoringFlag = parseMonitoringListFlag(hikResult);
+  const status = monitoringFlag ? "SECURITY_ESCALATED" : "PENDING_APPROVAL";
+
   const visitUpdates: Partial<Visit> = {
     visitorFamilyName: submission.visitorFamilyName,
     visitorGivenName: submission.visitorGivenName,
@@ -169,7 +173,8 @@ export async function processSelfRegistration(
     certificateType: submission.certificateType,
     certificateNo: submission.certificateNo,
     facePhoto: formattedDataUriPhoto,
-    status: "PENDING_APPROVAL",
+    status,
+    monitoringListFlag: monitoringFlag,
     credentialSyncStatus: "Applied",
     hikCentral: {
       appointRecordId: hikResult.appointRecordId,

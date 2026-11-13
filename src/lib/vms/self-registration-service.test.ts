@@ -238,4 +238,41 @@ describe("self-registration-service", () => {
     const tokenRecord = await repository.getInvitationToken(token);
     expect(tokenRecord?.isConsumed).toBe(false);
   });
+
+  it("escalates visit to SECURITY_ESCALATED when self-registration matches monitoring list", async () => {
+    const token = await createTestInvite();
+
+    const mockFlaggedDispatcher = async () => ({
+      ...mockHikAppointmentSuccess,
+      watchListInfo: [
+        {
+          ID: "wl-self-999",
+          enableRegister: 0,
+          type: "Deny Entry",
+          remark: "Security Alert: Flagged individual on watchlist",
+          identiFiyCode: "3171000000000001",
+        },
+      ],
+    });
+
+    const result = await processSelfRegistration(
+      token,
+      {
+        visitorFamilyName: "Prasetyo",
+        visitorGivenName: "Budi",
+        certificateType: 111,
+        certificateNo: "3171000000000001",
+      },
+      {
+        repository,
+        appointmentDispatcher: mockFlaggedDispatcher,
+        now: () => mockNow,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.visit?.status).toBe("SECURITY_ESCALATED");
+    expect(result.visit?.monitoringListFlag?.isFlagged).toBe(true);
+    expect(result.visit?.monitoringListFlag?.matches?.[0].certificateNo).toBe("3171000000000001");
+  });
 });

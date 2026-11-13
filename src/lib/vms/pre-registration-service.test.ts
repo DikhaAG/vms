@@ -63,6 +63,25 @@ describe("createPreRegistration", () => {
     expect(stored).toEqual(visit);
   });
 
+  it("escalates visit status to SECURITY_ESCALATED when monitoring list matches", async () => {
+    const flaggedInput: CreatePreRegistrationInput = {
+      ...baseInput,
+      stubScenario: "monitoring-list-flagged",
+    };
+
+    const result = await createPreRegistration(flaggedInput, { repository: repo });
+
+    expect(result.ok).toBe(true);
+    expect(result.visit).toBeDefined();
+
+    const visit = result.visit!;
+    expect(visit.status).toBe("SECURITY_ESCALATED");
+    expect(visit.monitoringListFlag).toBeDefined();
+    expect(visit.monitoringListFlag?.isFlagged).toBe(true);
+    expect(visit.monitoringListFlag?.matches).toHaveLength(1);
+    expect(visit.monitoringListFlag?.matches?.[0].certificateNo).toBe("3171012345670001");
+  });
+
   it("correctly handles different facility timezones (e.g. Asia/Makassar for Bali)", async () => {
     const baliInput: CreatePreRegistrationInput = {
       ...baseInput,

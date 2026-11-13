@@ -58,6 +58,29 @@ export default function HomePage() {
       </section>
 
       <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">
+            Approval Workflow & Security Screening
+          </h2>
+          <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-800">
+            Ticket 04
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-neutral-600">
+          Review pending visitor requests across facilities, inspect biometric photos and identity numbers,
+          and screen against HikCentral Monitoring Lists (Blacklists) with security officer escalation queues.
+        </p>
+        <div className="mt-4">
+          <Link
+            href="/vms/approvals"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+          >
+            Open Approvals & Screening Dashboard &rarr;
+          </Link>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
         <h2 className="text-sm font-semibold text-neutral-900">Prototypes</h2>
         <p className="mt-1 text-xs text-neutral-600">
           Verify foundation signing and HTTP client wiring before building
