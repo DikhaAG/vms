@@ -11,17 +11,31 @@ import {
 import { isValidIanaTimezone } from "./timezone";
 import {
   DOOR_ACCESS_TYPES,
+  EMERGENCY_GRANT_STATUSES,
   isDoorAccessType,
+  isEmergencyGrantActive,
+  isEmergencyGrantStatus,
+  validateGrantEmergencyAccessInput,
   type DoorAccessType,
+  type EmergencyAccessGrant,
+  type EmergencyGrantStatus,
   type FacilityDoor,
+  type GrantEmergencyAccessInput,
   type VisitLastSeenDoor,
 } from "./checkout-contract";
 
 export {
   DOOR_ACCESS_TYPES,
+  EMERGENCY_GRANT_STATUSES,
   isDoorAccessType,
+  isEmergencyGrantActive,
+  isEmergencyGrantStatus,
+  validateGrantEmergencyAccessInput,
   type DoorAccessType,
+  type EmergencyAccessGrant,
+  type EmergencyGrantStatus,
   type FacilityDoor,
+  type GrantEmergencyAccessInput,
   type VisitLastSeenDoor,
 };
 
@@ -144,6 +158,7 @@ export interface Visit {
   approvalRecord?: ApprovalRecord;
   accessLevelIds?: string[];
   tapQuota?: TapQuotaConfig;
+  emergencyGrants?: EmergencyAccessGrant[];
   lastSeenDoor?: VisitLastSeenDoor;
   createdAtUtc: string;
   updatedAtUtc: string;

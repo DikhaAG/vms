@@ -119,4 +119,30 @@ describe("POST /api/vms/active-visits/[visitId]/tap", () => {
     expect(json.error.kind).toBe("validation");
     expect(json.error.message).toMatch(/SINGLE_DIRECTION_IN/i);
   });
+
+  it("returns 403 Forbidden when visitor taps a door outside their access level without an emergency grant", async () => {
+    // Restrict visit to lobby access level
+    await defaultVmsRepository.updateVisit(visitId, {
+      accessLevelIds: ["acc-jkt-lobby"],
+    });
+
+    const req = new Request(`http://localhost:3000/api/vms/active-visits/${visitId}/tap`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        doorIndexCode: "door-jkt-dc-01",
+        doorName: "DC Server Room 01",
+        direction: "in",
+      }),
+    });
+
+    const context = { params: Promise.resolve({ visitId }) };
+    const res = await POST(req, context);
+
+    expect(res.status).toBe(403);
+    const json = await res.json();
+    expect(json.ok).toBe(false);
+    expect(json.error.kind).toBe("forbidden");
+    expect(json.error.message).toMatch(/access denied/i);
+  });
 });

@@ -2,15 +2,20 @@ import { describe, it, expect } from "vitest";
 import {
   DOOR_ACCESS_TYPES,
   DOOR_DIRECTIONS,
+  EMERGENCY_GRANT_STATUSES,
   evaluateOverstayStatus,
   isDoorAccessType,
   isDoorDirection,
+  isEmergencyGrantActive,
+  isEmergencyGrantStatus,
   isTapQuotaExceeded,
   validateCheckOutInput,
   validateDoorTapInput,
   validateFacilityDoorInput,
+  validateGrantEmergencyAccessInput,
   type CheckOutInput,
   type DoorTapEvent,
+  type EmergencyAccessGrant,
   type FacilityDoor,
 } from "./checkout-contract";
 import type { Visit } from "./vms-contract";
@@ -355,6 +360,145 @@ describe("checkout-contract", () => {
         expect(res.input.implicit).toBe(true);
         expect(res.input.transitionNote).toBe("Implicit departure upon scanning into Room B");
       }
+    });
+  });
+
+  describe("Emergency Access Escalation Contracts", () => {
+    describe("EMERGENCY_GRANT_STATUSES and isEmergencyGrantStatus", () => {
+      it("defines the three canonical grant statuses", () => {
+        expect(EMERGENCY_GRANT_STATUSES).toEqual(["ACTIVE", "EXPIRED", "REVOKED"]);
+        expect(isEmergencyGrantStatus("ACTIVE")).toBe(true);
+        expect(isEmergencyGrantStatus("EXPIRED")).toBe(true);
+        expect(isEmergencyGrantStatus("REVOKED")).toBe(true);
+        expect(isEmergencyGrantStatus("PENDING")).toBe(false);
+        expect(isEmergencyGrantStatus(null)).toBe(false);
+        expect(isEmergencyGrantStatus(123)).toBe(false);
+      });
+    });
+
+    describe("validateGrantEmergencyAccessInput", () => {
+      it("validates valid input with explicit future expiresAtUtc", () => {
+        const futureDate = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+        const res = validateGrantEmergencyAccessInput({
+          visitId: "vis-101",
+          doorIndexCodes: ["door-jkt-dc-01"],
+          doorNames: ["DC Server Room 01"],
+          grantedByUserId: "user-sec-01",
+          grantedByName: "Officer Alex",
+          reason: "Urgent fiber maintenance in server room",
+          expiresAtUtc: futureDate,
+        });
+
+        expect(res.valid).toBe(true);
+        if (res.valid) {
+          expect(res.input.visitId).toBe("vis-101");
+          expect(res.input.doorIndexCodes).toEqual(["door-jkt-dc-01"]);
+          expect(res.input.doorNames).toEqual(["DC Server Room 01"]);
+          expect(res.input.grantedByUserId).toBe("user-sec-01");
+          expect(res.input.grantedByName).toBe("Officer Alex");
+          expect(res.input.reason).toBe("Urgent fiber maintenance in server room");
+          expect(res.input.expiresAtUtc).toBe(futureDate);
+        }
+      });
+
+      it("calculates expiresAtUtc when durationHours is specified", () => {
+        const baseTime = "2026-11-13T10:00:00.000Z";
+        const res = validateGrantEmergencyAccessInput({
+          visitId: "vis-101",
+          doorIndexCode: "door-jkt-dc-01",
+          grantedByUserId: "user-sec-01",
+          reason: "HVAC cooling emergency inspection",
+          durationHours: 3,
+          grantedAtUtc: baseTime,
+        });
+
+        expect(res.valid).toBe(true);
+        if (res.valid) {
+          expect(res.input.doorIndexCodes).toEqual(["door-jkt-dc-01"]);
+          expect(res.input.expiresAtUtc).toBe("2026-11-13T13:00:00.000Z");
+        }
+      });
+
+      it("rejects input with reason shorter than 10 characters", () => {
+        const res = validateGrantEmergencyAccessInput({
+          visitId: "vis-101",
+          doorIndexCodes: ["door-jkt-dc-01"],
+          grantedByUserId: "user-sec-01",
+          reason: "Too short",
+          durationHours: 2,
+        });
+
+        expect(res.valid).toBe(false);
+        if (!res.valid) {
+          expect(res.errors.reason).toMatch(/at least 10 characters/i);
+        }
+      });
+
+      it("rejects input when doors or operator user ID are missing", () => {
+        const res = validateGrantEmergencyAccessInput({
+          visitId: "vis-101",
+          doorIndexCodes: [],
+          grantedByUserId: "",
+          reason: "Valid reason for urgent access",
+          durationHours: 2,
+        });
+
+        expect(res.valid).toBe(false);
+        if (!res.valid) {
+          expect(res.errors.doorIndexCodes).toBeDefined();
+          expect(res.errors.grantedByUserId).toBeDefined();
+        }
+      });
+
+      it("rejects expiration in the past", () => {
+        const pastDate = new Date(Date.now() - 3600 * 1000).toISOString();
+        const res = validateGrantEmergencyAccessInput({
+          visitId: "vis-101",
+          doorIndexCodes: ["door-jkt-dc-01"],
+          grantedByUserId: "user-sec-01",
+          reason: "Valid justification for datacenter inspection",
+          expiresAtUtc: pastDate,
+        });
+
+        expect(res.valid).toBe(false);
+        if (!res.valid) {
+          expect(res.errors.expiresAtUtc).toMatch(/future/i);
+        }
+      });
+
+      it("rejects non-object payload", () => {
+        expect(validateGrantEmergencyAccessInput(null).valid).toBe(false);
+        expect(validateGrantEmergencyAccessInput("string").valid).toBe(false);
+        expect(validateGrantEmergencyAccessInput([]).valid).toBe(false);
+      });
+    });
+
+    describe("isEmergencyGrantActive", () => {
+      const grant: EmergencyAccessGrant = {
+        id: "grant-1",
+        visitId: "vis-101",
+        doorIndexCodes: ["door-jkt-dc-01"],
+        doorNames: ["DC Server Room 01"],
+        grantedByUserId: "user-sec-01",
+        grantedByName: "Officer Alex",
+        reason: "Datacenter server outage remediation",
+        grantedAtUtc: "2026-11-13T10:00:00.000Z",
+        expiresAtUtc: "2026-11-13T12:00:00.000Z",
+        status: "ACTIVE",
+      };
+
+      it("returns true when grant is ACTIVE and before expiration", () => {
+        expect(isEmergencyGrantActive(grant, "2026-11-13T11:00:00.000Z")).toBe(true);
+      });
+
+      it("returns false when current time is after expiration", () => {
+        expect(isEmergencyGrantActive(grant, "2026-11-13T12:01:00.000Z")).toBe(false);
+      });
+
+      it("returns false when grant status is REVOKED or EXPIRED", () => {
+        expect(isEmergencyGrantActive({ ...grant, status: "REVOKED" }, "2026-11-13T11:00:00.000Z")).toBe(false);
+        expect(isEmergencyGrantActive({ ...grant, status: "EXPIRED" }, "2026-11-13T11:00:00.000Z")).toBe(false);
+      });
     });
   });
 });

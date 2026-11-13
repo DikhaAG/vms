@@ -125,6 +125,19 @@ export async function POST(
       );
     }
 
+    if (error instanceof Error && error.message.toLowerCase().includes("access denied")) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            kind: "forbidden",
+            message: error.message,
+          },
+        },
+        { status: 403 },
+      );
+    }
+
     if (error instanceof HikCentralError) {
       return NextResponse.json(
         {

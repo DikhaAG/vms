@@ -446,4 +446,299 @@ describe("ActiveMonitoringService", () => {
       expect(res.visit?.status).toBe("CHECKED_OUT");
     });
   });
+
+  describe("Emergency Access Escalation (Ticket 03)", () => {
+    const restrictedVisit: Visit = {
+      id: "vis-restricted-1",
+      facilityId: "fac-jakarta",
+      visitorGivenName: "Bruce",
+      visitorFamilyName: "Wayne",
+      visitReasonType: 3,
+      scheduledStartTimeUtc: "2026-11-13T08:00:00.000Z",
+      scheduledEndTimeUtc: "2026-11-13T12:00:00.000Z",
+      scheduledStartTimeFacility: "2026-11-13T15:00:00+07:00",
+      scheduledEndTimeFacility: "2026-11-13T19:00:00+07:00",
+      actualCheckInTimeUtc: "2026-11-13T08:05:00.000Z",
+      status: "CHECKED_IN",
+      tapCount: 0,
+      accessLevelIds: ["acc-jkt-lobby"],
+      hikCentral: {
+        appointRecordId: "hc-rec-bruce",
+        visitorId: "hc-vis-bruce",
+      },
+      createdAtUtc: "2026-11-13T07:30:00.000Z",
+      updatedAtUtc: "2026-11-13T08:05:00.000Z",
+    };
+
+    beforeEach(async () => {
+      await repo.saveVisit(restrictedVisit);
+    });
+
+    describe("grantEmergencyAccess", () => {
+      it("grants emergency access to an active visit, resolves door names, and synchronizes hardware", async () => {
+        const futureDate = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+        const res = await service.grantEmergencyAccess(
+          "vis-restricted-1",
+          {
+            doorIndexCodes: ["door-jkt-dc-01"],
+            grantedByUserId: "sec-officer-99",
+            grantedByName: "Officer James",
+            reason: "Critical server rack fiber repair",
+            expiresAtUtc: futureDate,
+          },
+          { mode: "stub" },
+        );
+
+        expect(res.grant).toBeDefined();
+        expect(res.grant.status).toBe("ACTIVE");
+        expect(res.grant.doorIndexCodes).toEqual(["door-jkt-dc-01"]);
+        expect(res.grant.doorNames).toContain("DC Server Room 01");
+        expect(res.grant.grantedByUserId).toBe("sec-officer-99");
+        expect(res.grant.reason).toBe("Critical server rack fiber repair");
+
+        // Verify active monitoring summary includes the emergency grant
+        const summaries = await service.getActiveVisits("fac-jakarta");
+        const bruce = summaries.find((s) => s.visitId === "vis-restricted-1");
+        expect(bruce?.emergencyGrants).toHaveLength(1);
+        expect(bruce?.emergencyGrants?.[0].doorIndexCodes).toContain("door-jkt-dc-01");
+      });
+
+      it("grants emergency access to an OVERSTAY visit", async () => {
+        await repo.updateVisit("vis-restricted-1", { status: "OVERSTAY" });
+
+        const futureDate = new Date(Date.now() + 3600 * 1000).toISOString();
+        const res = await service.grantEmergencyAccess(
+          "vis-restricted-1",
+          {
+            doorIndexCodes: ["door-jkt-dc-01"],
+            grantedByUserId: "sec-officer-99",
+            reason: "Urgent power backup maintenance during overstay",
+            expiresAtUtc: futureDate,
+          },
+          { mode: "stub" },
+        );
+
+        expect(res.grant.status).toBe("ACTIVE");
+      });
+
+      it("rejects emergency grant when visit is not active", async () => {
+        await repo.updateVisit("vis-restricted-1", { status: "CHECKED_OUT" });
+
+        await expect(
+          service.grantEmergencyAccess(
+            "vis-restricted-1",
+            {
+              doorIndexCodes: ["door-jkt-dc-01"],
+              grantedByUserId: "sec-officer-99",
+              reason: "Late emergency request",
+              expiresAtUtc: new Date(Date.now() + 3600 * 1000).toISOString(),
+            },
+            { mode: "stub" },
+          ),
+        ).rejects.toThrow(/must be 'CHECKED_IN' or 'OVERSTAY'/i);
+      });
+
+      it("rejects emergency grant when reason is shorter than 10 characters", async () => {
+        await expect(
+          service.grantEmergencyAccess(
+            "vis-restricted-1",
+            {
+              doorIndexCodes: ["door-jkt-dc-01"],
+              grantedByUserId: "sec-officer-99",
+              reason: "Short",
+              expiresAtUtc: new Date(Date.now() + 3600 * 1000).toISOString(),
+            },
+            { mode: "stub" },
+          ),
+        ).rejects.toThrow(/at least 10 characters/i);
+      });
+
+      it("propagates HikCentral upstream errors during sync", async () => {
+        await expect(
+          service.grantEmergencyAccess(
+            "vis-restricted-1",
+            {
+              doorIndexCodes: ["door-jkt-dc-01"],
+              grantedByUserId: "sec-officer-99",
+              reason: "Emergency data recovery in server vault",
+              expiresAtUtc: new Date(Date.now() + 3600 * 1000).toISOString(),
+            },
+            { mode: "stub", stubScenario: "auth-error" },
+          ),
+        ).rejects.toThrow(/appKey does not exist/i);
+      });
+    });
+
+    describe("revokeEmergencyAccess", () => {
+      it("manually revokes an active grant before expiration", async () => {
+        const futureDate = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+        const grantRes = await service.grantEmergencyAccess(
+          "vis-restricted-1",
+          {
+            doorIndexCodes: ["door-jkt-dc-01"],
+            grantedByUserId: "sec-officer-99",
+            reason: "Temporary investigation of alarm",
+            expiresAtUtc: futureDate,
+          },
+          { mode: "stub" },
+        );
+
+        const revokeRes = await service.revokeEmergencyAccess(
+          "vis-restricted-1",
+          grantRes.grant.id,
+          "sec-officer-100",
+          "Supervisor Sarah",
+          { mode: "stub" },
+        );
+
+        expect(revokeRes.grant.status).toBe("REVOKED");
+        expect(revokeRes.grant.revokedByUserId).toBe("sec-officer-100");
+        expect(revokeRes.grant.revokedByName).toBe("Supervisor Sarah");
+        expect(revokeRes.grant.revokedAtUtc).toBeDefined();
+
+        // Active grants on visit summary should now be empty
+        const summaries = await service.getActiveVisits("fac-jakarta");
+        const bruce = summaries.find((s) => s.visitId === "vis-restricted-1");
+        expect(bruce?.emergencyGrants).toHaveLength(0);
+      });
+    });
+
+    describe("door tap access evaluation", () => {
+      it("allows taps on access level doors but denies taps on unauthorized doors", async () => {
+        // Door in acc-jkt-lobby ("Lobby Main SpeedGate A" / door-turnstile-1)
+        const lobbyTap = await service.recordTapAndEnforceQuota(
+          "vis-restricted-1",
+          {
+            visitId: "vis-restricted-1",
+            doorIndexCode: "door-turnstile-1",
+            doorName: "Lobby Main SpeedGate A",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T08:10:00.000Z",
+          },
+          { mode: "stub" },
+        );
+        expect(lobbyTap.tapCount).toBe(1);
+
+        // Door NOT in acc-jkt-lobby ("DC Server Room 01" / door-jkt-dc-01)
+        await expect(
+          service.recordTapAndEnforceQuota(
+            "vis-restricted-1",
+            {
+              visitId: "vis-restricted-1",
+              doorIndexCode: "door-jkt-dc-01",
+              doorName: "DC Server Room 01",
+              direction: "in",
+              tappedAtUtc: "2026-11-13T08:15:00.000Z",
+            },
+            { mode: "stub" },
+          ),
+        ).rejects.toThrow(/access denied/i);
+      });
+
+      it("allows taps on unauthorized doors while an emergency access grant is ACTIVE", async () => {
+        const futureDate = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+        await service.grantEmergencyAccess(
+          "vis-restricted-1",
+          {
+            doorIndexCodes: ["door-jkt-dc-01"],
+            grantedByUserId: "sec-officer-99",
+            reason: "Authorized emergency server room maintenance",
+            expiresAtUtc: futureDate,
+          },
+          { mode: "stub" },
+        );
+
+        // Now tapping DC Server Room 01 succeeds!
+        const tapRes = await service.recordTapAndEnforceQuota(
+          "vis-restricted-1",
+          {
+            visitId: "vis-restricted-1",
+            doorIndexCode: "door-jkt-dc-01",
+            doorName: "DC Server Room 01",
+            direction: "in",
+            tappedAtUtc: new Date().toISOString(),
+          },
+          { mode: "stub" },
+        );
+
+        expect(tapRes.tapCount).toBe(1);
+        expect(tapRes.event.doorIndexCode).toBe("door-jkt-dc-01");
+      });
+
+      it("denies access after emergency grant has expired or is manually revoked", async () => {
+        const futureDate = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+        const grantRes = await service.grantEmergencyAccess(
+          "vis-restricted-1",
+          {
+            doorIndexCodes: ["door-jkt-dc-01"],
+            grantedByUserId: "sec-officer-99",
+            reason: "Short inspection of server racks",
+            expiresAtUtc: futureDate,
+          },
+          { mode: "stub" },
+        );
+
+        // Manually revoke the grant
+        await service.revokeEmergencyAccess(
+          "vis-restricted-1",
+          grantRes.grant.id,
+          "sec-officer-99",
+          "Officer",
+          { mode: "stub" },
+        );
+
+        // Tapping should now be denied
+        await expect(
+          service.recordTapAndEnforceQuota(
+            "vis-restricted-1",
+            {
+              visitId: "vis-restricted-1",
+              doorIndexCode: "door-jkt-dc-01",
+              doorName: "DC Server Room 01",
+              direction: "in",
+              tappedAtUtc: new Date().toISOString(),
+            },
+            { mode: "stub" },
+          ),
+        ).rejects.toThrow(/access denied/i);
+      });
+    });
+
+    describe("check-out auto-revocation", () => {
+      it("automatically revokes all active emergency grants upon visit check-out", async () => {
+        const futureDate = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+        await service.grantEmergencyAccess(
+          "vis-restricted-1",
+          {
+            doorIndexCodes: ["door-jkt-dc-01"],
+            grantedByUserId: "sec-officer-99",
+            reason: "Urgent check-out test grant",
+            expiresAtUtc: futureDate,
+          },
+          { mode: "stub" },
+        );
+
+        // Check out the visit
+        const checkOutRes = await service.performCheckOut(
+          "vis-restricted-1",
+          {
+            visitId: "vis-restricted-1",
+            operatorUserId: "sec-guard-01",
+            operatorName: "Guard Officer",
+            reason: "Work completed early",
+            isForced: false,
+          },
+          { mode: "stub" },
+        );
+
+        expect(checkOutRes.ok).toBe(true);
+        expect(checkOutRes.visit?.status).toBe("CHECKED_OUT");
+
+        // Verify emergency grants are now REVOKED in repository
+        const grants = await repo.getEmergencyGrants("vis-restricted-1");
+        expect(grants).toHaveLength(1);
+        expect(grants[0].status).toBe("REVOKED");
+      });
+    });
+  });
 });

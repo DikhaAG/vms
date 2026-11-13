@@ -1,14 +1,22 @@
 import {
   evaluateOverstayStatus,
+  isEmergencyGrantActive,
   isTapQuotaExceeded,
   type ActiveVisitSummary,
   type CheckOutInput,
   type DoorTapEvent,
+  type EmergencyAccessGrant,
+  type GrantEmergencyAccessInput,
 } from "./checkout-contract";
 import {
   executeHikCentralCheckOut,
   type CheckOutAdapterOptions,
 } from "./hikcentral-checkout-adapter";
+import {
+  syncHikCentralEmergencyGrant,
+  revokeHikCentralEmergencyGrant,
+  type EmergencyAdapterOptions,
+} from "./hikcentral-emergency-adapter";
 import {
   defaultVmsRepository,
   type IVmsRepository,
@@ -28,6 +36,11 @@ export interface CheckOutResult {
   ok: boolean;
   visit?: Visit;
   error?: string;
+}
+
+export interface EmergencyAccessResult {
+  grant: EmergencyAccessGrant;
+  visit?: Visit;
 }
 
 export class ActiveMonitoringService {
@@ -108,6 +121,7 @@ export class ActiveMonitoringService {
         status: visit.status,
         appointRecordId: visit.hikCentral?.appointRecordId,
         accessLevelIds: visit.accessLevelIds,
+        emergencyGrants: visit.emergencyGrants,
         lastSeenDoor: visit.lastSeenDoor,
       });
     }
@@ -155,6 +169,73 @@ export class ActiveMonitoringService {
       throw new Error(
         `Door ${door.doorName || door.doorIndexCode} is configured as SINGLE_DIRECTION_IN and does not allow manual exit taps.`,
       );
+    }
+
+    // Evaluate door access permission against standard access levels AND active emergency grants
+    if (visit.accessLevelIds && visit.accessLevelIds.length > 0) {
+      let isPermitted = false;
+
+      // 1. Check standard access levels
+      for (const alId of visit.accessLevelIds) {
+        const al = await this.repository.getAccessLevel(alId);
+        if (al && al.doors) {
+          const matches = al.doors.some((d) => {
+            const dNorm = d.toLowerCase();
+            return (
+              dNorm === tapData.doorIndexCode.toLowerCase() ||
+              (tapData.doorName && dNorm === tapData.doorName.toLowerCase()) ||
+              (door?.doorName && dNorm === door.doorName.toLowerCase()) ||
+              (door?.doorIndexCode && dNorm === door.doorIndexCode.toLowerCase())
+            );
+          });
+          if (matches) {
+            isPermitted = true;
+            break;
+          }
+        }
+      }
+
+      // 2. If not permitted by standard access levels, check active non-expired emergency grants
+      if (!isPermitted) {
+        const grants =
+          visit.emergencyGrants && visit.emergencyGrants.length > 0
+            ? visit.emergencyGrants
+            : await this.repository.getEmergencyGrants(visitId);
+
+        const tapTime = tapData.tappedAtUtc || new Date().toISOString();
+        const matchingGrant = grants.find((g) => {
+          if (!isEmergencyGrantActive(g, tapTime)) return false;
+          const codeMatch = g.doorIndexCodes.some(
+            (code) =>
+              code.toLowerCase() === tapData.doorIndexCode.toLowerCase() ||
+              (door?.doorIndexCode &&
+                code.toLowerCase() === door.doorIndexCode.toLowerCase()),
+          );
+          if (codeMatch) return true;
+          if (g.doorNames && g.doorNames.length > 0) {
+            return g.doorNames.some((name) => {
+              const nNorm = name.toLowerCase();
+              return (
+                (tapData.doorName && nNorm === tapData.doorName.toLowerCase()) ||
+                (door?.doorName && nNorm === door.doorName.toLowerCase()) ||
+                nNorm === tapData.doorIndexCode.toLowerCase()
+              );
+            });
+          }
+          return false;
+        });
+
+        if (matchingGrant) {
+          isPermitted = true;
+        }
+      }
+
+      if (!isPermitted) {
+        const doorLabel = door?.doorName || tapData.doorName || tapData.doorIndexCode;
+        throw new Error(
+          `Access denied: Door '${doorLabel}' (${tapData.doorIndexCode}) is not authorized for visit ${visitId}. Emergency grant may be expired or revoked.`,
+        );
+      }
     }
 
     const enrichedTapData: DoorTapEvent = {
@@ -291,6 +372,35 @@ export class ActiveMonitoringService {
       await executeHikCentralCheckOut(appointRecordId, adapterOptions);
     }
 
+    // Auto-revoke all ACTIVE emergency grants for this visit and de-authorize on hardware
+    const grants = await this.repository.getEmergencyGrants(visitId);
+    const activeGrants = grants.filter((g) => g.status === "ACTIVE");
+    for (const grant of activeGrants) {
+      await this.repository.revokeEmergencyGrant(
+        grant.id,
+        input.operatorUserId,
+        input.operatorName || "Check-Out Auto-Revocation",
+      );
+      try {
+        await revokeHikCentralEmergencyGrant(
+          {
+            visitId,
+            visitorId: visit.hikCentral?.visitorId,
+            doorIndexCodes: grant.doorIndexCodes,
+            userId: input.operatorUserId,
+          },
+          {
+            ...options,
+            mode: input.mode ?? options.mode ?? "live",
+            stubScenario: input.stubScenario ?? options.stubScenario ?? "success",
+            userId: input.operatorUserId,
+          },
+        );
+      } catch {
+        // Continue check-out workflow even if hardware terminal is unreachable
+      }
+    }
+
     const checkOutTimeUtc = input.checkOutTimeUtc || new Date().toISOString();
 
     const updatedVisit = await this.repository.checkOutVisit(visitId, {
@@ -304,6 +414,152 @@ export class ActiveMonitoringService {
 
     return {
       ok: true,
+      visit: updatedVisit,
+    };
+  }
+
+  /**
+   * Grants immediate, time-bounded emergency access to additional doors for an active visit.
+   * Synchronizes hardware terminal privileges immediately via HikCentral adapter.
+   */
+  async grantEmergencyAccess(
+    visitId: string,
+    input: GrantEmergencyAccessInput,
+    options: EmergencyAdapterOptions = {},
+  ): Promise<EmergencyAccessResult> {
+    const visit = await this.repository.getVisit(visitId);
+    if (!visit) {
+      throw new Error(`Visit not found: ${visitId}`);
+    }
+
+    if (visit.status !== "CHECKED_IN" && visit.status !== "OVERSTAY") {
+      throw new Error(
+        `Cannot grant emergency access: Visit ${visitId} is in status '${visit.status}' (must be 'CHECKED_IN' or 'OVERSTAY').`,
+      );
+    }
+
+    if (!input.reason || input.reason.trim().length < 10) {
+      throw new Error("A business justification reason of at least 10 characters is required.");
+    }
+
+    if (!input.doorIndexCodes || input.doorIndexCodes.length === 0) {
+      throw new Error("At least one door code is required.");
+    }
+
+    if (!input.grantedByUserId || !input.grantedByUserId.trim()) {
+      throw new Error("Authorizing operator user ID is required.");
+    }
+
+    const grantedAtUtc = input.grantedAtUtc || new Date().toISOString();
+    let expiresAtUtc = input.expiresAtUtc;
+    if (!expiresAtUtc && input.durationHours && input.durationHours > 0) {
+      expiresAtUtc = new Date(
+        new Date(grantedAtUtc).getTime() + input.durationHours * 3600 * 1000,
+      ).toISOString();
+    }
+
+    if (!expiresAtUtc) {
+      throw new Error("Valid expiration timestamp or duration is required.");
+    }
+
+    const expiresAt = new Date(expiresAtUtc);
+    if (
+      isNaN(expiresAt.getTime()) ||
+      expiresAt.getTime() <= new Date(grantedAtUtc).getTime()
+    ) {
+      throw new Error("Expiration must be in the future.");
+    }
+
+    // Resolve door names
+    const resolvedDoorNames: string[] = [];
+    for (const code of input.doorIndexCodes) {
+      const door = await this.repository.findDoor(code, visit.facilityId);
+      resolvedDoorNames.push(door?.doorName || code);
+    }
+
+    const grant: EmergencyAccessGrant = {
+      id: `emg-grant-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId,
+      doorIndexCodes: input.doorIndexCodes,
+      doorNames: input.doorNames && input.doorNames.length > 0 ? input.doorNames : resolvedDoorNames,
+      grantedByUserId: input.grantedByUserId.trim(),
+      grantedByName: input.grantedByName?.trim() || input.grantedByUserId.trim(),
+      reason: input.reason.trim(),
+      grantedAtUtc,
+      expiresAtUtc,
+      status: "ACTIVE",
+    };
+
+    // Save grant in repository
+    await this.repository.saveEmergencyGrant(grant);
+
+    // Synchronize privileges to HikCentral physical controllers
+    const adapterOptions: EmergencyAdapterOptions = {
+      ...options,
+      mode: input.mode ?? options.mode ?? "live",
+      stubScenario: input.stubScenario ?? options.stubScenario ?? "success",
+      userId: input.grantedByUserId,
+    };
+
+    await syncHikCentralEmergencyGrant(
+      {
+        visitId,
+        visitorId: visit.hikCentral?.visitorId,
+        doorIndexCodes: grant.doorIndexCodes,
+        expiresAtUtc: grant.expiresAtUtc,
+        userId: input.grantedByUserId,
+      },
+      adapterOptions,
+    );
+
+    const updatedVisit = await this.repository.getVisit(visitId);
+    return {
+      grant,
+      visit: updatedVisit,
+    };
+  }
+
+  /**
+   * Manually revokes an emergency access grant early and de-authorizes terminal privileges on hardware.
+   */
+  async revokeEmergencyAccess(
+    visitId: string,
+    grantId: string,
+    operatorUserId: string,
+    operatorName?: string,
+    options: EmergencyAdapterOptions = {},
+  ): Promise<EmergencyAccessResult> {
+    const visit = await this.repository.getVisit(visitId);
+    if (!visit) {
+      throw new Error(`Visit not found: ${visitId}`);
+    }
+
+    const revokedGrant = await this.repository.revokeEmergencyGrant(
+      grantId,
+      operatorUserId,
+      operatorName,
+    );
+
+    const adapterOptions: EmergencyAdapterOptions = {
+      ...options,
+      mode: options.mode ?? "live",
+      stubScenario: options.stubScenario ?? "success",
+      userId: operatorUserId,
+    };
+
+    await revokeHikCentralEmergencyGrant(
+      {
+        visitId,
+        visitorId: visit.hikCentral?.visitorId,
+        doorIndexCodes: revokedGrant.doorIndexCodes,
+        userId: operatorUserId,
+      },
+      adapterOptions,
+    );
+
+    const updatedVisit = await this.repository.getVisit(visitId);
+    return {
+      grant: revokedGrant,
       visit: updatedVisit,
     };
   }

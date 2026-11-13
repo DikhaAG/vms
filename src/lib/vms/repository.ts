@@ -16,6 +16,7 @@ import type {
 import type {
   CheckOutAuditEvent,
   DoorTapEvent,
+  EmergencyAccessGrant,
   FacilityDoor,
   VisitLastSeenDoor,
 } from "./checkout-contract";
@@ -116,6 +117,15 @@ export interface IVmsRepository {
   checkOutVisit(visitId: string, checkOutData: CheckOutVisitParams): Promise<Visit>;
   saveCheckOutEvent(event: CheckOutAuditEvent): Promise<void>;
   listCheckOutEvents(visitId?: string): Promise<CheckOutAuditEvent[]>;
+
+  // Emergency access escalation operations
+  saveEmergencyGrant(grant: EmergencyAccessGrant): Promise<void>;
+  getEmergencyGrants(visitId?: string): Promise<EmergencyAccessGrant[]>;
+  revokeEmergencyGrant(
+    grantId: string,
+    operatorUserId: string,
+    operatorName?: string,
+  ): Promise<EmergencyAccessGrant>;
 
   // Facility door topology operations
   getDoor(doorIndexCode: string): Promise<FacilityDoor | undefined>;
@@ -406,6 +416,7 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private visitorProfiles = new Map<string, VisitorProfile>();
   private hosts = new Map<string, HostEmployee>();
   private doors = new Map<string, FacilityDoor>();
+  private emergencyGrants = new Map<string, EmergencyAccessGrant>();
 
   constructor(
     initialFacilities: Facility[] = DEFAULT_FACILITIES,
@@ -461,9 +472,32 @@ export class InMemoryVmsRepository implements IVmsRepository {
     return structuredClone(updated);
   }
 
+  private enrichVisitEmergencyGrants(visit: Visit): void {
+    const now = Date.now();
+    const activeGrants = Array.from(this.emergencyGrants.values()).filter((g) => {
+      if (g.visitId !== visit.id) return false;
+      if (g.status === "ACTIVE") {
+        if (new Date(g.expiresAtUtc).getTime() <= now) {
+          g.status = "EXPIRED";
+          return false;
+        }
+        return true;
+      }
+      return false;
+    });
+    if (activeGrants.length > 0) {
+      visit.emergencyGrants = activeGrants.map((g) => structuredClone(g));
+    } else if (visit.emergencyGrants !== undefined) {
+      visit.emergencyGrants = [];
+    }
+  }
+
   async getVisit(id: string): Promise<Visit | undefined> {
     const visit = this.visits.get(id);
-    return visit ? structuredClone(visit) : undefined;
+    if (!visit) return undefined;
+    const cloned = structuredClone(visit);
+    this.enrichVisitEmergencyGrants(cloned);
+    return cloned;
   }
 
   async listVisits(filter?: ListVisitsFilter): Promise<Visit[]> {
@@ -729,7 +763,11 @@ export class InMemoryVmsRepository implements IVmsRepository {
     if (facilityId) {
       list = list.filter((v) => v.facilityId === facilityId);
     }
-    return list.map((v) => structuredClone(v));
+    return list.map((v) => {
+      const cloned = structuredClone(v);
+      this.enrichVisitEmergencyGrants(cloned);
+      return cloned;
+    });
   }
 
   async recordDoorTap(tapEvent: DoorTapEvent): Promise<RecordDoorTapResult> {
@@ -862,6 +900,55 @@ export class InMemoryVmsRepository implements IVmsRepository {
           new Date(b.checkedOutAtUtc).getTime() -
           new Date(a.checkedOutAtUtc).getTime(),
       );
+  }
+
+  async saveEmergencyGrant(grant: EmergencyAccessGrant): Promise<void> {
+    this.emergencyGrants.set(grant.id, structuredClone(grant));
+    const visit = this.visits.get(grant.visitId);
+    if (visit) {
+      this.enrichVisitEmergencyGrants(visit);
+    }
+  }
+
+  async getEmergencyGrants(visitId?: string): Promise<EmergencyAccessGrant[]> {
+    let list = Array.from(this.emergencyGrants.values());
+    if (visitId) {
+      list = list.filter((g) => g.visitId === visitId);
+    }
+    return list
+      .map((g) => structuredClone(g))
+      .sort(
+        (a, b) =>
+          new Date(b.grantedAtUtc).getTime() -
+          new Date(a.grantedAtUtc).getTime(),
+      );
+  }
+
+  async revokeEmergencyGrant(
+    grantId: string,
+    operatorUserId: string,
+    operatorName?: string,
+  ): Promise<EmergencyAccessGrant> {
+    const grant = this.emergencyGrants.get(grantId);
+    if (!grant) {
+      throw new Error(`Emergency grant not found: ${grantId}`);
+    }
+
+    const updated: EmergencyAccessGrant = {
+      ...grant,
+      status: "REVOKED",
+      revokedAtUtc: new Date().toISOString(),
+      revokedByUserId: operatorUserId,
+      revokedByName: operatorName,
+    };
+
+    this.emergencyGrants.set(grantId, structuredClone(updated));
+    const visit = this.visits.get(updated.visitId);
+    if (visit) {
+      this.enrichVisitEmergencyGrants(visit);
+    }
+
+    return structuredClone(updated);
   }
 
   async findVisitorProfileByCertificate(

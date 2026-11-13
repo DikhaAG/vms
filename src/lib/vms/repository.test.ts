@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { InMemoryVmsRepository } from "./repository";
-import type { Facility, Visit } from "./vms-contract";
+import type { Facility, Visit, EmergencyAccessGrant } from "./vms-contract";
 
 describe("InMemoryVmsRepository", () => {
   let repo: InMemoryVmsRepository;
@@ -972,6 +972,123 @@ describe("InMemoryVmsRepository", () => {
       expect(res2.visit.tapCount).toBe(2);
       expect(res2.visit.lastSeenDoor?.doorIndexCode).toBe("door-jkt-dc-01");
       expect(res2.visit.lastSeenDoor?.direction).toBe("out");
+    });
+  });
+
+  describe("emergency access grants", () => {
+    const activeVisit: Visit = {
+      id: "vis-emg-1",
+      facilityId: "fac-jakarta",
+      visitorGivenName: "Diana",
+      visitorFamilyName: "Prince",
+      visitReasonType: 3,
+      scheduledStartTimeUtc: "2026-11-13T08:00:00.000Z",
+      scheduledEndTimeUtc: "2026-11-13T12:00:00.000Z",
+      scheduledStartTimeFacility: "2026-11-13T15:00:00+07:00",
+      scheduledEndTimeFacility: "2026-11-13T19:00:00+07:00",
+      actualCheckInTimeUtc: "2026-11-13T08:05:00.000Z",
+      status: "CHECKED_IN",
+      tapCount: 1,
+      createdAtUtc: "2026-11-13T07:30:00.000Z",
+      updatedAtUtc: "2026-11-13T08:05:00.000Z",
+    };
+
+    beforeEach(async () => {
+      await repo.saveVisit(activeVisit);
+    });
+
+    it("saves and retrieves emergency access grants", async () => {
+      const grant: EmergencyAccessGrant = {
+        id: "grant-test-1",
+        visitId: "vis-emg-1",
+        doorIndexCodes: ["door-jkt-dc-01"],
+        doorNames: ["DC Server Room 01"],
+        grantedByUserId: "user-sec-01",
+        grantedByName: "Officer Wayne",
+        reason: "Critical network fiber splice",
+        grantedAtUtc: "2026-11-13T09:00:00.000Z",
+        expiresAtUtc: "2026-11-13T11:00:00.000Z",
+        status: "ACTIVE",
+      };
+
+      await repo.saveEmergencyGrant(grant);
+
+      const grants = await repo.getEmergencyGrants("vis-emg-1");
+      expect(grants).toHaveLength(1);
+      expect(grants[0].id).toBe("grant-test-1");
+      expect(grants[0].doorIndexCodes).toEqual(["door-jkt-dc-01"]);
+      expect(grants[0].status).toBe("ACTIVE");
+    });
+
+    it("populates active emergency grants on getVisit and listActiveVisits", async () => {
+      const grant: EmergencyAccessGrant = {
+        id: "grant-test-2",
+        visitId: "vis-emg-1",
+        doorIndexCodes: ["door-jkt-dc-01", "door-jkt-b1-al"],
+        doorNames: ["DC Server Room 01", "Basement AirLock"],
+        grantedByUserId: "user-sec-01",
+        grantedByName: "Officer Wayne",
+        reason: "Emergency data center repair",
+        grantedAtUtc: "2026-11-13T09:00:00.000Z",
+        expiresAtUtc: "2026-11-13T11:00:00.000Z",
+        status: "ACTIVE",
+      };
+
+      await repo.saveEmergencyGrant(grant);
+
+      const visit = await repo.getVisit("vis-emg-1");
+      expect(visit?.emergencyGrants).toBeDefined();
+      expect(visit?.emergencyGrants).toHaveLength(1);
+      expect(visit?.emergencyGrants?.[0].id).toBe("grant-test-2");
+
+      const activeVisits = await repo.listActiveVisits("fac-jakarta");
+      const diana = activeVisits.find((v) => v.id === "vis-emg-1");
+      expect(diana?.emergencyGrants).toBeDefined();
+      expect(diana?.emergencyGrants).toHaveLength(1);
+      expect(diana?.emergencyGrants?.[0].doorIndexCodes).toContain("door-jkt-dc-01");
+    });
+
+    it("revokes an emergency grant and updates active grant population", async () => {
+      const grant: EmergencyAccessGrant = {
+        id: "grant-test-3",
+        visitId: "vis-emg-1",
+        doorIndexCodes: ["door-jkt-dc-01"],
+        doorNames: ["DC Server Room 01"],
+        grantedByUserId: "user-sec-01",
+        grantedByName: "Officer Wayne",
+        reason: "Temporary investigation",
+        grantedAtUtc: "2026-11-13T09:00:00.000Z",
+        expiresAtUtc: "2026-11-13T11:00:00.000Z",
+        status: "ACTIVE",
+      };
+
+      await repo.saveEmergencyGrant(grant);
+
+      const revoked = await repo.revokeEmergencyGrant(
+        "grant-test-3",
+        "user-sec-02",
+        "Officer Gordon",
+      );
+
+      expect(revoked.status).toBe("REVOKED");
+      expect(revoked.revokedByUserId).toBe("user-sec-02");
+      expect(revoked.revokedByName).toBe("Officer Gordon");
+      expect(revoked.revokedAtUtc).toBeDefined();
+
+      // getVisit only populates active grants
+      const visit = await repo.getVisit("vis-emg-1");
+      expect(visit?.emergencyGrants).toHaveLength(0);
+
+      // getEmergencyGrants returns all grants including revoked
+      const grants = await repo.getEmergencyGrants("vis-emg-1");
+      expect(grants).toHaveLength(1);
+      expect(grants[0].status).toBe("REVOKED");
+    });
+
+    it("throws error when revoking a non-existent grant", async () => {
+      await expect(
+        repo.revokeEmergencyGrant("non-existent", "user-1"),
+      ).rejects.toThrow(/not found/i);
     });
   });
 });

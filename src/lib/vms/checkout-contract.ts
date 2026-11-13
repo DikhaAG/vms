@@ -90,6 +90,38 @@ export interface CheckOutAuditEvent {
   appointRecordIdRevoked?: string;
 }
 
+export const EMERGENCY_GRANT_STATUSES = [
+  "ACTIVE",
+  "EXPIRED",
+  "REVOKED",
+] as const;
+export type EmergencyGrantStatus = (typeof EMERGENCY_GRANT_STATUSES)[number];
+
+export function isEmergencyGrantStatus(
+  value: unknown,
+): value is EmergencyGrantStatus {
+  return (
+    typeof value === "string" &&
+    (EMERGENCY_GRANT_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+export interface EmergencyAccessGrant {
+  id: string;
+  visitId: string;
+  doorIndexCodes: string[];
+  doorNames: string[];
+  grantedByUserId: string;
+  grantedByName: string;
+  reason: string;
+  grantedAtUtc: string;
+  expiresAtUtc: string;
+  status: EmergencyGrantStatus;
+  revokedAtUtc?: string;
+  revokedByUserId?: string;
+  revokedByName?: string;
+}
+
 export interface ActiveVisitSummary {
   visitId: string;
   groupId?: string;
@@ -125,6 +157,7 @@ export interface ActiveVisitSummary {
   status: VisitStatus;
   appointRecordId?: string;
   accessLevelIds?: string[];
+  emergencyGrants?: EmergencyAccessGrant[];
   lastSeenDoor?: VisitLastSeenDoor;
 }
 
@@ -413,6 +446,148 @@ export function validateDoorTapInput(raw: unknown): ValidationResult<DoorTapEven
       isImplicit,
       implicit,
       transitionNote,
+    },
+  };
+}
+
+/**
+ * Pure evaluation function checking if an emergency access grant is actively valid.
+ */
+export function isEmergencyGrantActive(
+  grant: EmergencyAccessGrant,
+  nowUtc?: string | Date,
+): boolean {
+  if (grant.status !== "ACTIVE") {
+    return false;
+  }
+  const now = nowUtc instanceof Date ? nowUtc : nowUtc ? new Date(nowUtc) : new Date();
+  const expiresAt = new Date(grant.expiresAtUtc);
+  return now.getTime() < expiresAt.getTime();
+}
+
+export interface GrantEmergencyAccessInput {
+  visitId?: string;
+  doorIndexCodes: string[];
+  doorNames?: string[];
+  grantedByUserId: string;
+  grantedByName?: string;
+  reason: string;
+  grantedAtUtc?: string;
+  expiresAtUtc?: string;
+  durationHours?: number;
+  mode?: PreRegistrationMode;
+  stubScenario?: StubScenario;
+}
+
+/**
+ * Pure validator for GrantEmergencyAccessInput.
+ */
+export function validateGrantEmergencyAccessInput(
+  raw: unknown,
+): ValidationResult<GrantEmergencyAccessInput> {
+  const errors: Record<string, string> = {};
+
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return {
+      valid: false,
+      errors: { _global: "Emergency access input must be an object." },
+    };
+  }
+
+  const rec = raw as Record<string, unknown>;
+
+  // Door resolution: accept doorIndexCodes array or single doorIndexCode
+  let doorIndexCodes: string[] = [];
+  if (Array.isArray(rec.doorIndexCodes)) {
+    doorIndexCodes = rec.doorIndexCodes
+      .filter((d): d is string => typeof d === "string" && Boolean(d.trim()))
+      .map((d) => d.trim());
+  } else if (typeof rec.doorIndexCode === "string" && rec.doorIndexCode.trim()) {
+    doorIndexCodes = [rec.doorIndexCode.trim()];
+  }
+
+  if (doorIndexCodes.length === 0) {
+    errors.doorIndexCodes = "At least one door code is required.";
+  }
+
+  let doorNames: string[] | undefined;
+  if (Array.isArray(rec.doorNames)) {
+    doorNames = rec.doorNames
+      .filter((n): n is string => typeof n === "string" && Boolean(n.trim()))
+      .map((n) => n.trim());
+  } else if (typeof rec.doorName === "string" && rec.doorName.trim()) {
+    doorNames = [rec.doorName.trim()];
+  }
+
+  if (typeof rec.grantedByUserId !== "string" || !rec.grantedByUserId.trim()) {
+    errors.grantedByUserId = "Authorizing operator user ID is required.";
+  }
+
+  const grantedByName =
+    typeof rec.grantedByName === "string" ? rec.grantedByName.trim() : undefined;
+
+  const reason = typeof rec.reason === "string" ? rec.reason.trim() : "";
+  if (!reason || reason.length < 10) {
+    errors.reason = "A business justification reason of at least 10 characters is required.";
+  }
+
+  // Base timestamp for duration calculations
+  const grantedAtUtc =
+    typeof rec.grantedAtUtc === "string" && rec.grantedAtUtc.trim()
+      ? rec.grantedAtUtc.trim()
+      : new Date().toISOString();
+  const baseTime = new Date(grantedAtUtc);
+
+  let calculatedExpiresAtUtc: string | undefined;
+
+  if (typeof rec.expiresAtUtc === "string" && rec.expiresAtUtc.trim()) {
+    const parsedExpiresAt = new Date(rec.expiresAtUtc.trim());
+    if (isNaN(parsedExpiresAt.getTime())) {
+      errors.expiresAtUtc = "Invalid expiration timestamp format.";
+    } else if (parsedExpiresAt.getTime() <= baseTime.getTime()) {
+      errors.expiresAtUtc = "Expiration must be in the future.";
+    } else {
+      calculatedExpiresAtUtc = parsedExpiresAt.toISOString();
+    }
+  } else if (rec.durationHours !== undefined) {
+    const durationHours =
+      typeof rec.durationHours === "number" ? rec.durationHours : Number(rec.durationHours);
+    if (isNaN(durationHours) || durationHours <= 0) {
+      errors.durationHours = "Duration must be a positive number of hours.";
+    } else {
+      calculatedExpiresAtUtc = new Date(
+        baseTime.getTime() + durationHours * 3600 * 1000,
+      ).toISOString();
+    }
+  } else {
+    errors.expiresAtUtc =
+      "Valid expiration timestamp (expiresAtUtc) or duration in hours (durationHours) is required.";
+  }
+
+  if (Object.keys(errors).length > 0 || !calculatedExpiresAtUtc) {
+    return { valid: false, errors };
+  }
+
+  const visitId =
+    typeof rec.visitId === "string" && rec.visitId.trim()
+      ? rec.visitId.trim()
+      : undefined;
+
+  return {
+    valid: true,
+    input: {
+      visitId,
+      doorIndexCodes,
+      doorNames,
+      grantedByUserId: (rec.grantedByUserId as string).trim(),
+      grantedByName,
+      reason,
+      grantedAtUtc,
+      expiresAtUtc: calculatedExpiresAtUtc,
+      durationHours:
+        typeof rec.durationHours === "number" ? rec.durationHours : undefined,
+      mode: rec.mode === "stub" ? "stub" : "live",
+      stubScenario: isStubScenario(rec.stubScenario) ? rec.stubScenario : undefined,
     },
   };
 }
