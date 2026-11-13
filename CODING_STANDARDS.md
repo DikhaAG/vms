@@ -14,6 +14,12 @@ Judgement-call conventions enforced by `/code-review` alongside ESLint and TypeS
 - **Validate `data` at runtime even when `code === "0"`:** HikCentral responses occasionally omit or alter `data` fields. Narrow `response.data` with an explicit type guard before returning `ok: true` or rendering success state in the UI.
 - **Validate boundary payloads before calling use-cases:** Parse JSON inside `try/catch` in Route Handlers, check field types explicitly, and map validation vs config vs upstream/network errors to clear HTTP status codes (`400` / `500` / `502`).
 
+## Domain Model & Upstream Anti-Corruption Layer
+
+- **Translate upstream naming discrepancies at the adapter boundary:** HikCentral OpenAPI naming quirks (e.g. calling internal host employees `receptionistId`, or embedding typo fields like `getVistorRegisterRecord`) must be translated immediately inside `src/lib/hikcentral/*` adapters. Never let upstream naming anomalies leak into internal domain models, database columns, or UI component props.
+- **Normalize photo data URIs at system boundaries:** HikCentral wire payloads expect raw Base64 JPEG strings without the `data:image/...;base64,` prefix. Strip any data URI scheme before serializing wire payloads to HikCentral, and conversely attach a valid data URI prefix when returning or rendering image sources in Client Components.
+- **Isolate repository persistence behind clean interfaces:** Define repository interfaces so use-cases and domain services can run against lightweight in-memory stores during fast TDD cycles without being tightly coupled to a running database container.
+
 ## UI & React Composition
 
 - **Extract repeated form/control chrome:** When two or more fieldsets or panels share identical interactive markup (such as radio-card groups), extract one parameterized helper component rather than duplicating JSX loops.
