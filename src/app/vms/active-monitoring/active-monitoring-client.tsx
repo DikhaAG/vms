@@ -99,7 +99,8 @@ export function ActiveMonitoringClient({
         const matchesHost = v.host?.name?.toLowerCase().includes(q) ?? false;
         const matchesId = v.visitId.toLowerCase().includes(q);
         const matchesCert = v.visitor.certificateNo?.toLowerCase().includes(q) ?? false;
-        if (!matchesName && !matchesHost && !matchesId && !matchesCert) {
+        const matchesGroup = v.visitorGroupName?.toLowerCase().includes(q) ?? false;
+        if (!matchesName && !matchesHost && !matchesId && !matchesCert && !matchesGroup) {
           return false;
         }
       }
@@ -556,6 +557,11 @@ export function ActiveMonitoringClient({
                             ({visit.visitReason})
                           </span>
                         </h2>
+                        {visit.visitorGroupName && (
+                          <span className="inline-block rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 border border-indigo-200 mt-0.5">
+                            👥 Group: {visit.visitorGroupName}
+                          </span>
+                        )}
                         <p className="text-xs text-neutral-500">
                           {visit.visitor.phone || visit.visitor.email || "No contact info"}
                           {visit.visitor.certificateNo && ` • ID: ${visit.visitor.certificateNo}`}

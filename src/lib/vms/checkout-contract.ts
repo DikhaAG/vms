@@ -47,6 +47,8 @@ export interface CheckOutAuditEvent {
 
 export interface ActiveVisitSummary {
   visitId: string;
+  groupId?: string;
+  visitorGroupName?: string;
   visitor: {
     givenName: string;
     familyName: string;

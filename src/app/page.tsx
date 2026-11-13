@@ -151,6 +151,52 @@ export default function HomePage() {
       </section>
 
       <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">
+            Multi-Visitor Group Visits
+          </h2>
+          <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-800">
+            Ticket 08
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-neutral-600">
+          Register client teams and vendor delegations under unified HikCentral visitor groups.
+          Features dynamic multi-guest input, automatic returning visitor recognition, and instant credential QR pass generation.
+        </p>
+        <div className="mt-4">
+          <Link
+            href="/vms/group-registration"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+          >
+            Open Group Visit Registration &rarr;
+          </Link>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">
+            Visitor Profiles & Biometric Soft-Delete Directory
+          </h2>
+          <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-800">
+            Ticket 08 & ADR 0004
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-neutral-600">
+          Search and manage retained visitor profiles and encrypted face photos.
+          Enables one-click returning visitor auto-fill, lifetime visit tracking, and PDP soft-delete compliance.
+        </p>
+        <div className="mt-4">
+          <Link
+            href="/vms/visitors"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+          >
+            Open Visitor Profiles Directory &rarr;
+          </Link>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
         <h2 className="text-sm font-semibold text-neutral-900">Prototypes</h2>
         <p className="mt-1 text-xs text-neutral-600">
           Verify foundation signing and HTTP client wiring before building

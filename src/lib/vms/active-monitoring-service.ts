@@ -63,6 +63,8 @@ export class ActiveMonitoringService {
 
       summaries.push({
         visitId: visit.id,
+        groupId: visit.groupId,
+        visitorGroupName: visit.visitorGroupName,
         visitor: {
           givenName: visit.visitorGivenName,
           familyName: visit.visitorFamilyName,

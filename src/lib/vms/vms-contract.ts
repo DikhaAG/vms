@@ -85,6 +85,8 @@ export interface Visit {
   id: string;
   facilityId: string;
   facilityName?: string;
+  groupId?: string;
+  visitorGroupName?: string;
   hostId?: string;
   hostName?: string;
   visitorFamilyName: string;

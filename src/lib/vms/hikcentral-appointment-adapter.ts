@@ -14,6 +14,7 @@ export interface HikCentralAppointmentParams {
   appointEndTime: string; // ISO 8601 string with facility offset, e.g. 2026-11-13T18:00:00+07:00
   visitReasonType: number;
   visitReasonDetail?: string;
+  visitorGroupName?: string;
   visitorFamilyName: string;
   visitorGivenName: string;
   visitorPhone?: string;
@@ -137,6 +138,9 @@ export async function dispatchHikCentralAppointment(
         VisitorInfo: {
           visitorFamilyName: params.visitorFamilyName,
           visitorGivenName: params.visitorGivenName,
+          ...(params.visitorGroupName
+            ? { visitorGroupName: params.visitorGroupName }
+            : {}),
           phoneNo: params.visitorPhone,
           email: params.visitorEmail,
           certificateType: params.certificateType,

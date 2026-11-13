@@ -640,4 +640,160 @@ describe("InMemoryVmsRepository", () => {
       ).rejects.toThrow("Visit not found");
     });
   });
+
+  describe("group visits & visitor profiles (Ticket 08)", () => {
+    const sampleProfile = {
+      id: "prof-001",
+      certificateType: 111 as const,
+      certificateNo: "3171012345670001",
+      fullName: "Kenji Tanaka",
+      familyName: "Tanaka",
+      givenName: "Kenji",
+      phone: "+628111222333",
+      email: "kenji@example.com",
+      facePhoto: "data:image/jpeg;base64,sample-photo",
+      isDeleted: false,
+      createdAtUtc: "2026-11-10T08:00:00.000Z",
+      updatedAtUtc: "2026-11-10T08:00:00.000Z",
+    };
+
+    it("saves and finds a visitor profile by certificate number", async () => {
+      await repo.saveVisitorProfile(sampleProfile);
+
+      const found = await repo.findVisitorProfileByCertificate(
+        "3171012345670001",
+      );
+      expect(found).toBeDefined();
+      expect(found?.fullName).toBe("Kenji Tanaka");
+      expect(found?.isDeleted).toBe(false);
+    });
+
+    it("does not return soft-deleted profile from findVisitorProfileByCertificate", async () => {
+      await repo.saveVisitorProfile(sampleProfile);
+      await repo.softDeleteVisitorProfile(
+        "prof-001",
+        true,
+        "User PDP erasure request",
+      );
+
+      const found = await repo.findVisitorProfileByCertificate(
+        "3171012345670001",
+      );
+      expect(found).toBeUndefined();
+    });
+
+    it("softDeleteVisitorProfile toggles isDeleted flag and records deletion details", async () => {
+      await repo.saveVisitorProfile(sampleProfile);
+
+      const archived = await repo.softDeleteVisitorProfile(
+        "prof-001",
+        true,
+        "Personal data erasure",
+      );
+      expect(archived.isDeleted).toBe(true);
+      expect(archived.deletionReason).toBe("Personal data erasure");
+      expect(archived.deletedAtUtc).toBeDefined();
+
+      const restored = await repo.softDeleteVisitorProfile("prof-001", false);
+      expect(restored.isDeleted).toBe(false);
+      expect(restored.deletionReason).toBeUndefined();
+      expect(restored.deletedAtUtc).toBeUndefined();
+    });
+
+    it("listVisitorProfiles filters by active status, search query, and computes visitCount", async () => {
+      await repo.saveVisitorProfile(sampleProfile);
+      await repo.saveVisitorProfile({
+        id: "prof-002",
+        certificateType: 414,
+        certificateNo: "USA99988877",
+        fullName: "Sarah Connor",
+        familyName: "Connor",
+        givenName: "Sarah",
+        phone: "+12125550199",
+        isDeleted: true,
+        createdAtUtc: "2026-11-11T08:00:00.000Z",
+        updatedAtUtc: "2026-11-11T08:00:00.000Z",
+      });
+
+      // Save a visit matching sampleProfile
+      await repo.saveVisit({
+        id: "vis-grp-mem-1",
+        facilityId: "fac-jakarta",
+        visitorFamilyName: "Tanaka",
+        visitorGivenName: "Kenji",
+        certificateNo: "3171012345670001",
+        visitReasonType: 0,
+        scheduledStartTimeUtc: "2026-11-13T09:00:00.000Z",
+        scheduledEndTimeUtc: "2026-11-13T11:00:00.000Z",
+        scheduledStartTimeFacility: "2026-11-13T16:00:00+07:00",
+        scheduledEndTimeFacility: "2026-11-13T18:00:00+07:00",
+        status: "APPROVED",
+        createdAtUtc: "2026-11-13T08:00:00.000Z",
+        updatedAtUtc: "2026-11-13T08:00:00.000Z",
+      });
+
+      // By default, list excludes deleted profiles
+      const activeOnly = await repo.listVisitorProfiles();
+      expect(activeOnly.some((p) => p.id === "prof-001")).toBe(true);
+      expect(activeOnly.some((p) => p.id === "prof-002")).toBe(false);
+
+      const kenjiProfile = activeOnly.find((p) => p.id === "prof-001");
+      expect(kenjiProfile?.visitCount).toBe(1);
+
+      // With includeDeleted: true
+      const allProfiles = await repo.listVisitorProfiles({
+        includeDeleted: true,
+      });
+      expect(allProfiles.some((p) => p.id === "prof-002")).toBe(true);
+
+      // With query
+      const searchResult = await repo.listVisitorProfiles({
+        query: "Sarah",
+        includeDeleted: true,
+      });
+      expect(searchResult).toHaveLength(1);
+      expect(searchResult[0].id).toBe("prof-002");
+    });
+
+    it("listVisitsByGroup returns all visits belonging to a group", async () => {
+      await repo.saveVisit({
+        id: "vis-g1",
+        groupId: "grp-abc",
+        visitorGroupName: "Vendor Team",
+        facilityId: "fac-jakarta",
+        visitorFamilyName: "A",
+        visitorGivenName: "Alpha",
+        visitReasonType: 1,
+        scheduledStartTimeUtc: "2026-11-13T09:00:00.000Z",
+        scheduledEndTimeUtc: "2026-11-13T11:00:00.000Z",
+        scheduledStartTimeFacility: "2026-11-13T16:00:00+07:00",
+        scheduledEndTimeFacility: "2026-11-13T18:00:00+07:00",
+        status: "APPROVED",
+        createdAtUtc: "2026-11-13T08:00:00.000Z",
+        updatedAtUtc: "2026-11-13T08:00:00.000Z",
+      });
+
+      await repo.saveVisit({
+        id: "vis-g2",
+        groupId: "grp-abc",
+        visitorGroupName: "Vendor Team",
+        facilityId: "fac-jakarta",
+        visitorFamilyName: "B",
+        visitorGivenName: "Beta",
+        visitReasonType: 1,
+        scheduledStartTimeUtc: "2026-11-13T09:00:00.000Z",
+        scheduledEndTimeUtc: "2026-11-13T11:00:00.000Z",
+        scheduledStartTimeFacility: "2026-11-13T16:00:00+07:00",
+        scheduledEndTimeFacility: "2026-11-13T18:00:00+07:00",
+        status: "APPROVED",
+        createdAtUtc: "2026-11-13T08:00:00.000Z",
+        updatedAtUtc: "2026-11-13T08:00:00.000Z",
+      });
+
+      const groupVisits = await repo.listVisitsByGroup("grp-abc");
+      expect(groupVisits).toHaveLength(2);
+      expect(groupVisits.map((v) => v.id)).toContain("vis-g1");
+      expect(groupVisits.map((v) => v.id)).toContain("vis-g2");
+    });
+  });
 });

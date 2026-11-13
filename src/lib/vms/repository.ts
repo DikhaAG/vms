@@ -16,6 +16,7 @@ import type {
   CheckOutAuditEvent,
   DoorTapEvent,
 } from "./checkout-contract";
+import type { VisitorProfile } from "./group-contract";
 
 export interface ListVisitsFilter {
   facilityId?: string;
@@ -108,6 +109,23 @@ export interface IVmsRepository {
   checkOutVisit(visitId: string, checkOutData: CheckOutVisitParams): Promise<Visit>;
   saveCheckOutEvent(event: CheckOutAuditEvent): Promise<void>;
   listCheckOutEvents(visitId?: string): Promise<CheckOutAuditEvent[]>;
+
+  // Group visits and visitor profile management
+  findVisitorProfileByCertificate(
+    certificateNo: string,
+  ): Promise<VisitorProfile | undefined>;
+  getVisitorProfile(id: string): Promise<VisitorProfile | undefined>;
+  saveVisitorProfile(profile: VisitorProfile): Promise<void>;
+  softDeleteVisitorProfile(
+    id: string,
+    isDeleted: boolean,
+    reason?: string,
+  ): Promise<VisitorProfile>;
+  listVisitorProfiles(options?: {
+    includeDeleted?: boolean;
+    query?: string;
+  }): Promise<VisitorProfile[]>;
+  listVisitsByGroup(groupId: string): Promise<Visit[]>;
 }
 
 export const DEFAULT_FACILITIES: Facility[] = [
@@ -187,6 +205,37 @@ export const DEFAULT_ACCESS_LEVELS: AccessLevel[] = [
   },
 ];
 
+export const DEFAULT_VISITOR_PROFILES: VisitorProfile[] = [
+  {
+    id: "prof-ktp-3171",
+    certificateType: 111,
+    certificateNo: "3171012345670001",
+    fullName: "Kenji Tanaka",
+    familyName: "Tanaka",
+    givenName: "Kenji",
+    phone: "+628111222333",
+    email: "kenji@example.com",
+    facePhoto: "data:image/jpeg;base64,/9j/4AAQSkZJRg==",
+    isDeleted: false,
+    createdAtUtc: "2026-11-01T08:00:00.000Z",
+    updatedAtUtc: "2026-11-01T08:00:00.000Z",
+  },
+  {
+    id: "prof-ktp-3275",
+    certificateType: 111,
+    certificateNo: "3275098765430002",
+    fullName: "Dewi Lestari",
+    familyName: "Lestari",
+    givenName: "Dewi",
+    phone: "+628123456789",
+    email: "dewi.lestari@example.com",
+    facePhoto: "data:image/jpeg;base64,/9j/4AAQSkZJRg==",
+    isDeleted: false,
+    createdAtUtc: "2026-11-05T09:00:00.000Z",
+    updatedAtUtc: "2026-11-05T09:00:00.000Z",
+  },
+];
+
 export class InMemoryVmsRepository implements IVmsRepository {
   private facilities = new Map<string, Facility>();
   private visits = new Map<string, Visit>();
@@ -196,16 +245,21 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private checkInEvents: CheckInAuditEvent[] = [];
   private doorTapEvents: DoorTapEvent[] = [];
   private checkOutEvents: CheckOutAuditEvent[] = [];
+  private visitorProfiles = new Map<string, VisitorProfile>();
 
   constructor(
     initialFacilities: Facility[] = DEFAULT_FACILITIES,
     initialAccessLevels: AccessLevel[] = DEFAULT_ACCESS_LEVELS,
+    initialVisitorProfiles: VisitorProfile[] = DEFAULT_VISITOR_PROFILES,
   ) {
     for (const f of initialFacilities) {
       this.facilities.set(f.id, structuredClone(f));
     }
     for (const al of initialAccessLevels) {
       this.accessLevels.set(al.id, structuredClone(al));
+    }
+    for (const p of initialVisitorProfiles) {
+      this.visitorProfiles.set(p.id, structuredClone(p));
     }
   }
 
@@ -588,6 +642,96 @@ export class InMemoryVmsRepository implements IVmsRepository {
           new Date(b.checkedOutAtUtc).getTime() -
           new Date(a.checkedOutAtUtc).getTime(),
       );
+  }
+
+  async findVisitorProfileByCertificate(
+    certificateNo: string,
+  ): Promise<VisitorProfile | undefined> {
+    const trimmed = certificateNo.trim();
+    for (const profile of this.visitorProfiles.values()) {
+      if (profile.certificateNo === trimmed && !profile.isDeleted) {
+        return structuredClone(profile);
+      }
+    }
+    return undefined;
+  }
+
+  async getVisitorProfile(id: string): Promise<VisitorProfile | undefined> {
+    const profile = this.visitorProfiles.get(id);
+    return profile ? structuredClone(profile) : undefined;
+  }
+
+  async saveVisitorProfile(profile: VisitorProfile): Promise<void> {
+    // Remove any existing entry with the same certificate number to avoid duplicates
+    for (const [id, existing] of this.visitorProfiles.entries()) {
+      if (
+        existing.certificateNo === profile.certificateNo &&
+        id !== profile.id
+      ) {
+        this.visitorProfiles.delete(id);
+      }
+    }
+    this.visitorProfiles.set(profile.id, structuredClone(profile));
+  }
+
+  async softDeleteVisitorProfile(
+    id: string,
+    isDeleted: boolean,
+    reason?: string,
+  ): Promise<VisitorProfile> {
+    const existing = this.visitorProfiles.get(id);
+    if (!existing) {
+      throw new Error(`Visitor profile not found: ${id}`);
+    }
+
+    const updated: VisitorProfile = {
+      ...existing,
+      isDeleted,
+      deletionReason: isDeleted ? reason : undefined,
+      deletedAtUtc: isDeleted ? new Date().toISOString() : undefined,
+      updatedAtUtc: new Date().toISOString(),
+    };
+
+    this.visitorProfiles.set(id, structuredClone(updated));
+    return structuredClone(updated);
+  }
+
+  async listVisitorProfiles(options?: {
+    includeDeleted?: boolean;
+    query?: string;
+  }): Promise<VisitorProfile[]> {
+    let list = Array.from(this.visitorProfiles.values());
+
+    if (!options?.includeDeleted) {
+      list = list.filter((p) => !p.isDeleted);
+    }
+
+    if (options?.query && options.query.trim()) {
+      const q = options.query.trim().toLowerCase();
+      list = list.filter(
+        (p) =>
+          p.fullName.toLowerCase().includes(q) ||
+          p.certificateNo.toLowerCase().includes(q) ||
+          (p.phone && p.phone.toLowerCase().includes(q)) ||
+          (p.email && p.email.toLowerCase().includes(q)),
+      );
+    }
+
+    const allVisits = Array.from(this.visits.values());
+    return list.map((p) => {
+      const cloned = structuredClone(p);
+      cloned.visitCount = allVisits.filter(
+        (v) => v.certificateNo === p.certificateNo,
+      ).length;
+      return cloned;
+    });
+  }
+
+  async listVisitsByGroup(groupId: string): Promise<Visit[]> {
+    const visits = Array.from(this.visits.values()).filter(
+      (v) => v.groupId === groupId,
+    );
+    return visits.map((v) => structuredClone(v));
   }
 }
 

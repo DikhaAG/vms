@@ -123,6 +123,39 @@ describe("dispatchHikCentralAppointment", () => {
       expect(visitorList[0].VisitorInfo.faces).toBeUndefined();
     });
 
+    it("includes visitorGroupName in VisitorInfo payload when specified", async () => {
+      let recordedBody: unknown;
+      const mockClient: HikCentralClient = {
+        post: async <TResponse>(_path: string, body?: unknown) => {
+          recordedBody = body;
+          return {
+            code: "0",
+            msg: "Success",
+            data: {
+              appointRecordId: "hik-rec-grp-1",
+              visitorId: "hik-vis-grp-1",
+            } as TResponse,
+          };
+        },
+      };
+
+      await dispatchHikCentralAppointment(
+        {
+          ...baseParams,
+          visitorGroupName: "Delegation Jakarta 2026",
+        },
+        { mode: "live", client: mockClient },
+      );
+
+      const body = recordedBody as Record<string, unknown>;
+      const visitorList = body.visitorInfoList as Array<{
+        VisitorInfo: Record<string, unknown>;
+      }>;
+      expect(visitorList[0].VisitorInfo.visitorGroupName).toBe(
+        "Delegation Jakarta 2026",
+      );
+    });
+
     it("attaches normalized faces array to VisitorInfo when facePhotoData is supplied", async () => {
       let recordedBody: unknown;
 
