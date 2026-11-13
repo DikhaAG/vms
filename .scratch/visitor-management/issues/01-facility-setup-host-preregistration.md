@@ -4,14 +4,19 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Domain models and database schema for `Facility` (with IANA timezone) and `Visit` (with status `PENDING_APPROVAL`, UTC visit window, and HikCentral references).
-- [ ] Timezone conversion utility translating UTC to facility-specific ISO 8601 offset strings up to 64 chars.
-- [ ] HikCentral adapter integration for `POST /artemis/api/visitor/v2/appointment` handling `userId`, `appointStartTime`, `appointEndTime`, `visitorInfoList`, and optional `receptionistId`.
-- [ ] Pre-registration UI with facility selector, visitor information fields, date/time pickers with local timezone labeling, and submit action.
-- [ ] Display card showing the created Visit details, status badge, and QR code pass preview.
-- [ ] End-to-end tests verifying scheduling, timezone translation, HikCentral payload generation, and error mapping without leaking secrets.
+- [x] Domain models and database schema for `Facility` (with IANA timezone) and `Visit` (with status `PENDING_APPROVAL`, UTC visit window, and HikCentral references).
+- [x] Timezone conversion utility translating UTC to facility-specific ISO 8601 offset strings up to 64 chars.
+- [x] HikCentral adapter integration for `POST /artemis/api/visitor/v2/appointment` handling `userId`, `appointStartTime`, `appointEndTime`, `visitorInfoList`, and optional `receptionistId`.
+- [x] Pre-registration UI with facility selector, visitor information fields, date/time pickers with local timezone labeling, and submit action.
+- [x] Display card showing the created Visit details, status badge, and QR code pass preview.
+- [x] End-to-end tests verifying scheduling, timezone translation, HikCentral payload generation, and error mapping without leaking secrets.
 
 ## Comments
+
+- Implemented isomorphic domain contracts (`src/lib/vms/vms-contract.ts`), timezone utilities (`src/lib/vms/timezone.ts`), in-memory repository with pre-seeded multi-facility support across Jakarta, Bali, and Jayapura (`src/lib/vms/repository.ts`), HikCentral appointment adapter with live & stub modes (`src/lib/vms/hikcentral-appointment-adapter.ts`), and pre-registration orchestration service (`src/lib/vms/pre-registration-service.ts`).
+- Added Route Handlers (`/api/vms/facilities` and `/api/vms/pre-registration`).
+- Created responsive Pre-Registration UI at `/vms/pre-registration` with dynamic timezone labeling, visitor form, execution simulator, result card, and digital QR pass preview.
+- Added comprehensive unit and E2E tracer bullet tests (`src/test/e2e-tracer-bullet.test.ts`), with 100% pass rate (69 tests).
 

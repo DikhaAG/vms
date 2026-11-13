@@ -1,0 +1,54 @@
+import { NextResponse } from "next/server";
+import { createPreRegistration } from "@/lib/vms/pre-registration-service";
+import type {
+  CreatePreRegistrationInput,
+  PreRegistrationResult,
+} from "@/lib/vms/vms-contract";
+
+export const dynamic = "force-dynamic";
+
+function statusForResult(result: PreRegistrationResult): number {
+  if (result.ok) {
+    return 201;
+  }
+  switch (result.error?.kind) {
+    case "validation":
+      return 400;
+    case "not_found":
+      return 404;
+    case "config":
+      return 500;
+    default:
+      return 502;
+  }
+}
+
+export async function POST(request: Request): Promise<NextResponse> {
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    const errorResult: PreRegistrationResult = {
+      ok: false,
+      error: {
+        kind: "validation",
+        message: "Request body must be valid JSON.",
+      },
+    };
+    return NextResponse.json(errorResult, { status: 400 });
+  }
+
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    const errorResult: PreRegistrationResult = {
+      ok: false,
+      error: {
+        kind: "validation",
+        message: "Request payload must be a JSON object.",
+      },
+    };
+    return NextResponse.json(errorResult, { status: 400 });
+  }
+
+  const result = await createPreRegistration(body as CreatePreRegistrationInput);
+  return NextResponse.json(result, { status: statusForResult(result) });
+}
