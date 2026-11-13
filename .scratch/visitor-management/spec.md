@@ -1,5 +1,5 @@
 ---
-Status: ready-for-agent
+Status: resolved
 ---
 
 # Specification: Enterprise Visitor Management System (VMS) with HikCentral Integration
