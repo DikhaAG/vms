@@ -3,7 +3,9 @@ import {
   DOOR_ACCESS_TYPES,
   DOOR_DIRECTIONS,
   EMERGENCY_GRANT_STATUSES,
+  evaluateAutoCheckIn,
   evaluateOverstayStatus,
+  isAutoCheckInEligible,
   isDoorAccessType,
   isDoorDirection,
   isEmergencyGrantActive,
@@ -499,6 +501,157 @@ describe("checkout-contract", () => {
         expect(isEmergencyGrantActive({ ...grant, status: "REVOKED" }, "2026-11-13T11:00:00.000Z")).toBe(false);
         expect(isEmergencyGrantActive({ ...grant, status: "EXPIRED" }, "2026-11-13T11:00:00.000Z")).toBe(false);
       });
+    });
+  });
+
+  describe("isAutoCheckInEligible", () => {
+    it("returns true for APPROVED visit with perimeter door", () => {
+      expect(
+        isAutoCheckInEligible({ status: "APPROVED" }, { isPerimeter: true }),
+      ).toBe(true);
+    });
+
+    it("returns false if door is not perimeter", () => {
+      expect(
+        isAutoCheckInEligible({ status: "APPROVED" }, { isPerimeter: false }),
+      ).toBe(false);
+      expect(isAutoCheckInEligible({ status: "APPROVED" }, null)).toBe(false);
+      expect(isAutoCheckInEligible({ status: "APPROVED" }, undefined)).toBe(false);
+    });
+
+    it("returns false if visit status is not APPROVED", () => {
+      expect(
+        isAutoCheckInEligible({ status: "PENDING_APPROVAL" }, { isPerimeter: true }),
+      ).toBe(false);
+      expect(
+        isAutoCheckInEligible({ status: "CHECKED_IN" }, { isPerimeter: true }),
+      ).toBe(false);
+      expect(
+        isAutoCheckInEligible({ status: "OVERSTAY" }, { isPerimeter: true }),
+      ).toBe(false);
+      expect(
+        isAutoCheckInEligible({ status: "CHECKED_OUT" }, { isPerimeter: true }),
+      ).toBe(false);
+    });
+  });
+
+  describe("evaluateAutoCheckIn", () => {
+    const baseVisit = {
+      status: "APPROVED" as const,
+      scheduledStartTimeUtc: "2026-11-13T09:00:00.000Z",
+      scheduledEndTimeUtc: "2026-11-13T12:00:00.000Z",
+    };
+
+    const perimeterDoor = {
+      doorIndexCode: "door-turnstile-1",
+      doorName: "Main SpeedGate",
+      isPerimeter: true,
+    };
+
+    it("approves auto check-in when tapping on perimeter door within early arrival window", () => {
+      // 10 minutes before scheduled start (within default 15 min buffer)
+      const tapTime = "2026-11-13T08:50:00.000Z";
+      const result = evaluateAutoCheckIn({
+        visit: baseVisit,
+        door: perimeterDoor,
+        tappedAtUtc: tapTime,
+        direction: "in",
+      });
+
+      expect(result.eligible).toBe(true);
+      expect(result.error).toBeUndefined();
+      expect(result.bufferMinutes).toBe(15);
+      expect(result.earliestAllowedUtc).toBe("2026-11-13T08:45:00.000Z");
+    });
+
+    it("rejects auto check-in before the early arrival buffer", () => {
+      // 20 minutes before scheduled start (cutoff is 08:45)
+      const tapTime = "2026-11-13T08:40:00.000Z";
+      const result = evaluateAutoCheckIn({
+        visit: baseVisit,
+        door: perimeterDoor,
+        tappedAtUtc: tapTime,
+        direction: "in",
+      });
+
+      expect(result.eligible).toBe(false);
+      expect(result.error).toBe(
+        "Too early for auto check-in. Scheduled start is 2026-11-13T09:00:00.000Z. Please wait or proceed to reception.",
+      );
+    });
+
+    it("honors custom early arrival buffer minutes", () => {
+      // 20 minutes before scheduled start, with a 30-min buffer
+      const tapTime = "2026-11-13T08:40:00.000Z";
+      const result = evaluateAutoCheckIn({
+        visit: baseVisit,
+        door: perimeterDoor,
+        tappedAtUtc: tapTime,
+        direction: "in",
+        earlyArrivalBufferMinutes: 30,
+      });
+
+      expect(result.eligible).toBe(true);
+      expect(result.bufferMinutes).toBe(30);
+      expect(result.earliestAllowedUtc).toBe("2026-11-13T08:30:00.000Z");
+    });
+
+    it("rejects auto check-in on internal non-perimeter door", () => {
+      const internalDoor = {
+        doorIndexCode: "door-jkt-3f-el",
+        doorName: "3F Elevator Lobby Door",
+        isPerimeter: false,
+      };
+
+      const result = evaluateAutoCheckIn({
+        visit: baseVisit,
+        door: internalDoor,
+        tappedAtUtc: "2026-11-13T08:55:00.000Z",
+        direction: "in",
+      });
+
+      expect(result.eligible).toBe(false);
+      expect(result.error).toBe(
+        "Auto check-in only permitted at designated perimeter entry points. Please check in at reception.",
+      );
+    });
+
+    it("rejects auto check-in if tap direction is out", () => {
+      const result = evaluateAutoCheckIn({
+        visit: baseVisit,
+        door: perimeterDoor,
+        tappedAtUtc: "2026-11-13T08:55:00.000Z",
+        direction: "out",
+      });
+
+      expect(result.eligible).toBe(false);
+      expect(result.error).toBe("Auto check-in only permitted for entry taps.");
+    });
+
+    it("rejects auto check-in if visit is not in APPROVED status", () => {
+      const result = evaluateAutoCheckIn({
+        visit: { ...baseVisit, status: "PENDING_APPROVAL" },
+        door: perimeterDoor,
+        tappedAtUtc: "2026-11-13T08:55:00.000Z",
+        direction: "in",
+      });
+
+      expect(result.eligible).toBe(false);
+      expect(result.error).toMatch(/only available for APPROVED visits/i);
+    });
+
+    it("rejects auto check-in if visit window has expired", () => {
+      const result = evaluateAutoCheckIn({
+        visit: baseVisit,
+        door: perimeterDoor,
+        tappedAtUtc: "2026-11-13T12:05:00.000Z",
+        direction: "in",
+      });
+
+      expect(result.eligible).toBe(false);
+      expect(result.error).toBe(
+        "Visit window has expired. Scheduled end was 2026-11-13T12:00:00.000Z. Please proceed to reception.",
+      );
     });
   });
 });

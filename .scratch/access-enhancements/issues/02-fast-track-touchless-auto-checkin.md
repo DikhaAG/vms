@@ -4,13 +4,13 @@
 
 **Blocked by:** 01: Door Topology Metadata & Implicit Room Transitions
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Door tap ingestion endpoint (`POST /api/vms/active-visits/[visitId]/tap`) accepts tap requests for visits in `APPROVED` status if the target door has `isPerimeter: true`.
-- [ ] Validates that the tap timestamp falls within the visit scheduled window (plus configurable early arrival buffer, defaulting to 15 minutes before `visitStartTime`).
-- [ ] Rejects auto check-in attempts that occur before the permitted arrival buffer with a clear message instructing the visitor to wait or consult reception.
-- [ ] Rejects auto check-in attempts on internal non-perimeter doors (`isPerimeter: false`) while visit is still in `APPROVED` status.
-- [ ] On successful auto check-in, atomically updates visit status to `CHECKED_IN`, sets `checkInTimeUtc`, initializes `tapCount: 1`, logs initial `DoorTapEvent`, and creates an arrival notification for the host.
-- [ ] Idempotent against duplicate webhook deliveries (subsequent taps while already `CHECKED_IN` record normal door passage without resetting check-in timestamp).
-- [ ] Unit and route integration tests verify on-time arrival auto check-in, early arrival denial, internal door rejection, and idempotency.
+- [x] Door tap ingestion endpoint (`POST /api/vms/active-visits/[visitId]/tap`) accepts tap requests for visits in `APPROVED` status if the target door has `isPerimeter: true`.
+- [x] Validates that the tap timestamp falls within the visit scheduled window (plus configurable early arrival buffer, defaulting to 15 minutes before `visitStartTime`).
+- [x] Rejects auto check-in attempts that occur before the permitted arrival buffer with a clear message instructing the visitor to wait or consult reception.
+- [x] Rejects auto check-in attempts on internal non-perimeter doors (`isPerimeter: false`) while visit is still in `APPROVED` status.
+- [x] On successful auto check-in, atomically updates visit status to `CHECKED_IN`, sets `checkInTimeUtc`, initializes `tapCount: 1`, logs initial `DoorTapEvent`, and creates an arrival notification for the host.
+- [x] Idempotent against duplicate webhook deliveries (subsequent taps while already `CHECKED_IN` record normal door passage without resetting check-in timestamp).
+- [x] Unit and route integration tests verify on-time arrival auto check-in, early arrival denial, internal door rejection, and idempotency.
 

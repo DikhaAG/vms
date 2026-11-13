@@ -68,6 +68,26 @@ export interface DoorTapEvent {
   transitionNote?: string;
 }
 
+export interface HostArrivalNotification {
+  id: string;
+  visitId: string;
+  hostId?: string;
+  hostName?: string;
+  visitorName: string;
+  doorIndexCode: string;
+  doorName?: string;
+  arrivedAtUtc: string;
+  message: string;
+  createdAtUtc: string;
+}
+
+export interface AutoCheckInEvaluation {
+  eligible: boolean;
+  error?: string;
+  earliestAllowedUtc: string;
+  bufferMinutes: number;
+}
+
 export interface CheckOutInput {
   visitId: string;
   operatorUserId: string;
@@ -227,6 +247,111 @@ export function isTapQuotaExceeded(
   }
 
   return false;
+}
+
+/**
+ * Pure evaluation function for determining whether a visit and door are eligible for touchless auto check-in.
+ */
+export function isAutoCheckInEligible(
+  visit: { status: VisitStatus },
+  door?: { isPerimeter?: boolean } | null,
+): boolean {
+  return visit.status === "APPROVED" && Boolean(door?.isPerimeter);
+}
+
+/**
+ * Pure evaluation function for Auto Check-In on First Perimeter Tap.
+ * Validates visit status, door perimeter qualification, tap direction,
+ * and arrival time window (including configurable early arrival buffer).
+ */
+export function evaluateAutoCheckIn(params: {
+  visit: {
+    status: VisitStatus;
+    scheduledStartTimeUtc: string;
+    scheduledEndTimeUtc?: string;
+  };
+  door?: {
+    isPerimeter?: boolean;
+    doorName?: string;
+    doorIndexCode?: string;
+  } | null;
+  tappedAtUtc?: string | Date;
+  direction?: DoorDirection;
+  earlyArrivalBufferMinutes?: number;
+}): AutoCheckInEvaluation {
+  const bufferMinutes =
+    typeof params.earlyArrivalBufferMinutes === "number" &&
+    params.earlyArrivalBufferMinutes >= 0
+      ? params.earlyArrivalBufferMinutes
+      : 15;
+
+  const scheduledStartMs = new Date(params.visit.scheduledStartTimeUtc).getTime();
+  const earliestAllowedMs = scheduledStartMs - bufferMinutes * 60 * 1000;
+  const earliestAllowedUtc = new Date(earliestAllowedMs).toISOString();
+
+  if (params.visit.status !== "APPROVED") {
+    return {
+      eligible: false,
+      error: `Auto check-in only available for APPROVED visits (current: ${params.visit.status}).`,
+      earliestAllowedUtc,
+      bufferMinutes,
+    };
+  }
+
+  const isPerimeter = Boolean(params.door?.isPerimeter);
+  if (!isPerimeter) {
+    return {
+      eligible: false,
+      error:
+        "Auto check-in only permitted at designated perimeter entry points. Please check in at reception.",
+      earliestAllowedUtc,
+      bufferMinutes,
+    };
+  }
+
+  const direction = params.direction ?? "in";
+  if (direction !== "in") {
+    return {
+      eligible: false,
+      error: "Auto check-in only permitted for entry taps.",
+      earliestAllowedUtc,
+      bufferMinutes,
+    };
+  }
+
+  const tapTime = params.tappedAtUtc
+    ? params.tappedAtUtc instanceof Date
+      ? params.tappedAtUtc
+      : new Date(params.tappedAtUtc)
+    : new Date();
+  const tapMs = tapTime.getTime();
+
+  if (tapMs < earliestAllowedMs) {
+    return {
+      eligible: false,
+      error: `Too early for auto check-in. Scheduled start is ${params.visit.scheduledStartTimeUtc}. Please wait or proceed to reception.`,
+      earliestAllowedUtc,
+      bufferMinutes,
+    };
+  }
+
+  if (params.visit.scheduledEndTimeUtc) {
+    const endMs = new Date(params.visit.scheduledEndTimeUtc).getTime();
+    if (tapMs > endMs) {
+      return {
+        eligible: false,
+        error: `Visit window has expired. Scheduled end was ${params.visit.scheduledEndTimeUtc}. Please proceed to reception.`,
+        earliestAllowedUtc,
+        bufferMinutes,
+      };
+    }
+  }
+
+  return {
+    eligible: true,
+    earliestAllowedUtc,
+    bufferMinutes,
+  };
 }
 
 export interface ValidationSuccess<T> {
