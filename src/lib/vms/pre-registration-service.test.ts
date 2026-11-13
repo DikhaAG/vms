@@ -150,4 +150,33 @@ describe("createPreRegistration", () => {
     expect(result.visit?.hikCentral?.appointRecordId).toBe("mock-rec-777");
     expect(dispatchedParams).toBeDefined();
   });
+
+  it("passes facePhotoData to dispatcher and stores normalized facePhoto and sync status in Visit", async () => {
+    let dispatchedParams: HikCentralAppointmentParams | undefined;
+    const mockDispatcher = async (
+      params: HikCentralAppointmentParams,
+    ): Promise<HikCentralAppointmentSuccess> => {
+      dispatchedParams = params;
+      return {
+        appointRecordId: "mock-rec-face-1",
+        visitorId: "mock-vis-face-1",
+      };
+    };
+
+    const faceDataUri = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/";
+    const inputWithFace: CreatePreRegistrationInput = {
+      ...baseInput,
+      facePhoto: faceDataUri,
+    };
+
+    const result = await createPreRegistration(inputWithFace, {
+      repository: repo,
+      appointmentDispatcher: mockDispatcher,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(dispatchedParams?.facePhotoData).toBe(faceDataUri);
+    expect(result.visit?.facePhoto).toBe(faceDataUri);
+    expect(result.visit?.credentialSyncStatus).toBe("Applied");
+  });
 });

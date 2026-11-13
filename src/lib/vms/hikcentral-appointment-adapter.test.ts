@@ -108,6 +108,56 @@ describe("dispatchHikCentralAppointment", () => {
       expect(visitorList[0].VisitorInfo.phoneNo).toBe("+628111222333");
       expect(visitorList[0].VisitorInfo.certificateNo).toBe("3171012345670001");
       expect(visitorList[0].VisitorInfo.certificateType).toBe(111);
+      expect(visitorList[0].VisitorInfo.faces).toBeUndefined();
+    });
+
+    it("attaches normalized faces array to VisitorInfo when facePhotoData is supplied", async () => {
+      let recordedBody: unknown;
+
+      const mockClient: HikCentralClient = {
+        async post<TResponse, TBody = unknown>(
+          _path: string,
+          body?: TBody,
+        ): Promise<HikCentralResponse<TResponse>> {
+          recordedBody = body;
+          return {
+            code: "0",
+            msg: "Success",
+            data: {
+              appointRecordId: "hik-rec-face-1",
+              visitorId: "hik-vis-face-1",
+            } as TResponse,
+          };
+        },
+      };
+
+      const rawFaceBase64 = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBD";
+      const faceDataUri = `data:image/jpeg;base64,${rawFaceBase64}`;
+
+      await dispatchHikCentralAppointment(
+        {
+          ...baseParams,
+          facePhotoData: faceDataUri,
+        },
+        {
+          mode: "live",
+          client: mockClient,
+        },
+      );
+
+      const body = recordedBody as {
+        visitorInfoList: Array<{
+          VisitorInfo: {
+            faces?: Array<{ faceData: string }>;
+          };
+        }>;
+      };
+
+      expect(body.visitorInfoList[0].VisitorInfo.faces).toEqual([
+        {
+          faceData: rawFaceBase64,
+        },
+      ]);
     });
 
     it("throws if HikCentral response data is missing even when code is 0", async () => {

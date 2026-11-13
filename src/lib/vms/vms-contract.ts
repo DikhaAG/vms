@@ -43,8 +43,19 @@ export const STUB_SCENARIOS = [
   "success",
   "auth-error",
   "network-error",
+  "face-quality-failed",
+  "sync-failed",
+  "sync-pending",
 ] as const;
 export type StubScenario = (typeof STUB_SCENARIOS)[number];
+
+export const CREDENTIAL_SYNC_STATUSES = [
+  "Applied",
+  "Syncing",
+  "Failed",
+  "Unknown",
+] as const;
+export type CredentialSyncStatus = (typeof CREDENTIAL_SYNC_STATUSES)[number];
 
 export interface Facility {
   id: string;
@@ -80,6 +91,8 @@ export interface Visit {
   scheduledStartTimeFacility: string;
   scheduledEndTimeFacility: string;
   status: VisitStatus;
+  facePhoto?: string;
+  credentialSyncStatus?: CredentialSyncStatus;
   hikCentral?: HikCentralVisitReference;
   createdAtUtc: string;
   updatedAtUtc: string;
@@ -99,6 +112,7 @@ export interface CreatePreRegistrationInput {
   visitReasonDetail?: string;
   scheduledStartTime: string;
   scheduledEndTime: string;
+  facePhoto?: string;
   mode?: PreRegistrationMode;
   stubScenario?: StubScenario;
 }
@@ -342,6 +356,16 @@ export function validatePreRegistrationInput(raw: unknown): ValidationOutcome {
     }
   }
 
+  // Face photo (optional)
+  let facePhoto: string | undefined;
+  if (record.facePhoto !== undefined && record.facePhoto !== null) {
+    if (typeof record.facePhoto === "string") {
+      facePhoto = record.facePhoto.trim() || undefined;
+    } else {
+      errors.facePhoto = "Face photo must be a string.";
+    }
+  }
+
   // Mode and stubScenario
   let mode: PreRegistrationMode | undefined;
   if (record.mode !== undefined && record.mode !== null) {
@@ -381,6 +405,7 @@ export function validatePreRegistrationInput(raw: unknown): ValidationOutcome {
       visitReasonDetail,
       scheduledStartTime,
       scheduledEndTime,
+      facePhoto,
       mode,
       stubScenario,
     },

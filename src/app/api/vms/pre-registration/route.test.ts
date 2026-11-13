@@ -106,4 +106,24 @@ describe("POST /api/vms/pre-registration", () => {
     expect(body.ok).toBe(false);
     expect(body.error.kind).toBe("upstream");
   });
+
+  it("successfully persists facePhoto and initializes credentialSyncStatus", async () => {
+    const faceDataUri = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+    const request = new Request("http://localhost:3000/api/vms/pre-registration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...validPayload,
+        facePhoto: faceDataUri,
+      }),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+
+    const body = await response.json();
+    expect(body.ok).toBe(true);
+    expect(body.visit.facePhoto).toBe(faceDataUri);
+    expect(body.visit.credentialSyncStatus).toBe("Applied");
+  });
 });

@@ -5,6 +5,7 @@ import {
   type HikCentralClient,
 } from "../hikcentral/client";
 import type { PreRegistrationMode, StubScenario } from "./vms-contract";
+import { stripDataUriPrefix } from "./face-normalizer";
 
 export interface HikCentralAppointmentParams {
   userId?: string;
@@ -19,6 +20,7 @@ export interface HikCentralAppointmentParams {
   visitorEmail?: string;
   certificateType?: number;
   certificateNo?: string;
+  facePhotoData?: string;
 }
 
 export interface HikCentralAppointmentSuccess {
@@ -86,6 +88,10 @@ export async function dispatchHikCentralAppointment(
     client = createHikCentralClient(config);
   }
 
+  const cleanFaceData = params.facePhotoData
+    ? stripDataUriPrefix(params.facePhotoData)
+    : undefined;
+
   const wirePayload = {
     receptionistId: params.hostId,
     appointStartTime: params.appointStartTime,
@@ -104,6 +110,15 @@ export async function dispatchHikCentralAppointment(
           accessInfo: {
             qrCodeValidNum: 0,
           },
+          ...(cleanFaceData
+            ? {
+                faces: [
+                  {
+                    faceData: cleanFaceData,
+                  },
+                ],
+              }
+            : {}),
         },
       },
     ],

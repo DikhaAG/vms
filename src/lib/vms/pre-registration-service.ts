@@ -14,6 +14,7 @@ import {
 } from "./hikcentral-appointment-adapter";
 import { defaultVmsRepository, type IVmsRepository } from "./repository";
 import { HikCentralError } from "../hikcentral/client";
+import { toJpegDataUri } from "./face-normalizer";
 
 export interface PreRegistrationServiceDeps {
   repository?: IVmsRepository;
@@ -130,6 +131,7 @@ export async function createPreRegistration(
         visitorEmail: input.visitorEmail,
         certificateType: input.certificateType,
         certificateNo: input.certificateNo,
+        facePhotoData: input.facePhoto,
       },
       {
         mode: input.mode,
@@ -170,6 +172,8 @@ export async function createPreRegistration(
     scheduledStartTimeFacility,
     scheduledEndTimeFacility,
     status: "PENDING_APPROVAL",
+    facePhoto: input.facePhoto ? toJpegDataUri(input.facePhoto) : undefined,
+    credentialSyncStatus: "Applied",
     hikCentral: {
       appointRecordId: hikResult.appointRecordId,
       visitorId: hikResult.visitorId,

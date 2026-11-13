@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { GET as getFacilities } from "@/app/api/vms/facilities/route";
 import { POST as postPreRegistration } from "@/app/api/vms/pre-registration/route";
+import { POST as postRetrySync } from "@/app/api/vms/credentials/retry-sync/route";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import type { Facility, PreRegistrationResult } from "@/lib/vms/vms-contract";
+import {
+  createSampleFaceJpegDataUri,
+  normalizeFaceImage,
+  isFacePhotoSizeValid,
+} from "@/lib/vms/face-normalizer";
+import { NextRequest } from "next/server";
 
 describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
   it("executes the complete facility selection, scheduling, timezone translation, and appointment dispatch flow", async () => {
@@ -142,5 +149,74 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
     const jsonString = JSON.stringify(body);
     expect(jsonString).not.toContain("HIKCENTRAL_APP_SECRET");
     expect(jsonString).not.toContain("password");
+  });
+
+  it("handles biometric face normalization, appointment binding, and credential sync reapplication", async () => {
+    // 1. Generate & normalize sample face photo
+    const sampleUri = createSampleFaceJpegDataUri(15000);
+    const normalized = await normalizeFaceImage(sampleUri);
+
+    expect(isFacePhotoSizeValid(normalized.byteSize)).toBe(true);
+    expect(normalized.dataUri.startsWith("data:image/jpeg;base64,")).toBe(true);
+
+    // 2. Submit pre-registration with biometric face photo
+    const payloadWithFace = {
+      facilityId: "fac-jakarta",
+      hostId: "emp-host-01",
+      visitorFamilyName: "Kusuma",
+      visitorGivenName: "Citra",
+      visitorPhone: "+6281999888777",
+      certificateType: 111,
+      certificateNo: "3171099988870002",
+      visitReasonType: 3,
+      scheduledStartTime: "2026-11-13T14:00:00",
+      scheduledEndTime: "2026-11-13T16:00:00",
+      facePhoto: normalized.dataUri,
+      mode: "stub",
+      stubScenario: "success",
+    };
+
+    const req = new Request("http://localhost:3000/api/vms/pre-registration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payloadWithFace),
+    });
+
+    const res = await postPreRegistration(req);
+    expect(res.status).toBe(201);
+
+    const body = (await res.json()) as PreRegistrationResult;
+    expect(body.ok).toBe(true);
+
+    const visit = body.visit!;
+    expect(visit.facePhoto).toBe(normalized.dataUri);
+    expect(visit.credentialSyncStatus).toBe("Applied");
+    expect(visit.hikCentral?.visitorId).toBeDefined();
+
+    // 3. Trigger manual credential reapplication (Retry Sync)
+    const retryReq = new NextRequest(
+      "http://localhost:3000/api/vms/credentials/retry-sync",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visitorId: visit.hikCentral!.visitorId,
+          mode: "stub",
+          stubScenario: "success",
+        }),
+      },
+    );
+
+    const retryRes = await postRetrySync(retryReq);
+    expect(retryRes.status).toBe(200);
+
+    const retryBody = (await retryRes.json()) as {
+      ok: boolean;
+      syncStatus: string;
+      message: string;
+    };
+    expect(retryBody.ok).toBe(true);
+    expect(retryBody.syncStatus).toBe("Applied");
+    expect(retryBody.message).toMatch(/triggered/i);
   });
 });

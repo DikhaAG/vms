@@ -1,6 +1,14 @@
 "use client";
 
-import { useId, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import Image from "next/image";
 import {
   CERTIFICATE_TYPES,
@@ -11,6 +19,7 @@ import {
   VISIT_REASON_TYPES,
   validatePreRegistrationInput,
   type CertificateType,
+  type CredentialSyncStatus,
   type Facility,
   type PreRegistrationMode,
   type PreRegistrationResult,
@@ -18,6 +27,13 @@ import {
   type Visit,
   type VisitReasonType,
 } from "@/lib/vms/vms-contract";
+import {
+  createSampleFaceJpegDataUri,
+  formatFacePhotoSize,
+  isFacePhotoSizeValid,
+  processBrowserImageFile,
+  toJpegDataUri,
+} from "@/lib/vms/face-normalizer";
 
 interface PreRegistrationFormProps {
   initialFacilities: Facility[];
@@ -56,6 +72,13 @@ export function PreRegistrationForm({
     `${tomorrowDateStr}T12:00`,
   );
 
+  // Biometric Face Photo States
+  const [facePhoto, setFacePhoto] = useState<string>("");
+  const [faceByteSize, setFaceByteSize] = useState<number>(0);
+  const [faceError, setFaceError] = useState<string | null>(null);
+  const [isNormalizing, setIsNormalizing] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+
   // Execution & Simulation Controls
   const [mode, setMode] = useState<PreRegistrationMode>("stub");
   const [stubScenario, setStubScenario] = useState<StubScenario>("success");
@@ -66,9 +89,161 @@ export function PreRegistrationForm({
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [createdVisit, setCreatedVisit] = useState<Visit | null>(null);
 
+  // Credential Hardware Sync State
+  const [credentialSyncStatus, setCredentialSyncStatus] =
+    useState<CredentialSyncStatus>("Applied");
+  const [isRetryingSync, setIsRetryingSync] = useState(false);
+  const [retrySyncMessage, setRetrySyncMessage] = useState<string | null>(null);
+
+  // Camera Refs
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  const stopCameraStream = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+    setIsCameraActive(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopCameraStream();
+    };
+  }, [stopCameraStream]);
+
   const selectedFacility =
     initialFacilities.find((f) => f.id === selectedFacilityId) ??
     initialFacilities[0];
+
+  // Face Photo Handlers
+  async function handleFileUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setFaceError(null);
+    setIsNormalizing(true);
+    try {
+      const normalized = await processBrowserImageFile(file);
+      setFacePhoto(normalized.dataUri);
+      setFaceByteSize(normalized.byteSize);
+    } catch (err) {
+      setFaceError(
+        err instanceof Error ? err.message : "Failed to process image.",
+      );
+    } finally {
+      setIsNormalizing(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleStartCamera() {
+    setFaceError(null);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setFaceError("Webcam access is not supported by your browser environment.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      mediaStreamRef.current = stream;
+      setIsCameraActive(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      setFaceError(
+        err instanceof Error
+          ? `Camera access error: ${err.message}`
+          : "Unable to access camera.",
+      );
+    }
+  }
+
+  function handleCaptureCamera() {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const width = video.videoWidth || 640;
+    const height = video.videoHeight || 480;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+
+    stopCameraStream();
+    setIsNormalizing(true);
+
+    processBrowserImageFile(dataUrl)
+      .then((normalized) => {
+        setFacePhoto(normalized.dataUri);
+        setFaceByteSize(normalized.byteSize);
+      })
+      .catch((err) => {
+        setFaceError(
+          err instanceof Error
+            ? err.message
+            : "Failed to normalize webcam photo.",
+        );
+      })
+      .finally(() => {
+        setIsNormalizing(false);
+      });
+  }
+
+  function handleLoadSamplePhoto() {
+    setFaceError(null);
+    const sampleDataUri = createSampleFaceJpegDataUri(25088); // 24.5 KB
+    setFacePhoto(sampleDataUri);
+    setFaceByteSize(25088);
+  }
+
+  function handleRemovePhoto() {
+    setFacePhoto("");
+    setFaceByteSize(0);
+    setFaceError(null);
+  }
+
+  async function handleRetrySync() {
+    if (!createdVisit?.hikCentral?.visitorId) return;
+
+    setIsRetryingSync(true);
+    setRetrySyncMessage(null);
+
+    try {
+      const response = await fetch("/api/vms/credentials/retry-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          visitorId: createdVisit.hikCentral.visitorId,
+          mode,
+          stubScenario,
+        }),
+      });
+
+      const json = await response.json();
+      if (json.ok) {
+        setCredentialSyncStatus(json.syncStatus as CredentialSyncStatus);
+        setRetrySyncMessage(json.message);
+      } else {
+        setRetrySyncMessage(json.error ?? "Retry sync failed.");
+      }
+    } catch (err) {
+      setRetrySyncMessage(
+        err instanceof Error ? err.message : "Network error during sync retry.",
+      );
+    } finally {
+      setIsRetryingSync(false);
+    }
+  }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -88,6 +263,7 @@ export function PreRegistrationForm({
       visitReasonDetail: visitReasonDetail.trim() || undefined,
       scheduledStartTime,
       scheduledEndTime,
+      facePhoto: facePhoto || undefined,
       mode,
       ...(mode === "stub" ? { stubScenario } : {}),
     };
@@ -111,6 +287,8 @@ export function PreRegistrationForm({
       const result: PreRegistrationResult = await response.json();
       if (result.ok && result.visit) {
         setCreatedVisit(result.visit);
+        setCredentialSyncStatus(result.visit.credentialSyncStatus ?? "Applied");
+        setRetrySyncMessage(null);
       } else {
         if (result.error?.fieldErrors) {
           setFieldErrors(result.error.fieldErrors);
@@ -199,7 +377,7 @@ export function PreRegistrationForm({
                 htmlFor={`${formId}-given-name`}
                 className="block text-xs font-medium text-neutral-700"
               >
-                Given Name / First Name *
+                Given Name *
               </label>
               <input
                 id={`${formId}-given-name`}
@@ -208,8 +386,14 @@ export function PreRegistrationForm({
                 value={visitorGivenName}
                 onChange={(e) => setVisitorGivenName(e.target.value)}
                 autoCorrect="off"
+                autoCapitalize="none"
                 spellCheck={false}
-                className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                placeholder="Rian"
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 shadow-xs focus:outline-none focus:ring-2 ${
+                  fieldErrors.visitorGivenName
+                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                    : "border-neutral-300 focus:border-neutral-900 focus:ring-neutral-900/15"
+                }`}
               />
               {fieldErrors.visitorGivenName ? (
                 <p className="mt-1 text-xs text-rose-600">
@@ -223,7 +407,7 @@ export function PreRegistrationForm({
                 htmlFor={`${formId}-family-name`}
                 className="block text-xs font-medium text-neutral-700"
               >
-                Family Name / Last Name *
+                Family Name / Surname *
               </label>
               <input
                 id={`${formId}-family-name`}
@@ -232,8 +416,14 @@ export function PreRegistrationForm({
                 value={visitorFamilyName}
                 onChange={(e) => setVisitorFamilyName(e.target.value)}
                 autoCorrect="off"
+                autoCapitalize="none"
                 spellCheck={false}
-                className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                placeholder="Pratama"
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 shadow-xs focus:outline-none focus:ring-2 ${
+                  fieldErrors.visitorFamilyName
+                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                    : "border-neutral-300 focus:border-neutral-900 focus:ring-neutral-900/15"
+                }`}
               />
               {fieldErrors.visitorFamilyName ? (
                 <p className="mt-1 text-xs text-rose-600">
@@ -241,15 +431,13 @@ export function PreRegistrationForm({
                 </p>
               ) : null}
             </div>
-          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label
                 htmlFor={`${formId}-phone`}
                 className="block text-xs font-medium text-neutral-700"
               >
-                Phone Number
+                Phone Number (e.g. +62...)
               </label>
               <input
                 id={`${formId}-phone`}
@@ -273,13 +461,23 @@ export function PreRegistrationForm({
                 type="email"
                 value={visitorEmail}
                 onChange={(e) => setVisitorEmail(e.target.value)}
-                placeholder="visitor@company.com"
-                className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="rian.pratama@example.com"
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 shadow-xs focus:outline-none focus:ring-2 ${
+                  fieldErrors.visitorEmail
+                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                    : "border-neutral-300 focus:border-neutral-900 focus:ring-neutral-900/15"
+                }`}
               />
+              {fieldErrors.visitorEmail ? (
+                <p className="mt-1 text-xs text-rose-600">
+                  {fieldErrors.visitorEmail}
+                </p>
+              ) : null}
             </div>
-          </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label
                 htmlFor={`${formId}-cert-type`}
@@ -325,10 +523,147 @@ export function PreRegistrationForm({
           </div>
         </fieldset>
 
-        {/* Section 3: Visit Schedule & Reason */}
+        {/* Section 3: Biometric Face Photo Capture & Verification */}
+        <fieldset className="space-y-4 border-t border-neutral-100 pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <legend className="text-sm font-semibold text-neutral-900">
+                3. Biometric Face Photo Capture & Verification
+              </legend>
+              <p className="text-xs text-neutral-600">
+                HikCentral MinMoe face terminals strictly enforce JPEG format between 10 KB and 100 KB.
+              </p>
+            </div>
+            {facePhoto && faceByteSize ? (
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  isFacePhotoSizeValid(faceByteSize)
+                    ? "bg-emerald-100 text-emerald-800"
+                    : "bg-rose-100 text-rose-800"
+                }`}
+              >
+                {formatFacePhotoSize(faceByteSize)} (
+                {isFacePhotoSizeValid(faceByteSize)
+                  ? "Valid 10–100 KB"
+                  : "Out of bounds"}
+                )
+              </span>
+            ) : null}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-wrap items-center gap-3">
+            <label
+              htmlFor={`${formId}-face-file`}
+              className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-800 transition hover:bg-neutral-50 shadow-2xs"
+            >
+              <span>{isNormalizing ? "Processing..." : "Upload Photo File"}</span>
+              <input
+                id={`${formId}-face-file`}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileUpload}
+                disabled={isNormalizing}
+                className="sr-only"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={isCameraActive ? stopCameraStream : handleStartCamera}
+              className="inline-flex items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-800 transition hover:bg-neutral-50 shadow-2xs"
+            >
+              {isCameraActive ? "Close Camera" : "Take Photo via Camera"}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLoadSamplePhoto}
+              className="inline-flex items-center justify-center rounded-lg border border-neutral-200 bg-neutral-100 px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-200"
+            >
+              Load Compliant Sample (24.5 KB)
+            </button>
+
+            {facePhoto ? (
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                className="inline-flex items-center justify-center rounded-lg text-xs font-medium text-rose-600 hover:text-rose-800"
+              >
+                Remove Photo
+              </button>
+            ) : null}
+          </div>
+
+          {/* Webcam Viewfinder if active */}
+          {isCameraActive ? (
+            <div className="overflow-hidden rounded-xl border border-neutral-300 bg-neutral-900 p-3 text-center">
+              <div className="relative mx-auto aspect-4/3 max-w-sm overflow-hidden rounded-lg bg-black">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="h-full w-full object-cover"
+                />
+                <div className="pointer-events-none absolute inset-6 rounded-2xl border-2 border-dashed border-white/60" />
+              </div>
+              <div className="mt-3 flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleCaptureCamera}
+                  className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 shadow-xs"
+                >
+                  Snap Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={stopCameraStream}
+                  className="rounded-lg bg-neutral-700 px-4 py-1.5 text-xs font-semibold text-neutral-200 hover:bg-neutral-600"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Instant Photo Preview */}
+          {facePhoto ? (
+            <div className="flex items-center gap-4 rounded-lg border border-neutral-200 bg-neutral-50/70 p-3">
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-2xs">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={facePhoto}
+                  alt="Visitor Biometric Face Preview"
+                  className="h-full w-full object-cover"
+                />
+              </div>
+              <div className="space-y-1 text-xs">
+                <p className="font-semibold text-neutral-900">
+                  Normalized Biometric Face Photo
+                </p>
+                <p className="text-neutral-600">
+                  Format: <span className="font-mono">JPEG</span> &bull; Size:{" "}
+                  <span className="font-mono font-medium">
+                    {formatFacePhotoSize(faceByteSize)}
+                  </span>
+                </p>
+                <p className="text-emerald-700">
+                  ✓ Verified within HikCentral bounds (10 KB – 100 KB)
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {faceError ? (
+            <p className="text-xs font-medium text-rose-600">{faceError}</p>
+          ) : null}
+        </fieldset>
+
+        {/* Section 4: Visit Schedule & Reason */}
         <fieldset className="space-y-4 border-t border-neutral-100 pt-6">
           <legend className="text-sm font-semibold text-neutral-900">
-            3. Visit Schedule & Purpose
+            4. Visit Schedule & Purpose
           </legend>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -349,7 +684,11 @@ export function PreRegistrationForm({
                 required
                 value={scheduledStartTime}
                 onChange={(e) => setScheduledStartTime(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 shadow-xs focus:outline-none focus:ring-2 ${
+                  fieldErrors.scheduledStartTime
+                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                    : "border-neutral-300 focus:border-neutral-900 focus:ring-neutral-900/15"
+                }`}
               />
               {fieldErrors.scheduledStartTime ? (
                 <p className="mt-1 text-xs text-rose-600">
@@ -375,7 +714,11 @@ export function PreRegistrationForm({
                 required
                 value={scheduledEndTime}
                 onChange={(e) => setScheduledEndTime(e.target.value)}
-                className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 shadow-xs focus:outline-none focus:ring-2 ${
+                  fieldErrors.scheduledEndTime
+                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                    : "border-neutral-300 focus:border-neutral-900 focus:ring-neutral-900/15"
+                }`}
               />
               {fieldErrors.scheduledEndTime ? (
                 <p className="mt-1 text-xs text-rose-600">
@@ -383,30 +726,89 @@ export function PreRegistrationForm({
                 </p>
               ) : null}
             </div>
-          </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <label
-                htmlFor={`${formId}-visit-reason`}
+                htmlFor={`${formId}-reason-type`}
                 className="block text-xs font-medium text-neutral-700"
               >
-                Visit Purpose Type
+                Visit Reason *
               </label>
               <select
-                id={`${formId}-visit-reason`}
+                id={`${formId}-reason-type`}
                 value={visitReasonType}
                 onChange={(e) =>
                   setVisitReasonType(Number(e.target.value) as VisitReasonType)
                 }
                 className="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
               >
-                {VISIT_REASON_TYPES.map((reason) => (
-                  <option key={reason} value={reason}>
-                    {VISIT_REASON_LABELS[reason]}
+                {VISIT_REASON_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {VISIT_REASON_LABELS[type]}
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor={`${formId}-reason-detail`}
+                className="block text-xs font-medium text-neutral-700"
+              >
+                Reason Detail {visitReasonType === 4 ? "*" : "(Optional)"}
+              </label>
+              <input
+                id={`${formId}-reason-detail`}
+                type="text"
+                value={visitReasonDetail}
+                onChange={(e) => setVisitReasonDetail(e.target.value)}
+                placeholder={
+                  visitReasonType === 4
+                    ? "Mandatory explanation for 'Others'..."
+                    : "e.g. Q4 vendor partnership meeting"
+                }
+                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 shadow-xs focus:outline-none focus:ring-2 ${
+                  fieldErrors.visitReasonDetail
+                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
+                    : "border-neutral-300 focus:border-neutral-900 focus:ring-neutral-900/15"
+                }`}
+              />
+              {fieldErrors.visitReasonDetail ? (
+                <p className="mt-1 text-xs text-rose-600">
+                  {fieldErrors.visitReasonDetail}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </fieldset>
+
+        {/* Section 5: Internal Host Sponsorship */}
+        <fieldset className="space-y-4 border-t border-neutral-100 pt-6">
+          <legend className="text-sm font-semibold text-neutral-900">
+            5. Internal Host Employee
+          </legend>
+          <p className="text-xs text-neutral-600">
+            Accountable internal sponsor (translated to{" "}
+            <span className="font-mono">receptionistId</span> on HikCentral
+            wire payload).
+          </p>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor={`${formId}-host-name`}
+                className="block text-xs font-medium text-neutral-700"
+              >
+                Host Employee Name
+              </label>
+              <input
+                id={`${formId}-host-name`}
+                type="text"
+                value={hostName}
+                onChange={(e) => setHostName(e.target.value)}
+                placeholder="Budi Santoso"
+                className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+              />
             </div>
 
             <div>
@@ -428,122 +830,66 @@ export function PreRegistrationForm({
                 className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
               />
             </div>
-
-            <div>
-              <label
-                htmlFor={`${formId}-host-name`}
-                className="block text-xs font-medium text-neutral-700"
-              >
-                Host Name
-              </label>
-              <input
-                id={`${formId}-host-name`}
-                type="text"
-                value={hostName}
-                onChange={(e) => setHostName(e.target.value)}
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder="Budi Santoso"
-                className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
-              />
-            </div>
           </div>
-
-          {visitReasonType === 4 ? (
-            <div>
-              <label
-                htmlFor={`${formId}-visit-detail`}
-                className="block text-xs font-medium text-neutral-700"
-              >
-                Specific Purpose Detail (Required for &apos;Others&apos;) *
-              </label>
-              <input
-                id={`${formId}-visit-detail`}
-                type="text"
-                required
-                value={visitReasonDetail}
-                onChange={(e) => setVisitReasonDetail(e.target.value)}
-                placeholder="e.g. Vendor server rack maintenance"
-                className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
-              />
-              {fieldErrors.visitReasonDetail ? (
-                <p className="mt-1 text-xs text-rose-600">
-                  {fieldErrors.visitReasonDetail}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
         </fieldset>
 
-        {/* Section 4: Execution Mode Controls */}
-        <fieldset className="space-y-3 border-t border-neutral-100 pt-6">
+        {/* Section 6: Execution & Simulation Controls */}
+        <fieldset className="space-y-4 border-t border-neutral-100 pt-6">
           <legend className="text-sm font-semibold text-neutral-900">
-            4. Execution & Testing Mode
+            6. Execution Mode & Integration Simulation
           </legend>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            {PRE_REGISTRATION_MODES.map((m) => {
-              const checked = mode === m;
-              return (
-                <label
-                  key={m}
-                  htmlFor={`${formId}-mode-${m}`}
-                  className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3.5 transition ${
-                    checked
-                      ? "border-neutral-900 bg-neutral-50"
-                      : "border-neutral-200 bg-white hover:border-neutral-300"
-                  }`}
-                >
-                  <input
-                    id={`${formId}-mode-${m}`}
-                    type="radio"
-                    name="mode"
-                    value={m}
-                    checked={checked}
-                    onChange={() => setMode(m)}
-                    className="mt-0.5 h-4 w-4 border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                  />
-                  <div>
-                    <span className="block text-sm font-medium text-neutral-900 capitalize">
-                      {m} Mode
-                    </span>
-                    <span className="mt-0.5 block text-xs text-neutral-600">
-                      {m === "stub"
-                        ? "Deterministic offline responses without live HikCentral hardware."
-                        : "Executes real signed HTTPS requests using server .env config."}
-                    </span>
-                  </div>
-                </label>
-              );
-            })}
-          </div>
-
-          {mode === "stub" ? (
-            <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50/70 p-3">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
               <label
-                htmlFor={`${formId}-stub-scenario`}
+                htmlFor={`${formId}-mode`}
                 className="block text-xs font-medium text-neutral-700"
               >
-                Simulation Scenario
+                Execution Mode
               </label>
               <select
-                id={`${formId}-stub-scenario`}
-                value={stubScenario}
-                onChange={(e) => setStubScenario(e.target.value as StubScenario)}
-                className="mt-1 block w-full rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-xs text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none"
+                id={`${formId}-mode`}
+                value={mode}
+                onChange={(e) =>
+                  setMode(e.target.value as PreRegistrationMode)
+                }
+                className="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
               >
-                {STUB_SCENARIOS.map((scen) => (
-                  <option key={scen} value={scen}>
-                    {scen === "success"
-                      ? "Success — Returns appointment & visitor IDs with QR pass"
-                      : scen === "auth-error"
-                        ? "Auth Error — Simulates invalid Artemis signature (0x00072002)"
-                        : "Network Error — Simulates socket timeout or connection refused"}
+                {PRE_REGISTRATION_MODES.map((m) => (
+                  <option key={m} value={m}>
+                    {m === "live"
+                      ? "Live HikCentral OpenAPI"
+                      : "Stub Simulation (Development)"}
                   </option>
                 ))}
               </select>
             </div>
-          ) : null}
+
+            {mode === "stub" ? (
+              <div>
+                <label
+                  htmlFor={`${formId}-stub-scenario`}
+                  className="block text-xs font-medium text-neutral-700"
+                >
+                  Stub Scenario
+                </label>
+                <select
+                  id={`${formId}-stub-scenario`}
+                  value={stubScenario}
+                  onChange={(e) =>
+                    setStubScenario(e.target.value as StubScenario)
+                  }
+                  className="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                >
+                  {STUB_SCENARIOS.map((sc) => (
+                    <option key={sc} value={sc}>
+                      {sc}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
+          </div>
         </fieldset>
 
         {globalError ? (
@@ -566,7 +912,7 @@ export function PreRegistrationForm({
           </p>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isNormalizing}
             className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "Dispatching Appointment..." : "Submit Pre-Registration"}
@@ -690,34 +1036,88 @@ export function PreRegistrationForm({
               </div>
             </div>
 
-            {/* Right Col: Digital QR Pass Preview */}
-            <div className="flex flex-col items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 text-center">
+            {/* Right Col: Biometric Face & QR Pass Preview & Hardware Sync */}
+            <div className="flex flex-col items-center justify-between space-y-4 rounded-xl border border-neutral-200 bg-neutral-50/50 p-4 text-center">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-                  Digital QR Pass Preview
+                  Issued Credentials
                 </span>
                 <p className="mt-1 text-xs font-semibold text-neutral-900">
                   {createdVisit.visitorGivenName} {createdVisit.visitorFamilyName}
                 </p>
               </div>
 
-              <div className="my-3 flex h-36 w-36 items-center justify-center rounded-lg border border-neutral-200 bg-white p-2 shadow-xs">
-                {createdVisit.hikCentral?.qrCodeImage ? (
-                  <Image
-                    src={`data:image/png;base64,${createdVisit.hikCentral.qrCodeImage}`}
-                    alt={`Visitor QR Pass for ${createdVisit.visitorGivenName}`}
-                    width={128}
-                    height={128}
-                    unoptimized
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <div className="text-xs text-neutral-400">No QR Code</div>
-                )}
+              {/* Face Photo Preview in Result Card */}
+              {createdVisit.facePhoto ? (
+                <div className="flex flex-col items-center">
+                  <div className="relative h-28 w-28 overflow-hidden rounded-xl border-2 border-emerald-400 bg-white shadow-xs">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={toJpegDataUri(createdVisit.facePhoto)}
+                      alt="Enrolled Face Biometric"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <span className="mt-1 text-[11px] font-medium text-emerald-800">
+                    Biometric Face Enrolled
+                  </span>
+                </div>
+              ) : null}
+
+              {/* Digital QR Pass */}
+              <div className="flex flex-col items-center">
+                <div className="flex h-32 w-32 items-center justify-center rounded-lg border border-neutral-200 bg-white p-2 shadow-xs">
+                  {createdVisit.hikCentral?.qrCodeImage ? (
+                    <Image
+                      src={`data:image/png;base64,${createdVisit.hikCentral.qrCodeImage}`}
+                      alt={`Visitor QR Pass for ${createdVisit.visitorGivenName}`}
+                      width={112}
+                      height={112}
+                      unoptimized
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <div className="text-xs text-neutral-400">No QR Code</div>
+                  )}
+                </div>
+                <span className="mt-1 text-[11px] text-neutral-600">
+                  Digital QR Pass
+                </span>
               </div>
 
-              <div className="w-full rounded bg-amber-50 py-1 text-[11px] font-medium text-amber-800">
-                Pending Approval
+              {/* Credential Hardware Sync Status Badge & Retry Button */}
+              <div className="w-full rounded-lg border border-neutral-200 bg-white p-3 text-left">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-neutral-600">
+                    Terminal Sync:
+                  </span>
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                      credentialSyncStatus === "Applied"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : credentialSyncStatus === "Syncing"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-rose-100 text-rose-800"
+                    }`}
+                  >
+                    {credentialSyncStatus}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleRetrySync}
+                  disabled={isRetryingSync}
+                  className="mt-2.5 w-full rounded-md border border-neutral-300 bg-white py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {isRetryingSync ? "Syncing..." : "Retry Sync"}
+                </button>
+
+                {retrySyncMessage ? (
+                  <p className="mt-1.5 text-[11px] text-neutral-600">
+                    {retrySyncMessage}
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>

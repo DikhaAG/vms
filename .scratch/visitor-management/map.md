@@ -20,11 +20,14 @@ Membangun modul bisnis enterprise **Visitor Management System (VMS)** berbasis N
 ## Decisions so far
 
 <!-- Diisi otomatis dengan context pointer tiap kali tiket diselesaikan -->
-- *(Belum ada tiket yang diselesaikan; tiket 01 saat ini berada di frontier dan siap dikerjakan)*
+- [01: Facility Setup & Multi-Timezone Host Pre-Registration Tracer Bullet](issues/01-facility-setup-host-preregistration.md): Vertikal slice lengkap pre-registration selesai (commit `d41333b`). Menghasilkan isomorphic contract (`vms-contract.ts`), utilitas konversi IANA timezone offset (`timezone.ts`), in-memory repository (`repository.ts`), adapter `v2/appointment` HikCentral, service orchestrator (`pre-registration-service.ts`), route handler `/api/vms/pre-registration`, dan UI form di `/vms/pre-registration/` (69/69 tests dan `next build` lulus).
+- [02: Biometric Face Photo Capture, Normalization & Quality Verification](issues/02-biometric-face-normalization-verification.md): Implementasi normalisasi biometrik wajah JPEG 10–100 KB (`face-normalizer.ts`), adapter HikCentral untuk `faceCheck`, `auth/reapplication`, dan `elementDownloadDetail` (`hikcentral-face-adapter.ts`), integrasi `faces[].faceData` pada wire payload `v2/appointment`, route handler retry sync (`/api/vms/credentials/retry-sync`), serta UI webcam capture/instant preview/sync retry di `/vms/pre-registration/` (109/109 tests dan `next build` lulus).
 
 ## Frontier
 
-- [01: Facility Setup & Multi-Timezone Host Pre-Registration Tracer Bullet](issues/01-facility-setup-host-preregistration.md) — `Status: ready-for-agent`, unblocked, can start immediately.
+- [03: Public Self-Registration Portal (External Visitor Invitation Link)](issues/03-public-self-registration-portal.md) — `Status: ready-for-agent`, unblocked by 01 & 02.
+- [04: Approval Workflow & Monitoring List (Blacklist) Screening](issues/04-approval-workflow-blacklist-screening.md) — `Status: ready-for-agent`, unblocked.
+- [05: Dynamic Access Level Management (Door/Floor Bundling & Tap Quota)](issues/05-dynamic-access-level-tap-quota.md) — `Status: ready-for-agent`, unblocked.
 
 ## Issues Index
 
