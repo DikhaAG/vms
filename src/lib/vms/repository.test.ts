@@ -56,8 +56,8 @@ describe("InMemoryVmsRepository", () => {
       scheduledStartTimeFacility: "2026-11-13T16:00:00+07:00",
       scheduledEndTimeFacility: "2026-11-13T18:00:00+07:00",
       status: "PENDING_APPROVAL",
-      createdAtUtc: "2026-11-13T08:00:00.000Z",
-      updatedAtUtc: "2026-11-13T08:00:00.000Z",
+      createdAtUtc: new Date(Date.now() - 60000).toISOString(),
+      updatedAtUtc: new Date(Date.now() - 60000).toISOString(),
     };
 
     it("saves and retrieves a visit by id", async () => {
@@ -97,6 +97,9 @@ describe("InMemoryVmsRepository", () => {
 
       expect(updated.status).toBe("APPROVED");
       expect(updated.hikCentral?.appointRecordId).toBe("hik-rec-001");
+      expect(new Date(updated.updatedAtUtc).getTime()).toBeGreaterThanOrEqual(
+        new Date(sampleVisit.updatedAtUtc).getTime(),
+      );
 
       const retrieved = await repo.getVisit("visit-123");
       expect(retrieved?.status).toBe("APPROVED");
@@ -107,6 +110,81 @@ describe("InMemoryVmsRepository", () => {
       await expect(
         repo.updateVisit("does-not-exist", { status: "APPROVED" }),
       ).rejects.toThrow("Visit not found");
+    });
+  });
+
+  describe("invitations", () => {
+    const sampleVisit: Visit = {
+      id: "visit-inv-1",
+      facilityId: "fac-jakarta",
+      facilityName: "Jakarta Corporate HQ",
+      visitorFamilyName: "",
+      visitorGivenName: "",
+      visitReasonType: 3,
+      scheduledStartTimeUtc: "2026-11-20T02:00:00.000Z",
+      scheduledEndTimeUtc: "2026-11-20T04:00:00.000Z",
+      scheduledStartTimeFacility: "2026-11-20T09:00:00+07:00",
+      scheduledEndTimeFacility: "2026-11-20T11:00:00+07:00",
+      status: "DRAFT",
+      createdAtUtc: "2026-11-13T08:00:00.000Z",
+      updatedAtUtc: "2026-11-13T08:00:00.000Z",
+    };
+
+    it("saves and retrieves invitation token", async () => {
+      await repo.saveVisit(sampleVisit);
+      await repo.createInvitationToken({
+        token: "tok-abc-123",
+        visitId: "visit-inv-1",
+        expiresAtUtc: "2026-11-20T04:00:00.000Z",
+        isConsumed: false,
+        createdAtUtc: "2026-11-13T08:00:00.000Z",
+      });
+
+      const tokenRecord = await repo.getInvitationToken("tok-abc-123");
+      expect(tokenRecord).toBeDefined();
+      expect(tokenRecord?.token).toBe("tok-abc-123");
+      expect(tokenRecord?.isConsumed).toBe(false);
+    });
+
+    it("retrieves visit and token by invitation token", async () => {
+      await repo.saveVisit(sampleVisit);
+      await repo.createInvitationToken({
+        token: "tok-abc-123",
+        visitId: "visit-inv-1",
+        expiresAtUtc: "2026-11-20T04:00:00.000Z",
+        isConsumed: false,
+        createdAtUtc: "2026-11-13T08:00:00.000Z",
+      });
+
+      const result = await repo.getVisitByInvitationToken("tok-abc-123");
+      expect(result).toBeDefined();
+      expect(result?.visit.id).toBe("visit-inv-1");
+      expect(result?.token.token).toBe("tok-abc-123");
+    });
+
+    it("returns undefined for unknown invitation token", async () => {
+      const result = await repo.getVisitByInvitationToken("non-existent");
+      expect(result).toBeUndefined();
+    });
+
+    it("consumes an invitation token and records consumption timestamp", async () => {
+      await repo.saveVisit(sampleVisit);
+      await repo.createInvitationToken({
+        token: "tok-to-consume",
+        visitId: "visit-inv-1",
+        expiresAtUtc: "2026-11-20T04:00:00.000Z",
+        isConsumed: false,
+        createdAtUtc: "2026-11-13T08:00:00.000Z",
+      });
+
+      const consumed = await repo.consumeInvitationToken("tok-to-consume");
+      expect(consumed.isConsumed).toBe(true);
+      expect(consumed.consumedAtUtc).toBeDefined();
+
+      // Second consumption should throw
+      await expect(
+        repo.consumeInvitationToken("tok-to-consume"),
+      ).rejects.toThrow("already consumed");
     });
   });
 });

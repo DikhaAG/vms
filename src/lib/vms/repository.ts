@@ -1,4 +1,5 @@
 import type { Facility, Visit } from "./vms-contract";
+import type { InvitationToken } from "./invitation-contract";
 
 export interface ListVisitsFilter {
   facilityId?: string;
@@ -13,6 +14,17 @@ export interface IVmsRepository {
   listVisits(filter?: ListVisitsFilter): Promise<Visit[]>;
   saveVisit(visit: Visit): Promise<void>;
   updateVisit(id: string, updates: Partial<Visit>): Promise<Visit>;
+
+  // Invitation token management
+  createInvitationToken(invitation: InvitationToken): Promise<void>;
+  getInvitationToken(token: string): Promise<InvitationToken | undefined>;
+  getVisitByInvitationToken(
+    token: string,
+  ): Promise<{ visit: Visit; token: InvitationToken } | undefined>;
+  consumeInvitationToken(
+    token: string,
+    consumedAtUtc?: string,
+  ): Promise<InvitationToken>;
 }
 
 export const DEFAULT_FACILITIES: Facility[] = [
@@ -42,6 +54,7 @@ export const DEFAULT_FACILITIES: Facility[] = [
 export class InMemoryVmsRepository implements IVmsRepository {
   private facilities = new Map<string, Facility>();
   private visits = new Map<string, Visit>();
+  private invitationTokens = new Map<string, InvitationToken>();
 
   constructor(initialFacilities: Facility[] = DEFAULT_FACILITIES) {
     for (const f of initialFacilities) {
@@ -93,6 +106,52 @@ export class InMemoryVmsRepository implements IVmsRepository {
       updatedAtUtc: new Date().toISOString(),
     };
     this.visits.set(id, structuredClone(updated));
+    return structuredClone(updated);
+  }
+
+  async createInvitationToken(invitation: InvitationToken): Promise<void> {
+    this.invitationTokens.set(invitation.token, structuredClone(invitation));
+  }
+
+  async getInvitationToken(token: string): Promise<InvitationToken | undefined> {
+    const record = this.invitationTokens.get(token);
+    return record ? structuredClone(record) : undefined;
+  }
+
+  async getVisitByInvitationToken(
+    token: string,
+  ): Promise<{ visit: Visit; token: InvitationToken } | undefined> {
+    const tokenRecord = this.invitationTokens.get(token);
+    if (!tokenRecord) {
+      return undefined;
+    }
+    const visit = this.visits.get(tokenRecord.visitId);
+    if (!visit) {
+      return undefined;
+    }
+    return {
+      visit: structuredClone(visit),
+      token: structuredClone(tokenRecord),
+    };
+  }
+
+  async consumeInvitationToken(
+    token: string,
+    consumedAtUtc?: string,
+  ): Promise<InvitationToken> {
+    const existing = this.invitationTokens.get(token);
+    if (!existing) {
+      throw new Error(`Invitation token not found: ${token}`);
+    }
+    if (existing.isConsumed) {
+      throw new Error(`Invitation token already consumed: ${token}`);
+    }
+    const updated: InvitationToken = {
+      ...existing,
+      isConsumed: true,
+      consumedAtUtc: consumedAtUtc ?? new Date().toISOString(),
+    };
+    this.invitationTokens.set(token, structuredClone(updated));
     return structuredClone(updated);
   }
 }

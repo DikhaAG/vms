@@ -95,6 +95,13 @@ export function PreRegistrationForm({
   const [isRetryingSync, setIsRetryingSync] = useState(false);
   const [retrySyncMessage, setRetrySyncMessage] = useState<string | null>(null);
 
+  // Invitation Link State
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(
+    null,
+  );
+  const [copiedInvite, setCopiedInvite] = useState(false);
+
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -243,6 +250,67 @@ export function PreRegistrationForm({
     } finally {
       setIsRetryingSync(false);
     }
+  }
+
+  async function handleGenerateInviteLink() {
+    setGlobalError(null);
+    setFieldErrors({});
+    setIsGeneratingInvite(true);
+    setGeneratedInviteUrl(null);
+
+    try {
+      const payload = {
+        facilityId: selectedFacilityId,
+        hostId: hostId.trim() || undefined,
+        hostName: hostName.trim() || undefined,
+        visitReasonType,
+        visitReasonDetail: visitReasonDetail.trim() || undefined,
+        scheduledStartTime,
+        scheduledEndTime,
+        visitorFamilyName: visitorFamilyName.trim() || undefined,
+        visitorGivenName: visitorGivenName.trim() || undefined,
+        visitorPhone: visitorPhone.trim() || undefined,
+        visitorEmail: visitorEmail.trim() || undefined,
+        mode,
+        stubScenario,
+      };
+
+      const res = await fetch("/api/vms/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        if (data.error?.fieldErrors) {
+          setFieldErrors(data.error.fieldErrors);
+        }
+        setGlobalError(
+          data.error?.message ??
+            `Failed to generate invitation link (${res.status}).`,
+        );
+        return;
+      }
+
+      setGeneratedInviteUrl(data.inviteUrl);
+    } catch (err) {
+      setGlobalError(
+        err instanceof Error
+          ? err.message
+          : "Network error generating invitation link.",
+      );
+    } finally {
+      setIsGeneratingInvite(false);
+    }
+  }
+
+  function handleCopyInviteLink() {
+    if (!generatedInviteUrl) return;
+    const fullUrl = `${window.location.origin}${generatedInviteUrl}`;
+    navigator.clipboard?.writeText(fullUrl);
+    setCopiedInvite(true);
+    setTimeout(() => setCopiedInvite(false), 3000);
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -907,18 +975,82 @@ export function PreRegistrationForm({
             Initial status will be set to{" "}
             <span className="font-semibold text-neutral-800">
               PENDING_APPROVAL
-            </span>
-            .
+            </span>{" "}
+            (or <span className="font-semibold text-neutral-800">DRAFT</span> for invite links).
           </p>
-          <button
-            type="submit"
-            disabled={isSubmitting || isNormalizing}
-            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSubmitting ? "Dispatching Appointment..." : "Submit Pre-Registration"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleGenerateInviteLink}
+              disabled={isGeneratingInvite || isSubmitting}
+              className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-xs transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isGeneratingInvite ? "Generating Link..." : "🔗 Create Invite Link"}
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting || isNormalizing}
+              className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 px-5 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? "Dispatching Appointment..." : "Submit Pre-Registration"}
+            </button>
+          </div>
         </div>
       </form>
+
+      {/* Generated Invitation Link Card */}
+      {generatedInviteUrl ? (
+        <section
+          aria-label="Generated Self-Registration Link"
+          className="rounded-xl border border-blue-200 bg-blue-50/60 p-5 shadow-xs"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                🔗
+              </span>
+              <h2 className="text-sm font-bold text-blue-950">
+                Self-Registration Link Generated
+              </h2>
+            </div>
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-800">
+              Single-use • Expiring
+            </span>
+          </div>
+
+          <p className="mt-2 text-xs text-blue-900">
+            Share this link with your invited visitor. They can open it on mobile
+            or desktop, view the meeting schedule, enter their identity details,
+            and upload a compliant selfie before arrival.
+          </p>
+
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="text"
+              readOnly
+              value={typeof window !== "undefined" ? `${window.location.origin}${generatedInviteUrl}` : generatedInviteUrl}
+              className="flex-1 rounded-lg border border-blue-300 bg-white px-3 py-2 font-mono text-xs text-neutral-800 shadow-xs focus:outline-hidden"
+            />
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleCopyInviteLink}
+                className="inline-flex min-h-9 items-center justify-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-xs transition hover:bg-blue-700"
+              >
+                {copiedInvite ? "✓ Copied!" : "Copy Link"}
+              </button>
+              <a
+                href={generatedInviteUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-9 items-center justify-center rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-800 shadow-xs transition hover:bg-blue-50"
+              >
+                Open Portal ↗
+              </a>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/* Result Display Card */}
       {createdVisit ? (

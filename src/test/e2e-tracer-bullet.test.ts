@@ -219,4 +219,113 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
     expect(retryBody.syncStatus).toBe("Applied");
     expect(retryBody.message).toMatch(/triggered/i);
   });
+
+  it("executes the complete visitor self-registration flow via secure invitation link (Ticket 03)", async () => {
+    const { POST: postInvite } = await import("@/app/api/vms/invite/route");
+    const { GET: getInviteMeta, POST: postSelfReg } = await import(
+      "@/app/api/vms/invite/[token]/route"
+    );
+
+    // 1. Host creates invitation link
+    const invitePayload = {
+      facilityId: "fac-jayapura",
+      hostId: "emp-host-03",
+      hostName: "Lukas Enembe",
+      visitReasonType: 2, // Visit
+      visitReasonDetail: "Infrastructure On-Site Inspection",
+      scheduledStartTime: "2026-11-25T14:00",
+      scheduledEndTime: "2026-11-25T16:00",
+      mode: "stub",
+      stubScenario: "success",
+    };
+
+    const hostReq = new Request("http://localhost:3000/api/vms/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(invitePayload),
+    });
+
+    const hostRes = await postInvite(hostReq);
+    expect(hostRes.status).toBe(201);
+    const hostBody = await hostRes.json();
+    expect(hostBody.ok).toBe(true);
+    expect(hostBody.invitation.token).toBeDefined();
+    expect(hostBody.inviteUrl).toMatch(/^\/invite\//);
+    const token = hostBody.invitation.token as string;
+
+    // 2. Visitor opens public link and browser fetches invitation metadata
+    const metaReq = new Request(`http://localhost:3000/api/vms/invite/${token}`);
+    const metaRes = await getInviteMeta(metaReq, {
+      params: Promise.resolve({ token }),
+    });
+    expect(metaRes.status).toBe(200);
+    const metaBody = await metaRes.json();
+    expect(metaBody.ok).toBe(true);
+    expect(metaBody.data.facility.name).toBe("Jayapura Logistics Hub");
+    expect(metaBody.data.facility.timezone).toBe("Asia/Jayapura");
+    expect(metaBody.data.host.name).toBe("Lukas Enembe");
+    expect(metaBody.data.scheduledStartTimeFacility).toBe(
+      "2026-11-25T14:00:00+09:00",
+    );
+
+    // 3. Visitor captures compliant selfie and submits self-registration
+    const selfiePhoto = createSampleFaceJpegDataUri(28 * 1024);
+    const visitorPayload = {
+      visitorFamilyName: "Wamena",
+      visitorGivenName: "Karel",
+      visitorPhone: "+628999888777",
+      visitorEmail: "karel.wamena@example.com",
+      certificateType: 111,
+      certificateNo: "9171012345670001",
+      facePhoto: selfiePhoto,
+      mode: "stub",
+      stubScenario: "success",
+    };
+
+    const selfRegReq = new Request(
+      `http://localhost:3000/api/vms/invite/${token}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(visitorPayload),
+      },
+    );
+
+    const selfRegRes = await postSelfReg(selfRegReq, {
+      params: Promise.resolve({ token }),
+    });
+    expect(selfRegRes.status).toBe(200);
+    const selfRegBody = await selfRegRes.json();
+    expect(selfRegBody.ok).toBe(true);
+    expect(selfRegBody.visit).toBeDefined();
+    expect(selfRegBody.visit.status).toBe("PENDING_APPROVAL");
+    expect(selfRegBody.visit.visitorFamilyName).toBe("Wamena");
+    expect(selfRegBody.visit.visitorGivenName).toBe("Karel");
+    expect(selfRegBody.visit.scheduledStartTimeFacility).toBe(
+      "2026-11-25T14:00:00+09:00",
+    );
+
+    // Digital QR Pass is issued
+    expect(selfRegBody.qrPass).toBeDefined();
+    expect(selfRegBody.qrPass.appointRecordId).toMatch(/^apt-rec-/);
+    expect(selfRegBody.qrPass.appointCode).toBeDefined();
+    expect(selfRegBody.qrPass.qrCodeImage).toBeDefined();
+
+    // 4. Token cannot be re-used (single-use enforcement)
+    const secondSubmit = await postSelfReg(
+      new Request(`http://localhost:3000/api/vms/invite/${token}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(visitorPayload),
+      }),
+      { params: Promise.resolve({ token }) },
+    );
+    expect(secondSubmit.status).toBe(410);
+
+    // Metadata endpoint also now reports consumed
+    const metaAfterConsumed = await getInviteMeta(metaReq, {
+      params: Promise.resolve({ token }),
+    });
+    expect(metaAfterConsumed.status).toBe(410);
+  });
 });

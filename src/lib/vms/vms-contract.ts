@@ -94,6 +94,7 @@ export interface Visit {
   facePhoto?: string;
   credentialSyncStatus?: CredentialSyncStatus;
   hikCentral?: HikCentralVisitReference;
+  invitationToken?: string;
   createdAtUtc: string;
   updatedAtUtc: string;
 }
