@@ -12,7 +12,15 @@ import {
 } from "./vms-contract";
 import type { TapQuotaConfig } from "./access-level-contract";
 
-export type DoorDirection = "in" | "out";
+export const DOOR_DIRECTIONS = ["in", "out"] as const;
+export type DoorDirection = (typeof DOOR_DIRECTIONS)[number];
+
+export function isDoorDirection(value: unknown): value is DoorDirection {
+  return (
+    typeof value === "string" &&
+    (DOOR_DIRECTIONS as readonly string[]).includes(value)
+  );
+}
 
 export interface DoorTapEvent {
   id?: string;
@@ -234,8 +242,14 @@ export function validateDoorTapInput(raw: unknown): ValidationResult<DoorTapEven
     errors.doorIndexCode = "Door index code is required.";
   }
 
-  const direction: DoorDirection =
-    rec.direction === "out" ? "out" : "in";
+  let direction: DoorDirection = "in";
+  if (rec.direction !== undefined) {
+    if (!isDoorDirection(rec.direction)) {
+      errors.direction = "Direction must be 'in' or 'out'.";
+    } else {
+      direction = rec.direction;
+    }
+  }
 
   const tappedAtUtc =
     typeof rec.tappedAtUtc === "string" && rec.tappedAtUtc.trim()

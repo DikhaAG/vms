@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  isApprovalResponseData,
   parseMonitoringListFlag,
   syncApprovalToHikCentral,
   type SyncApprovalParams,
@@ -175,6 +176,33 @@ describe("HikCentral Approval & Monitoring List Adapter", () => {
       expect(result.success).toBe(false);
       expect(result.synced).toBe(false);
       expect(result.error).toBe("HikCentral gateway timeout");
+    });
+
+    it("returns success: false when code is 0 but response.data is missing or invalid", async () => {
+      const invalidClient = {
+        post: async () => ({
+          code: "0",
+          msg: "success",
+          data: null, // missing data object
+        }),
+      } as unknown as HikCentralClient;
+
+      const result = await syncApprovalToHikCentral(
+        { operateType: 0 },
+        { mode: "live", client: invalidClient },
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.synced).toBe(false);
+      expect(result.error).toMatch(/data is missing or malformed/i);
+    });
+
+    it("isApprovalResponseData validates object or array shapes", () => {
+      expect(isApprovalResponseData({})).toBe(true);
+      expect(isApprovalResponseData([{ visitorID: 101 }])).toBe(true);
+      expect(isApprovalResponseData(null)).toBe(false);
+      expect(isApprovalResponseData(undefined)).toBe(false);
+      expect(isApprovalResponseData("string")).toBe(false);
     });
   });
 });

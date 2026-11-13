@@ -29,6 +29,19 @@ export interface SyncApprovalResult {
 }
 
 /**
+ * Runtime guard validating HikCentral approval flow response data shape.
+ * Must be a non-null object or array.
+ */
+export function isApprovalResponseData(
+  data: unknown,
+): data is Record<string, unknown> | Array<unknown> {
+  if (data === undefined || data === null) {
+    return false;
+  }
+  return typeof data === "object";
+}
+
+/**
  * Parses monitoring list (blacklist) matches from a HikCentral appointment response payload.
  * Translates upstream field names (e.g. identiFiyCode -> certificateNo) at the adapter boundary.
  */
@@ -150,11 +163,19 @@ export async function syncApprovalToHikCentral(
       data?: unknown;
     }>("/artemis/api/visitor/v1/visitorapprovalflow/status", wirePayload, headers);
 
+    const isCodeZero = response.code === "0";
+    const isDataValid = isApprovalResponseData(response.data);
+    const success = isCodeZero && isDataValid;
+
     return {
-      success: response.code === "0",
-      synced: response.code === "0",
+      success,
+      synced: success,
       data: response.data,
-      error: response.code === "0" ? undefined : response.msg,
+      error: !isCodeZero
+        ? response.msg
+        : !isDataValid
+          ? "HikCentral approval response data is missing or malformed."
+          : undefined,
     };
   } catch (err) {
     return {

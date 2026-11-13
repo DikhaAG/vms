@@ -6,6 +6,7 @@ import {
   isVisitReasonType,
   isVisitStatus,
   validatePreRegistrationInput,
+  validateUpdateFacilityInput,
   type CreatePreRegistrationInput,
 } from "./vms-contract";
 
@@ -157,6 +158,49 @@ describe("vms-contract", () => {
       expect(result.valid).toBe(false);
       if (!result.valid) {
         expect(result.errors["tapQuota.maxTaps"]).toBeDefined();
+      }
+    });
+  });
+
+  describe("validateUpdateFacilityInput", () => {
+    it("accepts valid facility updates", () => {
+      const res = validateUpdateFacilityInput({
+        name: "Jakarta HQ Updated",
+        timezone: "Asia/Jakarta",
+        overstayGraceMinutes: 20,
+        address: "Jl. Sudirman",
+      });
+      expect(res.valid).toBe(true);
+      if (res.valid) {
+        expect(res.input.name).toBe("Jakarta HQ Updated");
+        expect(res.input.timezone).toBe("Asia/Jakarta");
+        expect(res.input.overstayGraceMinutes).toBe(20);
+        expect(res.input.address).toBe("Jl. Sudirman");
+      }
+    });
+
+    it("rejects non-object or null payload", () => {
+      expect(validateUpdateFacilityInput(null).valid).toBe(false);
+      expect(validateUpdateFacilityInput("string").valid).toBe(false);
+    });
+
+    it("rejects invalid IANA timezone", () => {
+      const res = validateUpdateFacilityInput({
+        timezone: "Invalid/Zone",
+      });
+      expect(res.valid).toBe(false);
+      if (!res.valid) {
+        expect(res.errors.timezone).toBeDefined();
+      }
+    });
+
+    it("rejects negative overstayGraceMinutes", () => {
+      const res = validateUpdateFacilityInput({
+        overstayGraceMinutes: -1,
+      });
+      expect(res.valid).toBe(false);
+      if (!res.valid) {
+        expect(res.errors.overstayGraceMinutes).toBeDefined();
       }
     });
   });

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   stripDataUriPrefix,
   toJpegDataUri,
+  toPngDataUri,
   isFacePhotoSizeValid,
   formatFacePhotoSize,
   getBase64ByteSize,
@@ -65,6 +66,19 @@ describe("Face Normalizer Utility", () => {
       const raw = "iVBORw0KGgoAAA==";
       const pngUri = `data:image/png;base64,${raw}`;
       expect(toJpegDataUri(pngUri)).toBe(`data:image/jpeg;base64,${raw}`);
+    });
+  });
+
+  describe("toPngDataUri", () => {
+    it("prepends data:image/png;base64, to raw base64 string", () => {
+      const raw = "iVBORw0KGgoAAA==";
+      expect(toPngDataUri(raw)).toBe(`data:image/png;base64,${raw}`);
+    });
+
+    it("preserves base64 payload when stripping jpeg prefix and applying png prefix", () => {
+      const raw = "iVBORw0KGgoAAA==";
+      const jpegUri = `data:image/jpeg;base64,${raw}`;
+      expect(toPngDataUri(jpegUri)).toBe(`data:image/png;base64,${raw}`);
     });
   });
 

@@ -79,9 +79,14 @@ describe("ActiveMonitoringService", () => {
       expect(alice?.visitor.fullName).toBe("Alice Smith");
       expect(alice?.isOverstay).toBe(true);
       expect(alice?.overstayMinutes).toBe(35);
+      expect(alice?.status).toBe("OVERSTAY");
       expect(alice?.tapCount).toBe(1);
       expect(alice?.maxTaps).toBe(2);
       expect(alice?.isQuotaExceeded).toBe(false);
+
+      // Verify repository updated visit status to OVERSTAY
+      const storedAlice = await repo.getVisit("vis-active-1");
+      expect(storedAlice?.status).toBe("OVERSTAY");
 
       const bob = active.find((v) => v.visitId === "vis-active-2");
       expect(bob).toBeDefined();
@@ -230,6 +235,25 @@ describe("ActiveMonitoringService", () => {
           { mode: "stub" },
         ),
       ).rejects.toThrow(/not currently checked in/i);
+    });
+    it("allows check-out of an OVERSTAY visit", async () => {
+      // Transition Alice to OVERSTAY
+      await repo.updateVisit("vis-active-1", { status: "OVERSTAY" });
+
+      const res = await service.performCheckOut(
+        "vis-active-1",
+        {
+          visitId: "vis-active-1",
+          operatorUserId: "sec-guard-01",
+          operatorName: "Security Officer",
+          reason: "Overstay departure completed",
+          isForced: false,
+          mode: "stub",
+        },
+      );
+
+      expect(res.ok).toBe(true);
+      expect(res.visit?.status).toBe("CHECKED_OUT");
     });
   });
 });

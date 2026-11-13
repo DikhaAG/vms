@@ -1,6 +1,9 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { InMemoryVmsRepository } from "./repository";
-import { createPreRegistration } from "./pre-registration-service";
+import {
+  cancelVisit,
+  createPreRegistration,
+} from "./pre-registration-service";
 import type { CreatePreRegistrationInput } from "./vms-contract";
 import type {
   HikCentralAppointmentParams,
@@ -241,5 +244,73 @@ describe("createPreRegistration", () => {
       { id: "acc-jkt-exec", name: "Executive Floor 3" },
     ]);
     expect(dispatchedParams?.qrCodeValidNum).toBe(4);
+  });
+
+  describe("cancelVisit", () => {
+    it("cancels a pending visit and invokes appointment delete", async () => {
+      const created = await createPreRegistration(baseInput, { repository: repo });
+      expect(created.ok).toBe(true);
+      const visitId = created.visit!.id;
+
+      const mockDeleter = vi.fn().mockResolvedValue({
+        appointRecordId: "mock-appoint-rec-1",
+        code: "0",
+        msg: "Success",
+      });
+
+      const cancelRes = await cancelVisit(visitId, "Guest meeting rescheduled", {
+        repository: repo,
+        appointmentDeleter: mockDeleter,
+      });
+
+      expect(cancelRes.ok).toBe(true);
+      expect(cancelRes.visit?.status).toBe("CANCELLED");
+      expect(cancelRes.visit?.remark).toMatch(/Cancel reason: Guest meeting rescheduled/i);
+      expect(mockDeleter).toHaveBeenCalledWith(
+        created.visit!.hikCentral!.appointRecordId,
+        expect.anything(),
+      );
+
+      const stored = await repo.getVisit(visitId);
+      expect(stored?.status).toBe("CANCELLED");
+    });
+
+    it("returns 404 when visitId does not exist", async () => {
+      const cancelRes = await cancelVisit("nonexistent-visit", undefined, {
+        repository: repo,
+      });
+      expect(cancelRes.ok).toBe(false);
+      expect(cancelRes.error?.kind).toBe("not_found");
+      expect(cancelRes.error?.status).toBe(404);
+    });
+
+    it("rejects cancellation if visit is already cancelled", async () => {
+      const created = await createPreRegistration(baseInput, { repository: repo });
+      const firstCancel = await cancelVisit(created.visit!.id, "First cancel", {
+        repository: repo,
+        mode: "stub",
+      });
+      expect(firstCancel.ok).toBe(true);
+
+      const secondCancel = await cancelVisit(created.visit!.id, "Second cancel", {
+        repository: repo,
+        mode: "stub",
+      });
+      expect(secondCancel.ok).toBe(false);
+      expect(secondCancel.error?.kind).toBe("invalid_state");
+      expect(secondCancel.error?.message).toMatch(/already cancelled/i);
+    });
+
+    it("rejects cancellation if visit is already checked in", async () => {
+      const created = await createPreRegistration(baseInput, { repository: repo });
+      await repo.updateVisit(created.visit!.id, { status: "CHECKED_IN" });
+
+      const res = await cancelVisit(created.visit!.id, "Late cancel", {
+        repository: repo,
+      });
+      expect(res.ok).toBe(false);
+      expect(res.error?.kind).toBe("invalid_state");
+      expect(res.error?.message).toMatch(/Cannot cancel visit in status 'CHECKED_IN'/i);
+    });
   });
 });

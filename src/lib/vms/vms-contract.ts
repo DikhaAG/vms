@@ -8,6 +8,7 @@ import {
   validateTapQuota,
   type TapQuotaConfig,
 } from "./access-level-contract";
+import { isValidIanaTimezone } from "./timezone";
 
 export const VISIT_STATUSES = [
   "DRAFT",
@@ -73,6 +74,16 @@ export interface Facility {
   overstayGraceMinutes?: number;
 }
 
+export interface HostEmployee {
+  id: string; // Internal host/person ID (or personCode / personId)
+  personCode?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  orgIndexCode?: string;
+  departmentName?: string;
+}
+
 export interface HikCentralVisitReference {
   appointRecordId: string;
   visitorId: string;
@@ -105,6 +116,8 @@ export interface Visit {
   actualCheckOutTimeUtc?: string;
   tapCount?: number;
   checkOutReason?: string;
+  cancelReason?: string;
+  remark?: string;
   isForcedCheckOut?: boolean;
   checkedOutByUserId?: string;
   status: VisitStatus;
@@ -461,4 +474,79 @@ export function validatePreRegistrationInput(raw: unknown): ValidationOutcome {
       stubScenario,
     },
   };
+}
+
+export interface UpdateFacilityInput {
+  name?: string;
+  timezone?: string;
+  overstayGraceMinutes?: number;
+  address?: string;
+}
+
+export type FacilityValidationOutcome =
+  | { valid: true; input: UpdateFacilityInput }
+  | { valid: false; errors: Record<string, string> };
+
+/**
+ * Pure validator for facility update configuration payloads.
+ */
+export function validateUpdateFacilityInput(
+  raw: unknown,
+): FacilityValidationOutcome {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return {
+      valid: false,
+      errors: { _global: "Request payload must be a JSON object." },
+    };
+  }
+
+  const rec = raw as Record<string, unknown>;
+  const errors: Record<string, string> = {};
+  const input: UpdateFacilityInput = {};
+
+  if (rec.name !== undefined) {
+    if (typeof rec.name !== "string" || !rec.name.trim()) {
+      errors.name = "Facility name must not be empty.";
+    } else {
+      input.name = rec.name.trim();
+    }
+  }
+
+  if (rec.timezone !== undefined) {
+    if (
+      typeof rec.timezone !== "string" ||
+      !isValidIanaTimezone(rec.timezone.trim())
+    ) {
+      errors.timezone = `Invalid IANA timezone identifier: "${rec.timezone}".`;
+    } else {
+      input.timezone = rec.timezone.trim();
+    }
+  }
+
+  if (rec.overstayGraceMinutes !== undefined) {
+    if (
+      typeof rec.overstayGraceMinutes !== "number" ||
+      isNaN(rec.overstayGraceMinutes) ||
+      rec.overstayGraceMinutes < 0
+    ) {
+      errors.overstayGraceMinutes =
+        "overstayGraceMinutes must be a non-negative number.";
+    } else {
+      input.overstayGraceMinutes = Math.floor(rec.overstayGraceMinutes);
+    }
+  }
+
+  if (rec.address !== undefined) {
+    if (typeof rec.address !== "string") {
+      errors.address = "address must be a string.";
+    } else {
+      input.address = rec.address.trim();
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return { valid: false, errors };
+  }
+
+  return { valid: true, input };
 }

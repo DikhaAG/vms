@@ -65,6 +65,9 @@ export async function POST(
       comment: typeof record.comment === "string" ? record.comment : undefined,
     },
     approver,
+    {
+      enableHikCentralSync: Boolean(process.env.HIKCENTRAL_APP_KEY),
+    },
   );
 
   if (!result.ok) {

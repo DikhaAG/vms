@@ -211,3 +211,92 @@ export async function dispatchHikCentralAppointment(
     watchListInfo: rawWatchList,
   };
 }
+
+export interface DeleteAppointmentOptions {
+  mode?: PreRegistrationMode;
+  stubScenario?: StubScenario;
+  client?: HikCentralClient;
+  userId?: string;
+}
+
+export interface HikCentralDeleteAppointmentSuccess {
+  appointRecordId: string;
+  code: string;
+  msg: string;
+}
+
+/**
+ * Deletes a reservation record in HikCentral using POST /artemis/api/visitor/v1/appointment/single/delete.
+ */
+export async function deleteHikCentralAppointment(
+  appointRecordId: string,
+  options: DeleteAppointmentOptions = {},
+): Promise<HikCentralDeleteAppointmentSuccess> {
+  const cleanId = appointRecordId?.trim();
+  if (!cleanId) {
+    throw new HikCentralError(
+      "appointRecordId is required to delete appointment.",
+      {
+        kind: "api",
+        status: 400,
+      },
+    );
+  }
+
+  const mode = options.mode ?? "live";
+
+  if (mode === "stub") {
+    const scenario = options.stubScenario ?? "success";
+    if (scenario === "auth-error") {
+      throw new HikCentralError(
+        "HikCentral API error 0x00072002: appKey does not exist or signature verification failed.",
+        { kind: "api", status: 200, code: "0x00072002" },
+      );
+    }
+    if (scenario === "network-error") {
+      throw new HikCentralError(
+        "HikCentral network failure: connect ECONNREFUSED 127.0.0.1:443",
+        { kind: "network" },
+      );
+    }
+
+    return {
+      appointRecordId: cleanId,
+      code: "0",
+      msg: "Success",
+    };
+  }
+
+  let client = options.client;
+  if (!client) {
+    const config = loadHikCentralConfigFromEnv();
+    client = createHikCentralClient(config);
+  }
+
+  const response = await client.post<unknown>(
+    "/artemis/api/visitor/v1/appointment/single/delete",
+    {
+      appointRecordId: cleanId,
+    },
+    {
+      userId: options.userId,
+    },
+  );
+
+  if (response.code !== "0") {
+    throw new HikCentralError(
+      `HikCentral appointment delete error ${response.code}: ${response.msg || "Unknown error"}`,
+      {
+        kind: "api",
+        code: response.code,
+        hikMsg: response.msg,
+      },
+    );
+  }
+
+  return {
+    appointRecordId: cleanId,
+    code: response.code,
+    msg: response.msg || "Success",
+  };
+}

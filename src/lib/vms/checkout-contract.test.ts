@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  DOOR_DIRECTIONS,
   evaluateOverstayStatus,
+  isDoorDirection,
   isTapQuotaExceeded,
   validateCheckOutInput,
   validateDoorTapInput,
@@ -10,6 +12,17 @@ import {
 import type { Visit } from "./vms-contract";
 
 describe("checkout-contract", () => {
+  describe("DOOR_DIRECTIONS and isDoorDirection", () => {
+    it("defines valid tuple and derives runtime guard", () => {
+      expect(DOOR_DIRECTIONS).toEqual(["in", "out"]);
+      expect(isDoorDirection("in")).toBe(true);
+      expect(isDoorDirection("out")).toBe(true);
+      expect(isDoorDirection("unknown")).toBe(false);
+      expect(isDoorDirection(123)).toBe(false);
+      expect(isDoorDirection(null)).toBe(false);
+    });
+  });
+
   describe("evaluateOverstayStatus", () => {
     const baseVisit: Visit = {
       id: "vis-101",
@@ -163,6 +176,18 @@ describe("checkout-contract", () => {
       if (res.valid) {
         expect(res.input.direction).toBe("in");
         expect(res.input.tappedAtUtc).toBeDefined();
+      }
+    });
+
+    it("rejects invalid direction strings rather than silently defaulting", () => {
+      const res = validateDoorTapInput({
+        visitId: "vis-101",
+        doorIndexCode: "door-turnstile-1",
+        direction: "sideways",
+      });
+      expect(res.valid).toBe(false);
+      if (!res.valid) {
+        expect(res.errors.direction).toMatch(/direction must be 'in' or 'out'/i);
       }
     });
 

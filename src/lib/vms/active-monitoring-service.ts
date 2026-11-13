@@ -50,6 +50,15 @@ export class ActiveMonitoringService {
     for (const visit of activeVisits) {
       const facility = facilityMap.get(visit.facilityId);
       const overstay = evaluateOverstayStatus(visit, facility, nowUtc);
+
+      // State machine enforcement: transition CHECKED_IN -> OVERSTAY upon exceeding cutoff
+      if (overstay.isOverstay && visit.status === "CHECKED_IN") {
+        await this.repository.updateVisit(visit.id, {
+          status: "OVERSTAY",
+        });
+        visit.status = "OVERSTAY";
+      }
+
       const quotaExceeded = isTapQuotaExceeded(
         visit.tapCount ?? 0,
         visit.tapQuota,
@@ -120,9 +129,9 @@ export class ActiveMonitoringService {
       throw new Error(`Visit not found: ${visitId}`);
     }
 
-    if (visit.status !== "CHECKED_IN") {
+    if (visit.status !== "CHECKED_IN" && visit.status !== "OVERSTAY") {
       throw new Error(
-        `Cannot record tap: Visit ${visitId} is in status '${visit.status}' (must be 'CHECKED_IN').`,
+        `Cannot record tap: Visit ${visitId} is in status '${visit.status}' (must be 'CHECKED_IN' or 'OVERSTAY').`,
       );
     }
 
@@ -192,7 +201,7 @@ export class ActiveMonitoringService {
       throw new Error(`Visit not found: ${visitId}`);
     }
 
-    if (visit.status !== "CHECKED_IN") {
+    if (visit.status !== "CHECKED_IN" && visit.status !== "OVERSTAY") {
       throw new Error(
         `Visit ${visitId} is not currently checked in (status: ${visit.status}).`,
       );

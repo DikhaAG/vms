@@ -22,6 +22,21 @@ export interface HikCentralCheckOutResult {
 }
 
 /**
+ * Runtime guard narrowing HikCentral check-out response data.
+ * Validates that data is null, string, or an object (not an array or invalid primitive).
+ */
+export function isCheckOutResponseData(
+  data: unknown,
+): data is Record<string, unknown> | string | null | undefined {
+  return (
+    data === undefined ||
+    data === null ||
+    typeof data === "string" ||
+    (typeof data === "object" && !Array.isArray(data))
+  );
+}
+
+/**
  * Executes POST /artemis/api/visitor/v1/visitor/out to check out a visitor in HikCentral,
  * revoking all terminal permissions and access privileges across physical access points.
  */
@@ -97,6 +112,17 @@ export async function executeHikCentralCheckOut(
   if (response.code !== "0") {
     throw new HikCentralError(
       `HikCentral check-out error ${response.code}: ${response.msg || "Unknown error"}`,
+      {
+        kind: "api",
+        code: response.code,
+        hikMsg: response.msg,
+      },
+    );
+  }
+
+  if (!isCheckOutResponseData(response.data)) {
+    throw new HikCentralError(
+      "Invalid HikCentral check-out response: data payload is malformed.",
       {
         kind: "api",
         code: response.code,

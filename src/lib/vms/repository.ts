@@ -2,6 +2,7 @@ import type {
   CredentialSyncStatus,
   Facility,
   HikCentralVisitReference,
+  HostEmployee,
   Visit,
   VisitStatus,
 } from "./vms-contract";
@@ -58,6 +59,10 @@ export interface IVmsRepository {
   getFacility(id: string): Promise<Facility | undefined>;
   listFacilities(): Promise<Facility[]>;
   saveFacility(facility: Facility): Promise<void>;
+  updateFacility(
+    id: string,
+    updates: Partial<Omit<Facility, "id">>,
+  ): Promise<Facility>;
   getVisit(id: string): Promise<Visit | undefined>;
   listVisits(filter?: ListVisitsFilter): Promise<Visit[]>;
   saveVisit(visit: Visit): Promise<void>;
@@ -126,6 +131,12 @@ export interface IVmsRepository {
     query?: string;
   }): Promise<VisitorProfile[]>;
   listVisitsByGroup(groupId: string): Promise<Visit[]>;
+
+  // Host employee directory operations
+  saveHost(host: HostEmployee): Promise<void>;
+  saveHosts(hosts: HostEmployee[]): Promise<void>;
+  listHosts(query?: string): Promise<HostEmployee[]>;
+  getHost(id: string): Promise<HostEmployee | undefined>;
 }
 
 export const DEFAULT_FACILITIES: Facility[] = [
@@ -236,6 +247,36 @@ export const DEFAULT_VISITOR_PROFILES: VisitorProfile[] = [
   },
 ];
 
+export const DEFAULT_HOSTS: HostEmployee[] = [
+  {
+    id: "emp-101",
+    personCode: "emp-101",
+    name: "Budi Santoso",
+    email: "budi.santoso@example.com",
+    phone: "+628123456789",
+    orgIndexCode: "org-dept-engineering",
+    departmentName: "Engineering",
+  },
+  {
+    id: "emp-102",
+    personCode: "emp-102",
+    name: "Siti Rahma",
+    email: "siti.rahma@example.com",
+    phone: "+628198765432",
+    orgIndexCode: "org-dept-hr",
+    departmentName: "Human Resources",
+  },
+  {
+    id: "emp-host-01",
+    personCode: "emp-host-01",
+    name: "Rudi Host",
+    email: "rudi.host@example.com",
+    phone: "+628111222333",
+    orgIndexCode: "org-dept-operations",
+    departmentName: "Operations",
+  },
+];
+
 export class InMemoryVmsRepository implements IVmsRepository {
   private facilities = new Map<string, Facility>();
   private visits = new Map<string, Visit>();
@@ -246,11 +287,13 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private doorTapEvents: DoorTapEvent[] = [];
   private checkOutEvents: CheckOutAuditEvent[] = [];
   private visitorProfiles = new Map<string, VisitorProfile>();
+  private hosts = new Map<string, HostEmployee>();
 
   constructor(
     initialFacilities: Facility[] = DEFAULT_FACILITIES,
     initialAccessLevels: AccessLevel[] = DEFAULT_ACCESS_LEVELS,
     initialVisitorProfiles: VisitorProfile[] = DEFAULT_VISITOR_PROFILES,
+    initialHosts: HostEmployee[] = DEFAULT_HOSTS,
   ) {
     for (const f of initialFacilities) {
       this.facilities.set(f.id, structuredClone(f));
@@ -260,6 +303,9 @@ export class InMemoryVmsRepository implements IVmsRepository {
     }
     for (const p of initialVisitorProfiles) {
       this.visitorProfiles.set(p.id, structuredClone(p));
+    }
+    for (const h of initialHosts) {
+      this.hosts.set(h.id, structuredClone(h));
     }
   }
 
@@ -274,6 +320,23 @@ export class InMemoryVmsRepository implements IVmsRepository {
 
   async saveFacility(facility: Facility): Promise<void> {
     this.facilities.set(facility.id, structuredClone(facility));
+  }
+
+  async updateFacility(
+    id: string,
+    updates: Partial<Omit<Facility, "id">>,
+  ): Promise<Facility> {
+    const existing = this.facilities.get(id);
+    if (!existing) {
+      throw new Error(`Facility '${id}' not found.`);
+    }
+    const updated: Facility = {
+      ...existing,
+      ...updates,
+      id,
+    };
+    this.facilities.set(id, updated);
+    return structuredClone(updated);
   }
 
   async getVisit(id: string): Promise<Visit | undefined> {
@@ -539,7 +602,7 @@ export class InMemoryVmsRepository implements IVmsRepository {
 
   async listActiveVisits(facilityId?: string): Promise<Visit[]> {
     let list = Array.from(this.visits.values()).filter(
-      (v) => v.status === "CHECKED_IN",
+      (v) => v.status === "CHECKED_IN" || v.status === "OVERSTAY",
     );
     if (facilityId) {
       list = list.filter((v) => v.facilityId === facilityId);
@@ -732,6 +795,36 @@ export class InMemoryVmsRepository implements IVmsRepository {
       (v) => v.groupId === groupId,
     );
     return visits.map((v) => structuredClone(v));
+  }
+
+  async saveHost(host: HostEmployee): Promise<void> {
+    this.hosts.set(host.id, structuredClone(host));
+  }
+
+  async saveHosts(hosts: HostEmployee[]): Promise<void> {
+    for (const host of hosts) {
+      this.hosts.set(host.id, structuredClone(host));
+    }
+  }
+
+  async getHost(id: string): Promise<HostEmployee | undefined> {
+    const host = this.hosts.get(id);
+    return host ? structuredClone(host) : undefined;
+  }
+
+  async listHosts(query?: string): Promise<HostEmployee[]> {
+    let list = Array.from(this.hosts.values());
+    if (query?.trim()) {
+      const q = query.trim().toLowerCase();
+      list = list.filter(
+        (h) =>
+          h.name.toLowerCase().includes(q) ||
+          h.id.toLowerCase().includes(q) ||
+          (h.email && h.email.toLowerCase().includes(q)) ||
+          (h.personCode && h.personCode.toLowerCase().includes(q)),
+      );
+    }
+    return list.map((h) => structuredClone(h));
   }
 }
 

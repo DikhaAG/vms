@@ -111,6 +111,38 @@ describe("hikcentral-checkin-adapter", () => {
       expect(result.qrCodeImage).toBe("iVBORw0KGgoAAAANSUhEUg==");
     });
 
+    it("translates hostId to wire receptionistId parameter", async () => {
+      const mockPost = vi.fn().mockResolvedValue({
+        code: "0",
+        msg: "Success",
+        data: {
+          appointRecordId: "hc-reg-rec-100",
+          visitorId: "hc-vis-100",
+        },
+      });
+
+      const mockClient = {
+        post: mockPost,
+      } as unknown as HikCentralClient;
+
+      await executeHikCentralCheckIn(
+        {
+          ...baseParams,
+          hostId: "emp-host-99",
+          receptionistId: undefined,
+        },
+        { mode: "live", client: mockClient },
+      );
+
+      expect(mockPost).toHaveBeenCalledWith(
+        "/artemis/api/visitor/v1/registerment",
+        expect.objectContaining({
+          receptionistId: "emp-host-99",
+        }),
+        expect.anything(),
+      );
+    });
+
     it("throws HikCentralError when upstream returns non-zero error code", async () => {
       const mockClient = {
         post: vi.fn().mockResolvedValue({

@@ -42,6 +42,15 @@ export function toJpegDataUri(input: string): string {
 }
 
 /**
+ * Ensures a Base64 string has the valid "data:image/png;base64," prefix
+ * for rendering QR code images in browser <img> or Next.js Image components.
+ */
+export function toPngDataUri(input: string): string {
+  const clean = stripDataUriPrefix(input);
+  return `data:image/png;base64,${clean}`;
+}
+
+/**
  * Validates whether byte size is strictly within the 10 KB to 100 KB window.
  */
 export function isFacePhotoSizeValid(bytes: number): boolean {

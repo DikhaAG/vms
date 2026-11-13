@@ -159,6 +159,58 @@ export function PreRegistrationForm({
   const [isRetryingSync, setIsRetryingSync] = useState(false);
   const [retrySyncMessage, setRetrySyncMessage] = useState<string | null>(null);
 
+  // Returning Visitor Lookup State
+  const [isLookingUpVisitor, setIsLookingUpVisitor] = useState(false);
+  const [returningVisitorProfile, setReturningVisitorProfile] = useState<{
+    givenName?: string;
+    familyName?: string;
+    fullName?: string;
+    phone?: string;
+    email?: string;
+    certificateType?: number;
+    certificateNo?: string;
+    facePhoto?: string;
+  } | null>(null);
+
+  async function checkReturningVisitor(cert: string) {
+    const trimmed = cert.trim();
+    if (!trimmed) {
+      setReturningVisitorProfile(null);
+      return;
+    }
+    setIsLookingUpVisitor(true);
+    try {
+      const res = await fetch(
+        `/api/vms/visitors/lookup?certificateNo=${encodeURIComponent(trimmed)}`,
+      );
+      const data = await res.json();
+      if (data.ok && data.found && data.profile) {
+        setReturningVisitorProfile(data.profile);
+      } else {
+        setReturningVisitorProfile(null);
+      }
+    } catch {
+      setReturningVisitorProfile(null);
+    } finally {
+      setIsLookingUpVisitor(false);
+    }
+  }
+
+  function applyReturningProfile(profile: NonNullable<typeof returningVisitorProfile>) {
+    if (profile.givenName) setVisitorGivenName(profile.givenName);
+    if (profile.familyName) setVisitorFamilyName(profile.familyName);
+    if (profile.phone) setVisitorPhone(profile.phone);
+    if (profile.email) setVisitorEmail(profile.email);
+    if (profile.certificateType && [111, 414, 335, 222].includes(profile.certificateType)) {
+      setCertificateType(profile.certificateType as CertificateType);
+    }
+    if (profile.facePhoto) {
+      setFacePhoto(profile.facePhoto);
+      setFaceByteSize(Math.round((profile.facePhoto.length * 3) / 4));
+      setFaceError(null);
+    }
+  }
+
   // Invitation Link State
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const [generatedInviteUrl, setGeneratedInviteUrl] = useState<string | null>(
@@ -646,19 +698,68 @@ export function PreRegistrationForm({
               >
                 Certificate Number (e.g. NIK KTP / Passport No)
               </label>
-              <input
-                id={`${formId}-cert-no`}
-                type="text"
-                value={certificateNo}
-                onChange={(e) => setCertificateNo(e.target.value)}
-                autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                placeholder="3171..."
-                className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
-              />
+              <div className="relative mt-1">
+                <input
+                  id={`${formId}-cert-no`}
+                  type="text"
+                  value={certificateNo}
+                  onBlur={() => checkReturningVisitor(certificateNo)}
+                  onChange={(e) => {
+                    setCertificateNo(e.target.value);
+                    if (returningVisitorProfile) setReturningVisitorProfile(null);
+                  }}
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  placeholder="3171..."
+                  className="block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                />
+                {isLookingUpVisitor && (
+                  <span className="absolute right-2.5 top-2.5 text-xs text-neutral-400">
+                    Searching...
+                  </span>
+                )}
+              </div>
             </div>
           </div>
+
+          {returningVisitorProfile && (
+            <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/80 p-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                {returningVisitorProfile.facePhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={returningVisitorProfile.facePhoto}
+                    alt="Stored Face Photo"
+                    width={36}
+                    height={36}
+                    className="h-9 w-9 rounded-full object-cover border border-blue-200"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-200 text-xs font-bold text-blue-900">
+                    {returningVisitorProfile.givenName?.[0]}
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs font-semibold text-blue-950">
+                    Returning Visitor Found!
+                  </p>
+                  <p className="text-[11px] text-blue-800">
+                    {returningVisitorProfile.fullName ||
+                      `${returningVisitorProfile.givenName} ${returningVisitorProfile.familyName}`}{" "}
+                    &bull; Saved profile & encrypted face photo ready
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => applyReturningProfile(returningVisitorProfile)}
+                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition cursor-pointer"
+              >
+                Auto-fill Details & Photo
+              </button>
+            </div>
+          )}
         </fieldset>
 
         {/* Section 3: Biometric Face Photo Capture & Verification */}
@@ -1433,7 +1534,7 @@ export function PreRegistrationForm({
                   </div>
                   <div>
                     <dt className="text-[11px] text-neutral-500">
-                      receptionistId
+                      Host Employee ID
                     </dt>
                     <dd className="font-semibold text-neutral-900">
                       {createdVisit.hostId ?? "—"}

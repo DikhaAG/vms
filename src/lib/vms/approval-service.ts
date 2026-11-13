@@ -45,6 +45,7 @@ export interface ApprovalResult {
 export interface ApprovalServiceDeps {
   repository?: IVmsRepository;
   syncAdapter?: (params: SyncApprovalParams) => Promise<SyncApprovalResult>;
+  enableHikCentralSync?: boolean;
   idGenerator?: () => string;
   now?: () => Date;
 }
@@ -154,11 +155,11 @@ export async function decideApproval(
     credentialSyncStatus = "Applied";
   }
 
-  // 5. Upstream HikCentral synchronization (if sync adapter provided or configured)
+  // 5. Upstream HikCentral synchronization (if sync adapter provided or configured via deps)
   let hikCentralSyncStatus: "synced" | "failed" | "skipped" = "skipped";
   const syncFn =
     deps.syncAdapter ??
-    (process.env.HIKCENTRAL_APP_KEY ? syncApprovalToHikCentral : undefined);
+    (deps.enableHikCentralSync ? syncApprovalToHikCentral : undefined);
 
   if (syncFn) {
     try {

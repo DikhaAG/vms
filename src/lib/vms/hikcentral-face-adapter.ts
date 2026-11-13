@@ -37,6 +37,20 @@ export interface RetryCredentialSyncResult {
   code?: string;
 }
 
+/**
+ * Runtime guard validating response data for credential reapplication.
+ * In HikCentral table 5-139, data is Opt. String or Object or null.
+ */
+export function isRetrySyncResponseData(
+  data: unknown,
+): data is string | Record<string, unknown> | null {
+  return (
+    typeof data === "string" ||
+    (typeof data === "object" && data !== null) ||
+    data === null
+  );
+}
+
 export interface GetCredentialSyncStatusParams {
   visitorId: string;
   userId?: string;
@@ -221,9 +235,14 @@ export async function retryCredentialSync(
     },
   );
 
+  const isDataValid = isRetrySyncResponseData(response.data);
+  const success = response.code === "0" && isDataValid;
+
   return {
-    success: response.code === "0",
-    message: response.msg || "OK",
+    success,
+    message: !isDataValid
+      ? "Invalid or missing response data in HikCentral credential reapplication."
+      : response.msg || "OK",
     code: response.code,
   };
 }

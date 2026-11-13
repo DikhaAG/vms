@@ -107,6 +107,63 @@ export function ReceptionClient({
   const [isSubmittingWalkIn, setIsSubmittingWalkIn] = useState(false);
   const [walkInError, setWalkInError] = useState<string | null>(null);
 
+  // Returning visitor lookup for walk-in
+  const [isLookingUpWalkIn, setIsLookingUpWalkIn] = useState(false);
+  const [walkInReturningProfile, setWalkInReturningProfile] = useState<{
+    givenName?: string;
+    familyName?: string;
+    fullName?: string;
+    phone?: string;
+    email?: string;
+    certificateType?: number;
+    certificateNo?: string;
+    facePhoto?: string;
+  } | null>(null);
+
+  async function checkReturningWalkInVisitor(cert: string) {
+    const trimmed = cert.trim();
+    if (!trimmed) {
+      setWalkInReturningProfile(null);
+      return;
+    }
+    setIsLookingUpWalkIn(true);
+    try {
+      const res = await fetch(
+        `/api/vms/visitors/lookup?certificateNo=${encodeURIComponent(trimmed)}`,
+      );
+      const data = await res.json();
+      if (data.ok && data.found && data.profile) {
+        setWalkInReturningProfile(data.profile);
+      } else {
+        setWalkInReturningProfile(null);
+      }
+    } catch {
+      setWalkInReturningProfile(null);
+    } finally {
+      setIsLookingUpWalkIn(false);
+    }
+  }
+
+  function applyReturningWalkInProfile(
+    profile: NonNullable<typeof walkInReturningProfile>,
+  ) {
+    if (profile.givenName) setWalkInGivenName(profile.givenName);
+    if (profile.familyName) setWalkInFamilyName(profile.familyName);
+    if (profile.phone) setWalkInPhone(profile.phone);
+    if (profile.email) setWalkInEmail(profile.email);
+    if (
+      profile.certificateType &&
+      [111, 414, 335, 222].includes(profile.certificateType)
+    ) {
+      setWalkInCertType(profile.certificateType as CertificateType);
+    }
+    if (profile.facePhoto) {
+      setWalkInFacePhoto(profile.facePhoto);
+      setWalkInFaceByteSize(Math.round((profile.facePhoto.length * 3) / 4));
+      setFaceError(null);
+    }
+  }
+
   // Camera capture state for walk-in
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -1078,18 +1135,74 @@ export function ReceptionClient({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label htmlFor="walk-in-cert-no" className="block text-xs font-medium text-neutral-700 mb-1">
                     Certificate Number
                   </label>
-                  <input
-                    type="text"
-                    value={walkInCertNo}
-                    onChange={(e) => setWalkInCertNo(e.target.value)}
-                    placeholder="e.g. 3171010101010001"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 font-mono focus:border-emerald-600 focus:ring-emerald-600"
-                  />
+                  <div className="relative">
+                    <input
+                      id="walk-in-cert-no"
+                      type="text"
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      value={walkInCertNo}
+                      onBlur={() => checkReturningWalkInVisitor(walkInCertNo)}
+                      onChange={(e) => {
+                        setWalkInCertNo(e.target.value);
+                        if (walkInReturningProfile) setWalkInReturningProfile(null);
+                      }}
+                      placeholder="e.g. 3171010101010001"
+                      className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 font-mono focus:border-emerald-600 focus:ring-emerald-600"
+                    />
+                    {isLookingUpWalkIn && (
+                      <span className="absolute right-2 top-1.5 text-[11px] text-neutral-400">
+                        Searching...
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
+
+              {/* Returning Visitor Recognized Banner */}
+              {walkInReturningProfile && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-3">
+                    {walkInReturningProfile.facePhoto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={walkInReturningProfile.facePhoto}
+                        alt="Stored Face Photo"
+                        width={36}
+                        height={36}
+                        className="h-9 w-9 rounded-full object-cover border border-emerald-200"
+                      />
+                    ) : (
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-200 text-xs font-bold text-emerald-900">
+                        {walkInReturningProfile.givenName?.[0]}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-xs font-semibold text-emerald-950">
+                        Returning Visitor Found!
+                      </p>
+                      <p className="text-[11px] text-emerald-800">
+                        {walkInReturningProfile.fullName ||
+                          `${walkInReturningProfile.givenName} ${walkInReturningProfile.familyName}`}{" "}
+                        &bull; Saved profile & encrypted face photo ready
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      applyReturningWalkInProfile(walkInReturningProfile)
+                    }
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
+                  >
+                    Auto-fill Details & Photo
+                  </button>
+                </div>
+              )}
 
               {/* Purpose row */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

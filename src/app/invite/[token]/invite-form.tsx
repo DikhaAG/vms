@@ -23,7 +23,7 @@ import {
   formatFacePhotoSize,
   isFacePhotoSizeValid,
   processBrowserImageFile,
-  toJpegDataUri,
+  toPngDataUri,
 } from "@/lib/vms/face-normalizer";
 import type {
   PublicInvitationMetadata,
@@ -344,10 +344,7 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                   <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 shadow-inner">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={toJpegDataUri(qrPass.qrCodeImage).replace(
-                        "image/jpeg",
-                        "image/png",
-                      )}
+                      src={toPngDataUri(qrPass.qrCodeImage)}
                       alt="Digital Visitor QR Pass"
                       width={160}
                       height={160}

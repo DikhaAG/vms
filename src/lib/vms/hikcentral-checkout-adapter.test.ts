@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { executeHikCentralCheckOut } from "./hikcentral-checkout-adapter";
+import {
+  executeHikCentralCheckOut,
+  isCheckOutResponseData,
+} from "./hikcentral-checkout-adapter";
 import type { HikCentralClient } from "../hikcentral/client";
 
 describe("hikcentral-checkout-adapter", () => {
@@ -89,6 +92,33 @@ describe("hikcentral-checkout-adapter", () => {
           client: mockClient,
         }),
       ).rejects.toThrow(/0x00072005/i);
+    });
+
+    it("throws HikCentralError when code is 0 but response.data fails validation", async () => {
+      const mockPost = vi.fn().mockResolvedValue({
+        code: "0",
+        msg: "Success",
+        data: [1, 2, 3], // invalid shape (array instead of object/null/string)
+      });
+      const mockClient = {
+        post: mockPost,
+      } as unknown as HikCentralClient;
+
+      await expect(
+        executeHikCentralCheckOut("hc-rec-456", {
+          mode: "live",
+          client: mockClient,
+        }),
+      ).rejects.toThrow(/data payload is malformed/i);
+    });
+
+    it("isCheckOutResponseData validates supported data shapes", () => {
+      expect(isCheckOutResponseData(null)).toBe(true);
+      expect(isCheckOutResponseData(undefined)).toBe(true);
+      expect(isCheckOutResponseData({})).toBe(true);
+      expect(isCheckOutResponseData("")).toBe(true);
+      expect(isCheckOutResponseData([1, 2])).toBe(false);
+      expect(isCheckOutResponseData(12345)).toBe(false);
     });
   });
 });

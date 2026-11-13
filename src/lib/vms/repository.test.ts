@@ -796,4 +796,43 @@ describe("InMemoryVmsRepository", () => {
       expect(groupVisits.map((v) => v.id)).toContain("vis-g2");
     });
   });
+
+  describe("facility management & host directory", () => {
+    it("updateFacility updates facility configuration", async () => {
+      const updated = await repo.updateFacility("fac-jakarta", {
+        name: "Jakarta HQ Tower A",
+        overstayGraceMinutes: 30,
+      });
+
+      expect(updated.id).toBe("fac-jakarta");
+      expect(updated.name).toBe("Jakarta HQ Tower A");
+      expect(updated.overstayGraceMinutes).toBe(30);
+
+      const retrieved = await repo.getFacility("fac-jakarta");
+      expect(retrieved?.name).toBe("Jakarta HQ Tower A");
+      expect(retrieved?.overstayGraceMinutes).toBe(30);
+    });
+
+    it("updateFacility throws if facility does not exist", async () => {
+      await expect(
+        repo.updateFacility("nonexistent", { name: "Test" }),
+      ).rejects.toThrow(/not found/i);
+    });
+
+    it("manages host directory with saveHost, listHosts, and getHost", async () => {
+      await repo.saveHost({
+        id: "emp-999",
+        name: "John Doe",
+        email: "john@example.com",
+      });
+
+      const retrieved = await repo.getHost("emp-999");
+      expect(retrieved).toBeDefined();
+      expect(retrieved?.name).toBe("John Doe");
+
+      const queried = await repo.listHosts("john");
+      expect(queried).toHaveLength(1);
+      expect(queried[0].id).toBe("emp-999");
+    });
+  });
 });

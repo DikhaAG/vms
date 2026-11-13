@@ -446,11 +446,15 @@ export function GroupRegistrationClient({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-neutral-700">
+            <label htmlFor="group-host-id" className="block text-xs font-semibold text-neutral-700">
               Host Employee ID
             </label>
             <input
+              id="group-host-id"
               type="text"
+              autoCorrect="off"
+              autoCapitalize="none"
+              spellCheck={false}
               value={hostId}
               onChange={(e) => setHostId(e.target.value)}
               placeholder="e.g. emp-101"
@@ -763,12 +767,16 @@ export function GroupRegistrationClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-700">
+                  <label htmlFor={`group-cert-no-${idx}`} className="block text-xs font-semibold text-neutral-700">
                     Identity / KTP / Passport No.
                   </label>
                   <div className="relative mt-1">
                     <input
+                      id={`group-cert-no-${idx}`}
                       type="text"
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
                       value={visitor.certificateNo}
                       onBlur={() =>
                         checkReturningVisitor(idx, visitor.certificateNo)

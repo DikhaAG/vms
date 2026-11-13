@@ -153,7 +153,7 @@ export class CheckInService {
       hcResult = await executeHikCentralCheckIn(
         {
           appointId: visit.hikCentral?.appointRecordId,
-          receptionistId: visit.hostId || input.receptionistUserId,
+          hostId: visit.hostId || input.receptionistUserId,
           visitStartTime: checkInTimeFacility,
           visitEndTime: checkOutTimeFacility,
           visitPurposeType: visit.visitReasonType,
@@ -373,7 +373,7 @@ export class CheckInService {
     try {
       hcResult = await executeHikCentralCheckIn(
         {
-          receptionistId: input.hostId || input.receptionistUserId,
+          hostId: input.hostId || input.receptionistUserId,
           visitStartTime: scheduledStartTimeFacility,
           visitEndTime: scheduledEndTimeFacility,
           visitPurposeType: input.visitReasonType,

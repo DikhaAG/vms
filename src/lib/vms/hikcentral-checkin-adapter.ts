@@ -9,7 +9,8 @@ import { stripDataUriPrefix } from "./face-normalizer";
 
 export interface HikCentralCheckInParams {
   userId?: string;
-  receptionistId?: string; // Host or receptionist employee ID
+  hostId?: string; // Internal Host employee ID, translated to receptionistId for HikCentral wire
+  receptionistId?: string; // Backwards-compatible alias for hostId
   appointId?: string; // Pre-registration reservation record ID if available
   visitorId?: string;
   visitStartTime: string; // ISO 8601 with facility offset
@@ -104,7 +105,7 @@ export async function executeHikCentralCheckIn(
     : undefined;
 
   const wirePayload: Record<string, unknown> = {
-    receptionistId: params.receptionistId ?? "",
+    receptionistId: params.hostId ?? params.receptionistId ?? "",
     ...(params.appointId ? { appointId: params.appointId } : {}),
     ...(params.visitorId ? { visitorId: params.visitorId } : {}),
     visitStartTime: params.visitStartTime,

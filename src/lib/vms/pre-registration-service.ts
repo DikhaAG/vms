@@ -2,15 +2,20 @@ import { randomUUID } from "node:crypto";
 import {
   validatePreRegistrationInput,
   type CreatePreRegistrationInput,
+  type PreRegistrationMode,
   type PreRegistrationResult,
+  type StubScenario,
   type Visit,
 } from "./vms-contract";
 import { formatFacilityIso, parseLocalDateTimeToUtc } from "./timezone";
 import {
+  deleteHikCentralAppointment,
   dispatchHikCentralAppointment,
+  type DeleteAppointmentOptions,
   type DispatchAppointmentOptions,
   type HikCentralAppointmentParams,
   type HikCentralAppointmentSuccess,
+  type HikCentralDeleteAppointmentSuccess,
 } from "./hikcentral-appointment-adapter";
 import { defaultVmsRepository, type IVmsRepository } from "./repository";
 import { HikCentralError } from "../hikcentral/client";
@@ -23,6 +28,12 @@ export interface PreRegistrationServiceDeps {
     params: HikCentralAppointmentParams,
     options?: DispatchAppointmentOptions,
   ) => Promise<HikCentralAppointmentSuccess>;
+  appointmentDeleter?: (
+    appointRecordId: string,
+    options?: DeleteAppointmentOptions,
+  ) => Promise<HikCentralDeleteAppointmentSuccess>;
+  mode?: PreRegistrationMode;
+  stubScenario?: StubScenario;
   idGenerator?: () => string;
   now?: () => Date;
 }
@@ -214,5 +225,136 @@ export async function createPreRegistration(
   return {
     ok: true,
     visit,
+  };
+}
+
+export interface CancelVisitResult {
+  ok: boolean;
+  visit?: Visit;
+  error?: {
+    kind: "validation" | "not_found" | "invalid_state" | "upstream";
+    message: string;
+    status?: number;
+  };
+}
+
+/**
+ * Cancels a pre-registration visit:
+ * 1. Validates visit existence and ensures status is cancellable (DRAFT, PENDING_APPROVAL, APPROVED).
+ * 2. Invokes HikCentral POST /artemis/api/visitor/v1/appointment/single/delete if appointRecordId exists.
+ * 3. Transitions visit status to CANCELLED in the repository.
+ */
+export async function cancelVisit(
+  visitId: string,
+  reason?: string,
+  deps: PreRegistrationServiceDeps = {},
+): Promise<CancelVisitResult> {
+  const repository = deps.repository ?? defaultVmsRepository;
+  const deleteAppointment =
+    deps.appointmentDeleter ?? deleteHikCentralAppointment;
+  const getNow = deps.now ?? (() => new Date());
+
+  const cleanVisitId = visitId?.trim();
+  if (!cleanVisitId) {
+    return {
+      ok: false,
+      error: {
+        kind: "validation",
+        message: "visitId is required.",
+        status: 400,
+      },
+    };
+  }
+
+  const visit = await repository.getVisit(cleanVisitId);
+  if (!visit) {
+    return {
+      ok: false,
+      error: {
+        kind: "not_found",
+        message: `Visit '${cleanVisitId}' not found.`,
+        status: 404,
+      },
+    };
+  }
+
+  if (visit.status === "CANCELLED") {
+    return {
+      ok: false,
+      error: {
+        kind: "invalid_state",
+        message: `Visit '${cleanVisitId}' is already cancelled.`,
+        status: 400,
+      },
+    };
+  }
+
+  const cancellableStatuses = [
+    "DRAFT",
+    "PENDING_APPROVAL",
+    "SECURITY_ESCALATED",
+    "APPROVED",
+  ];
+
+  if (!cancellableStatuses.includes(visit.status)) {
+    return {
+      ok: false,
+      error: {
+        kind: "invalid_state",
+        message: `Cannot cancel visit in status '${visit.status}'. Check-out must be used for checked-in visits.`,
+        status: 400,
+      },
+    };
+  }
+
+  // Upstream HikCentral appointment deletion if reserved
+  if (visit.hikCentral?.appointRecordId) {
+    try {
+      await deleteAppointment(visit.hikCentral.appointRecordId, {
+        mode: deps.mode ?? "live",
+        stubScenario: deps.stubScenario ?? "success",
+      });
+    } catch (err) {
+      if (err instanceof HikCentralError) {
+        return {
+          ok: false,
+          error: {
+            kind: "upstream",
+            message: `HikCentral appointment cancellation error: ${err.message}`,
+            status: 502,
+          },
+        };
+      }
+      return {
+        ok: false,
+        error: {
+          kind: "upstream",
+          message:
+            err instanceof Error
+              ? err.message
+              : "Failed to delete appointment in HikCentral.",
+          status: 502,
+        },
+      };
+    }
+  }
+
+  const cancelReason = reason?.trim() || undefined;
+  const remarkWithCancel = cancelReason
+    ? visit.remark
+      ? `${visit.remark} | Cancel reason: ${cancelReason}`
+      : `Cancel reason: ${cancelReason}`
+    : visit.remark;
+
+  const updatedVisit = await repository.updateVisit(visit.id, {
+    status: "CANCELLED",
+    cancelReason,
+    remark: remarkWithCancel,
+    updatedAtUtc: getNow().toISOString(),
+  });
+
+  return {
+    ok: true,
+    visit: updatedVisit,
   };
 }

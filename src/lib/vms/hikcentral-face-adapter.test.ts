@@ -4,6 +4,7 @@ import {
   checkFaceQuality,
   retryCredentialSync,
   getCredentialSyncStatus,
+  isRetrySyncResponseData,
 } from "./hikcentral-face-adapter";
 
 describe("HikCentral Face & Credential Sync Adapter", () => {
@@ -169,6 +170,33 @@ describe("HikCentral Face & Credential Sync Adapter", () => {
           personIds: "vis-777",
         });
         expect(result.success).toBe(true);
+      });
+
+      it("returns success: false when code is 0 but response.data is undefined", async () => {
+        const mockClient: HikCentralClient = {
+          async post<TResponse>(): Promise<HikCentralResponse<TResponse>> {
+            return {
+              code: "0",
+              msg: "ok",
+              data: undefined as unknown as TResponse,
+            };
+          },
+        };
+
+        const result = await retryCredentialSync(
+          { personIds: "vis-777" },
+          { mode: "live", client: mockClient },
+        );
+
+        expect(result.success).toBe(false);
+        expect(result.message).toMatch(/invalid or missing response data/i);
+      });
+
+      it("isRetrySyncResponseData validates allowed data shapes", () => {
+        expect(isRetrySyncResponseData("")).toBe(true);
+        expect(isRetrySyncResponseData(null)).toBe(true);
+        expect(isRetrySyncResponseData({})).toBe(true);
+        expect(isRetrySyncResponseData(undefined)).toBe(false);
       });
     });
   });
