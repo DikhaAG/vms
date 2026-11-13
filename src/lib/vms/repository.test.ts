@@ -974,4 +974,102 @@ describe("InMemoryVmsRepository", () => {
       expect(res2.visit.lastSeenDoor?.direction).toBe("out");
     });
   });
+
+  describe("autoCheckInVisit and hostNotifications", () => {
+    it("atomically performs auto check-in, initializes tapCount to 1, logs tap event, and stores host notification", async () => {
+      const approvedVisit: Visit = {
+        id: "vis-auto-chk-1",
+        facilityId: "fac-jakarta",
+        facilityName: "Jakarta Corporate HQ",
+        visitorGivenName: "Diana",
+        visitorFamilyName: "Prince",
+        visitorPhone: "+6281299998888",
+        hostId: "emp-host-01",
+        hostName: "Rudi Host",
+        visitReasonType: 1,
+        scheduledStartTimeUtc: "2026-11-13T09:00:00.000Z",
+        scheduledEndTimeUtc: "2026-11-13T11:00:00.000Z",
+        scheduledStartTimeFacility: "2026-11-13T16:00:00+07:00",
+        scheduledEndTimeFacility: "2026-11-13T18:00:00+07:00",
+        status: "APPROVED",
+        tapCount: 0,
+        createdAtUtc: "2026-11-13T08:00:00.000Z",
+        updatedAtUtc: "2026-11-13T08:00:00.000Z",
+      };
+      await repo.saveVisit(approvedVisit);
+
+      const tapTime = "2026-11-13T08:50:00.000Z";
+      const hostNotification = {
+        id: "notif-1",
+        visitId: "vis-auto-chk-1",
+        hostId: "emp-host-01",
+        hostName: "Rudi Host",
+        visitorName: "Diana Prince",
+        doorIndexCode: "door-turnstile-1",
+        doorName: "Lobby Main SpeedGate A",
+        arrivedAtUtc: tapTime,
+        message: "Visitor Diana Prince has arrived at Lobby Main SpeedGate A.",
+        createdAtUtc: tapTime,
+      };
+
+      const result = await repo.autoCheckInVisit({
+        visitId: "vis-auto-chk-1",
+        actualCheckInTimeUtc: tapTime,
+        tapEvent: {
+          visitId: "vis-auto-chk-1",
+          doorIndexCode: "door-turnstile-1",
+          doorName: "Lobby Main SpeedGate A",
+          direction: "in",
+          isPerimeter: true,
+          tappedAtUtc: tapTime,
+        },
+        hostNotification,
+      });
+
+      // Verify atomic state update on visit
+      expect(result.visit.status).toBe("CHECKED_IN");
+      expect(result.visit.actualCheckInTimeUtc).toBe(tapTime);
+      expect(result.visit.tapCount).toBe(1);
+      expect(result.visit.lastSeenDoor).toBeDefined();
+      expect(result.visit.lastSeenDoor?.doorIndexCode).toBe("door-turnstile-1");
+      expect(result.visit.lastSeenDoor?.direction).toBe("in");
+      expect(result.visit.lastSeenDoor?.isPerimeter).toBe(true);
+
+      // Verify DoorTapEvent was recorded
+      expect(result.event.inAndOutType).toBe(1);
+      expect(result.event.direction).toBe("in");
+      expect(result.event.isPerimeter).toBe(true);
+
+      const tapEvents = await repo.listDoorTapEvents("vis-auto-chk-1");
+      expect(tapEvents).toHaveLength(1);
+      expect(tapEvents[0].doorIndexCode).toBe("door-turnstile-1");
+      expect(tapEvents[0].direction).toBe("in");
+
+      // Verify CheckInAuditEvent was created
+      const checkInAudits = await repo.listCheckInEvents("vis-auto-chk-1");
+      expect(checkInAudits).toHaveLength(1);
+      expect(checkInAudits[0].checkedInAtUtc).toBe(tapTime);
+
+      // Verify HostNotification was saved
+      const notifications = await repo.listHostNotifications("emp-host-01");
+      expect(notifications).toHaveLength(1);
+      expect(notifications[0].visitorName).toBe("Diana Prince");
+      expect(notifications[0].visitId).toBe("vis-auto-chk-1");
+    });
+
+    it("throws if autoCheckInVisit called for non-existent visit", async () => {
+      await expect(
+        repo.autoCheckInVisit({
+          visitId: "non-existent",
+          actualCheckInTimeUtc: "2026-11-13T09:00:00.000Z",
+          tapEvent: {
+            visitId: "non-existent",
+            doorIndexCode: "door-turnstile-1",
+            direction: "in",
+            tappedAtUtc: "2026-11-13T09:00:00.000Z",
+          },
+        }),
+      ).rejects.toThrow(/Visit not found/i);
+    });
+  });
 });

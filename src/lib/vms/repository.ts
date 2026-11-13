@@ -17,6 +17,7 @@ import type {
   CheckOutAuditEvent,
   DoorTapEvent,
   FacilityDoor,
+  HostArrivalNotification,
   VisitLastSeenDoor,
 } from "./checkout-contract";
 import type { VisitorProfile } from "./group-contract";
@@ -147,6 +148,16 @@ export interface IVmsRepository {
   saveHosts(hosts: HostEmployee[]): Promise<void>;
   listHosts(query?: string): Promise<HostEmployee[]>;
   getHost(id: string): Promise<HostEmployee | undefined>;
+
+  // Host arrival notifications & touchless auto check-in (Ticket 02)
+  saveHostNotification(notification: HostArrivalNotification): Promise<void>;
+  listHostNotifications(hostId?: string, visitId?: string): Promise<HostArrivalNotification[]>;
+  autoCheckInVisit(params: {
+    visitId: string;
+    actualCheckInTimeUtc: string;
+    tapEvent: DoorTapEvent;
+    hostNotification?: HostArrivalNotification;
+  }): Promise<{ visit: Visit; event: DoorTapEvent; notification?: HostArrivalNotification }>;
 }
 
 export const DEFAULT_FACILITIES: Facility[] = [
@@ -406,6 +417,7 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private visitorProfiles = new Map<string, VisitorProfile>();
   private hosts = new Map<string, HostEmployee>();
   private doors = new Map<string, FacilityDoor>();
+  private hostNotifications: HostArrivalNotification[] = [];
 
   constructor(
     initialFacilities: Facility[] = DEFAULT_FACILITIES,
@@ -1031,6 +1043,115 @@ export class InMemoryVmsRepository implements IVmsRepository {
     for (const d of doors) {
       this.doors.set(d.doorIndexCode, structuredClone(d));
     }
+  }
+
+  async saveHostNotification(
+    notification: HostArrivalNotification,
+  ): Promise<void> {
+    this.hostNotifications.push(structuredClone(notification));
+  }
+
+  async listHostNotifications(
+    hostId?: string,
+    visitId?: string,
+  ): Promise<HostArrivalNotification[]> {
+    let list = this.hostNotifications;
+    if (hostId) {
+      list = list.filter((n) => n.hostId === hostId);
+    }
+    if (visitId) {
+      list = list.filter((n) => n.visitId === visitId);
+    }
+    return list
+      .map((n) => structuredClone(n))
+      .sort(
+        (a, b) =>
+          new Date(b.createdAtUtc).getTime() -
+          new Date(a.createdAtUtc).getTime(),
+      );
+  }
+
+  async autoCheckInVisit(params: {
+    visitId: string;
+    actualCheckInTimeUtc: string;
+    tapEvent: DoorTapEvent;
+    hostNotification?: HostArrivalNotification;
+  }): Promise<{
+    visit: Visit;
+    event: DoorTapEvent;
+    notification?: HostArrivalNotification;
+  }> {
+    const existing = this.visits.get(params.visitId);
+    if (!existing) {
+      throw new Error(`Visit not found: ${params.visitId}`);
+    }
+
+    const door =
+      this.doors.get(params.tapEvent.doorIndexCode) ||
+      Array.from(this.doors.values()).find(
+        (d) =>
+          params.tapEvent.doorName &&
+          d.doorName.toLowerCase() === params.tapEvent.doorName.toLowerCase(),
+      );
+
+    const doorName = params.tapEvent.doorName ?? door?.doorName;
+    const isPerimeter =
+      params.tapEvent.isPerimeter ?? door?.isPerimeter ?? true;
+
+    const eventToStore: DoorTapEvent = {
+      ...params.tapEvent,
+      id:
+        params.tapEvent.id ||
+        `tap-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      tappedAtUtc: params.tapEvent.tappedAtUtc || params.actualCheckInTimeUtc,
+      direction: "in",
+      doorName,
+      inAndOutType: 1,
+      isPerimeter,
+    };
+    this.doorTapEvents.push(structuredClone(eventToStore));
+
+    if (params.hostNotification) {
+      await this.saveHostNotification(params.hostNotification);
+    }
+
+    const auditEvent: CheckInAuditEvent = {
+      id: `chk-audit-auto-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId: params.visitId,
+      checkedInAtUtc: params.actualCheckInTimeUtc,
+      receptionistUserId: "system-auto-checkin",
+      receptionistName: "Touchless Perimeter Fast-Track",
+      verificationMethod: "biometric",
+      notes: `Touchless auto check-in on perimeter door tap: ${doorName || params.tapEvent.doorIndexCode}`,
+    };
+    await this.saveCheckInEvent(auditEvent);
+
+    const updatedLastSeenDoor: VisitLastSeenDoor = {
+      doorIndexCode: eventToStore.doorIndexCode,
+      doorName: eventToStore.doorName,
+      tappedAtUtc: eventToStore.tappedAtUtc,
+      direction: "in",
+      accessType: door?.accessType,
+      isPerimeter,
+    };
+
+    const updatedVisit: Visit = {
+      ...existing,
+      status: "CHECKED_IN",
+      actualCheckInTimeUtc: params.actualCheckInTimeUtc,
+      tapCount: 1,
+      lastSeenDoor: updatedLastSeenDoor,
+      updatedAtUtc: new Date().toISOString(),
+    };
+    this.visits.set(params.visitId, structuredClone(updatedVisit));
+
+    return {
+      visit: structuredClone(updatedVisit),
+      event: structuredClone(eventToStore),
+      notification: params.hostNotification
+        ? structuredClone(params.hostNotification)
+        : undefined,
+    };
   }
 }
 

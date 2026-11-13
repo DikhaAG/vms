@@ -87,6 +87,7 @@ export interface Facility {
   timezone: string;
   address?: string;
   overstayGraceMinutes?: number;
+  autoCheckInEarlyBufferMinutes?: number;
 }
 
 export interface HostEmployee {

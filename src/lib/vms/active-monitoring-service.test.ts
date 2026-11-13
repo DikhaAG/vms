@@ -446,4 +446,190 @@ describe("ActiveMonitoringService", () => {
       expect(res.visit?.status).toBe("CHECKED_OUT");
     });
   });
+
+  describe("Fast-Track Touchless Auto Check-In (Ticket 02)", () => {
+    const approvedVisitId = "vis-approved-auto-1";
+    const approvedVisit: Visit = {
+      id: approvedVisitId,
+      facilityId: "fac-jakarta",
+      facilityName: "Jakarta Corporate HQ",
+      visitorGivenName: "Bruce",
+      visitorFamilyName: "Wayne",
+      visitorPhone: "+6281122334455",
+      visitorEmail: "bruce@wayne-enterprises.com",
+      hostId: "emp-host-01",
+      hostName: "Rudi Host",
+      visitReasonType: 0, // Business
+      scheduledStartTimeUtc: "2026-11-13T09:00:00.000Z",
+      scheduledEndTimeUtc: "2026-11-13T12:00:00.000Z",
+      scheduledStartTimeFacility: "2026-11-13T16:00:00+07:00",
+      scheduledEndTimeFacility: "2026-11-13T19:00:00+07:00",
+      status: "APPROVED",
+      tapCount: 0,
+      tapQuota: {
+        mode: "limited",
+        maxTaps: 3,
+      },
+      createdAtUtc: "2026-11-13T07:30:00.000Z",
+      updatedAtUtc: "2026-11-13T07:30:00.000Z",
+    };
+
+    beforeEach(async () => {
+      await repo.saveVisit(structuredClone(approvedVisit));
+    });
+
+    it("auto checks in an APPROVED visitor on first perimeter door tap within early arrival buffer", async () => {
+      const tapTime = "2026-11-13T08:50:00.000Z"; // 10m before 09:00
+      const result = await service.recordTapAndEnforceQuota(
+        approvedVisitId,
+        {
+          visitId: approvedVisitId,
+          doorIndexCode: "door-turnstile-1",
+          direction: "in",
+          tappedAtUtc: tapTime,
+        },
+        { mode: "stub" },
+      );
+
+      // Verify return payload
+      expect(result.autoCheckedIn).toBe(true);
+      expect(result.tapCount).toBe(1);
+      expect(result.remainingTaps).toBe(2);
+      expect(result.isQuotaExceeded).toBe(false);
+      expect(result.autoCheckedOut).toBe(false);
+      expect(result.visit.status).toBe("CHECKED_IN");
+      expect(result.visit.actualCheckInTimeUtc).toBe(tapTime);
+      expect(result.event.direction).toBe("in");
+      expect(result.event.isPerimeter).toBe(true);
+      expect(result.hostNotification).toBeDefined();
+      expect(result.hostNotification?.visitorName).toBe("Bruce Wayne");
+
+      // Verify repository state
+      const stored = await repo.getVisit(approvedVisitId);
+      expect(stored?.status).toBe("CHECKED_IN");
+      expect(stored?.actualCheckInTimeUtc).toBe(tapTime);
+      expect(stored?.tapCount).toBe(1);
+
+      // Verify host notification in repo
+      const notifications = await repo.listHostNotifications("emp-host-01");
+      expect(notifications.some((n) => n.visitId === approvedVisitId)).toBe(true);
+    });
+
+    it("rejects auto check-in before the permitted arrival window", async () => {
+      const earlyTapTime = "2026-11-13T08:40:00.000Z"; // 20m before 09:00 (cutoff is 08:45)
+
+      await expect(
+        service.recordTapAndEnforceQuota(
+          approvedVisitId,
+          {
+            visitId: approvedVisitId,
+            doorIndexCode: "door-turnstile-1",
+            direction: "in",
+            tappedAtUtc: earlyTapTime,
+          },
+          { mode: "stub" },
+        ),
+      ).rejects.toThrow(
+        /Too early for auto check-in\. Scheduled start is 2026-11-13T09:00:00\.000Z\. Please wait or proceed to reception\./,
+      );
+
+      // Verify visit remains APPROVED and tapCount is untouched
+      const stored = await repo.getVisit(approvedVisitId);
+      expect(stored?.status).toBe("APPROVED");
+      expect(stored?.tapCount).toBe(0);
+      expect(stored?.actualCheckInTimeUtc).toBeUndefined();
+    });
+
+    it("rejects auto check-in attempts on internal non-perimeter doors while APPROVED", async () => {
+      await expect(
+        service.recordTapAndEnforceQuota(
+          approvedVisitId,
+          {
+            visitId: approvedVisitId,
+            doorIndexCode: "door-jkt-3f-el", // internal elevator lobby door (isPerimeter: false)
+            direction: "in",
+            tappedAtUtc: "2026-11-13T08:55:00.000Z",
+          },
+          { mode: "stub" },
+        ),
+      ).rejects.toThrow(
+        "Auto check-in only permitted at designated perimeter entry points. Please check in at reception.",
+      );
+
+      // Status remains APPROVED
+      const stored = await repo.getVisit(approvedVisitId);
+      expect(stored?.status).toBe("APPROVED");
+      expect(stored?.tapCount).toBe(0);
+    });
+
+    it("is idempotent: subsequent taps while CHECKED_IN record normal passage without resetting check-in timestamp", async () => {
+      // Step 1: Auto check-in at turnstile
+      const initialTapTime = "2026-11-13T08:50:00.000Z";
+      const firstTap = await service.recordTapAndEnforceQuota(
+        approvedVisitId,
+        {
+          visitId: approvedVisitId,
+          doorIndexCode: "door-turnstile-1",
+          direction: "in",
+          tappedAtUtc: initialTapTime,
+        },
+        { mode: "stub" },
+      );
+      expect(firstTap.autoCheckedIn).toBe(true);
+      expect(firstTap.tapCount).toBe(1);
+      expect(firstTap.visit.actualCheckInTimeUtc).toBe(initialTapTime);
+
+      // Step 2: Visitor or duplicate webhook taps again at 3F door
+      const secondTapTime = "2026-11-13T08:58:00.000Z";
+      const secondTap = await service.recordTapAndEnforceQuota(
+        approvedVisitId,
+        {
+          visitId: approvedVisitId,
+          doorIndexCode: "door-jkt-3f-el",
+          direction: "in",
+          tappedAtUtc: secondTapTime,
+        },
+        { mode: "stub" },
+      );
+
+      expect(secondTap.autoCheckedIn).toBe(false);
+      expect(secondTap.tapCount).toBe(2);
+      expect(secondTap.remainingTaps).toBe(1);
+      // Critical check: actualCheckInTimeUtc was NOT reset or overwritten!
+      expect(secondTap.visit.actualCheckInTimeUtc).toBe(initialTapTime);
+
+      const stored = await repo.getVisit(approvedVisitId);
+      expect(stored?.actualCheckInTimeUtc).toBe(initialTapTime);
+      expect(stored?.tapCount).toBe(2);
+    });
+
+    it("triggers automatic check-out if single-tap quota is exhausted on auto check-in", async () => {
+      // Visit with single-tap quota
+      await repo.updateVisit(approvedVisitId, {
+        tapQuota: {
+          mode: "limited",
+          maxTaps: 1,
+        },
+      });
+
+      const tapTime = "2026-11-13T08:55:00.000Z";
+      const result = await service.recordTapAndEnforceQuota(
+        approvedVisitId,
+        {
+          visitId: approvedVisitId,
+          doorIndexCode: "door-turnstile-1",
+          direction: "in",
+          tappedAtUtc: tapTime,
+        },
+        { mode: "stub" },
+      );
+
+      expect(result.autoCheckedIn).toBe(true);
+      expect(result.tapCount).toBe(1);
+      expect(result.remainingTaps).toBe(0);
+      expect(result.isQuotaExceeded).toBe(true);
+      expect(result.autoCheckedOut).toBe(true);
+      expect(result.visit.status).toBe("CHECKED_OUT");
+    });
+  });
 });

@@ -73,6 +73,8 @@ export async function POST(
 
     return NextResponse.json({
       ok: true,
+      autoCheckedIn: result.autoCheckedIn ?? false,
+      hostNotification: result.hostNotification,
       tapCount: result.tapCount,
       maxTaps: result.visit.tapQuota?.mode === "limited" ? (result.visit.tapQuota.maxTaps ?? 0) : 0,
       remainingTaps: result.remainingTaps,
@@ -95,23 +97,13 @@ export async function POST(
       );
     }
 
-    if (error instanceof Error && error.message.includes("is in status")) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: {
-            kind: "conflict",
-            message: error.message,
-          },
-        },
-        { status: 409 },
-      );
-    }
-
     if (
       error instanceof Error &&
       (error.message.includes("SINGLE_DIRECTION_IN") ||
-        error.message.includes("single-direction"))
+        error.message.includes("single-direction") ||
+        error.message.includes("Auto check-in only permitted") ||
+        error.message.includes("Too early for auto check-in") ||
+        error.message.includes("Visit window has expired"))
     ) {
       return NextResponse.json(
         {
@@ -122,6 +114,19 @@ export async function POST(
           },
         },
         { status: 400 },
+      );
+    }
+
+    if (error instanceof Error && error.message.includes("is in status")) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            kind: "conflict",
+            message: error.message,
+          },
+        },
+        { status: 409 },
       );
     }
 

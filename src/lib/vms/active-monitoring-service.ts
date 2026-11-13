@@ -1,9 +1,11 @@
 import {
+  evaluateAutoCheckIn,
   evaluateOverstayStatus,
   isTapQuotaExceeded,
   type ActiveVisitSummary,
   type CheckOutInput,
   type DoorTapEvent,
+  type HostArrivalNotification,
 } from "./checkout-contract";
 import {
   executeHikCentralCheckOut,
@@ -22,6 +24,8 @@ export interface TapEnforcementResult {
   remainingTaps?: number;
   isQuotaExceeded: boolean;
   autoCheckedOut: boolean;
+  autoCheckedIn?: boolean;
+  hostNotification?: HostArrivalNotification;
 }
 
 export interface CheckOutResult {
@@ -130,12 +134,6 @@ export class ActiveMonitoringService {
       throw new Error(`Visit not found: ${visitId}`);
     }
 
-    if (visit.status !== "CHECKED_IN" && visit.status !== "OVERSTAY") {
-      throw new Error(
-        `Cannot record tap: Visit ${visitId} is in status '${visit.status}' (must be 'CHECKED_IN' or 'OVERSTAY').`,
-      );
-    }
-
     // Lookup door topology metadata
     const door =
       (await this.repository.findDoor(tapData.doorIndexCode, visit.facilityId)) ||
@@ -143,6 +141,124 @@ export class ActiveMonitoringService {
         ? await this.repository.getDoorByName(tapData.doorName, visit.facilityId)
         : undefined) ||
       (await this.repository.findDoor(tapData.doorIndexCode));
+
+    const isPerimeter = tapData.isPerimeter ?? door?.isPerimeter ?? false;
+
+    // Fast-track touchless auto check-in handling for visits in APPROVED status
+    if (visit.status === "APPROVED") {
+      const facility = await this.repository.getFacility(visit.facilityId);
+      const earlyArrivalBufferMinutes =
+        facility?.autoCheckInEarlyBufferMinutes ?? 15;
+
+      const autoCheckInEval = evaluateAutoCheckIn({
+        visit,
+        door: {
+          isPerimeter,
+          doorName: tapData.doorName ?? door?.doorName,
+          doorIndexCode: tapData.doorIndexCode,
+        },
+        tappedAtUtc: tapData.tappedAtUtc,
+        direction: tapData.direction,
+        earlyArrivalBufferMinutes,
+      });
+
+      if (!autoCheckInEval.eligible) {
+        throw new Error(autoCheckInEval.error || "Auto check-in not eligible.");
+      }
+
+      const fullName =
+        `${visit.visitorGivenName} ${visit.visitorFamilyName}`.trim();
+      const doorDisplayName =
+        tapData.doorName ?? door?.doorName ?? tapData.doorIndexCode;
+      const tappedAtUtc = tapData.tappedAtUtc || new Date().toISOString();
+
+      const hostNotification: HostArrivalNotification = {
+        id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        visitId: visit.id,
+        hostId: visit.hostId,
+        hostName: visit.hostName,
+        visitorName: fullName,
+        doorIndexCode: tapData.doorIndexCode,
+        doorName: doorDisplayName,
+        arrivedAtUtc: tappedAtUtc,
+        message: `Visitor ${fullName} has arrived at ${doorDisplayName} and completed touchless check-in.`,
+        createdAtUtc: new Date().toISOString(),
+      };
+
+      const initialTapEvent: DoorTapEvent = {
+        ...tapData,
+        doorName: doorDisplayName,
+        direction: "in",
+        inAndOutType: 1,
+        isPerimeter: true,
+        tappedAtUtc,
+      };
+
+      const autoResult = await this.repository.autoCheckInVisit({
+        visitId,
+        actualCheckInTimeUtc: tappedAtUtc,
+        tapEvent: initialTapEvent,
+        hostNotification,
+      });
+
+      const quotaExceeded = isTapQuotaExceeded(
+        1,
+        autoResult.visit.tapQuota,
+      );
+
+      let remainingTaps: number | undefined;
+      if (autoResult.visit.tapQuota?.mode === "limited") {
+        const max = autoResult.visit.tapQuota.maxTaps ?? 0;
+        remainingTaps = Math.max(0, max - 1);
+      }
+
+      if (quotaExceeded) {
+        const autoCheckOutInput: CheckOutInput = {
+          visitId,
+          operatorUserId: "system-tap-quota-enforcer",
+          operatorName: "Tap Quota Auto-Enforcer",
+          reason: `Automatic check-out: Tap quota exhausted (1/${autoResult.visit.tapQuota?.maxTaps ?? 0} taps reached).`,
+          isForced: false,
+          checkOutTimeUtc: tappedAtUtc,
+          mode: options.mode,
+          stubScenario: options.stubScenario,
+        };
+
+        const checkOutRes = await this.performCheckOut(
+          visitId,
+          autoCheckOutInput,
+          options,
+        );
+
+        return {
+          event: autoResult.event,
+          visit: checkOutRes.visit ?? autoResult.visit,
+          tapCount: 1,
+          remainingTaps: 0,
+          isQuotaExceeded: true,
+          autoCheckedOut: true,
+          autoCheckedIn: true,
+          hostNotification: autoResult.notification,
+        };
+      }
+
+      return {
+        event: autoResult.event,
+        visit: autoResult.visit,
+        tapCount: 1,
+        remainingTaps,
+        isQuotaExceeded: false,
+        autoCheckedOut: false,
+        autoCheckedIn: true,
+        hostNotification: autoResult.notification,
+      };
+    }
+
+    if (visit.status !== "CHECKED_IN" && visit.status !== "OVERSTAY") {
+      throw new Error(
+        `Cannot record tap: Visit ${visitId} is in status '${visit.status}' (must be 'CHECKED_IN' or 'OVERSTAY').`,
+      );
+    }
 
     // Door directionality validation: SINGLE_DIRECTION_IN doors have no exit reader
     const isImplicit = Boolean(tapData.isImplicit || tapData.implicit);
@@ -245,6 +361,7 @@ export class ActiveMonitoringService {
         remainingTaps: 0,
         isQuotaExceeded: true,
         autoCheckedOut: true,
+        autoCheckedIn: false,
       };
     }
 
@@ -255,6 +372,7 @@ export class ActiveMonitoringService {
       remainingTaps,
       isQuotaExceeded: false,
       autoCheckedOut: false,
+      autoCheckedIn: false,
     };
   }
 
