@@ -513,4 +513,131 @@ describe("InMemoryVmsRepository", () => {
       ).rejects.toThrow("Visit not found");
     });
   });
+
+  describe("active monitoring and check-out", () => {
+    beforeEach(async () => {
+      // Seed visits in different statuses
+      await repo.saveVisit({
+        id: "vis-act-1",
+        facilityId: "fac-jakarta",
+        visitorGivenName: "Alice",
+        visitorFamilyName: "Smith",
+        visitReasonType: 0,
+        scheduledStartTimeUtc: "2026-11-13T08:00:00.000Z",
+        scheduledEndTimeUtc: "2026-11-13T10:00:00.000Z",
+        scheduledStartTimeFacility: "2026-11-13T15:00:00+07:00",
+        scheduledEndTimeFacility: "2026-11-13T17:00:00+07:00",
+        actualCheckInTimeUtc: "2026-11-13T08:05:00.000Z",
+        status: "CHECKED_IN",
+        tapCount: 1,
+        hikCentral: {
+          appointRecordId: "hc-rec-1",
+          visitorId: "hc-vis-1",
+        },
+        createdAtUtc: "2026-11-13T07:00:00.000Z",
+        updatedAtUtc: "2026-11-13T08:05:00.000Z",
+      });
+
+      await repo.saveVisit({
+        id: "vis-act-2",
+        facilityId: "fac-bali",
+        visitorGivenName: "Bob",
+        visitorFamilyName: "Jones",
+        visitReasonType: 2,
+        scheduledStartTimeUtc: "2026-11-13T09:00:00.000Z",
+        scheduledEndTimeUtc: "2026-11-13T11:00:00.000Z",
+        scheduledStartTimeFacility: "2026-11-13T17:00:00+08:00",
+        scheduledEndTimeFacility: "2026-11-13T19:00:00+08:00",
+        actualCheckInTimeUtc: "2026-11-13T09:02:00.000Z",
+        status: "CHECKED_IN",
+        createdAtUtc: "2026-11-13T08:00:00.000Z",
+        updatedAtUtc: "2026-11-13T09:02:00.000Z",
+      });
+
+      await repo.saveVisit({
+        id: "vis-act-3",
+        facilityId: "fac-jakarta",
+        visitorGivenName: "Charlie",
+        visitorFamilyName: "Brown",
+        visitReasonType: 1,
+        scheduledStartTimeUtc: "2026-11-13T07:00:00.000Z",
+        scheduledEndTimeUtc: "2026-11-13T08:00:00.000Z",
+        scheduledStartTimeFacility: "2026-11-13T14:00:00+07:00",
+        scheduledEndTimeFacility: "2026-11-13T15:00:00+07:00",
+        actualCheckInTimeUtc: "2026-11-13T07:05:00.000Z",
+        actualCheckOutTimeUtc: "2026-11-13T08:00:00.000Z",
+        status: "CHECKED_OUT",
+        createdAtUtc: "2026-11-13T06:00:00.000Z",
+        updatedAtUtc: "2026-11-13T08:00:00.000Z",
+      });
+    });
+
+    it("listActiveVisits returns only visits with status CHECKED_IN", async () => {
+      const active = await repo.listActiveVisits();
+      expect(active).toHaveLength(2);
+      expect(active.map((v) => v.id).sort()).toEqual(["vis-act-1", "vis-act-2"]);
+
+      const activeJakarta = await repo.listActiveVisits("fac-jakarta");
+      expect(activeJakarta).toHaveLength(1);
+      expect(activeJakarta[0].id).toBe("vis-act-1");
+    });
+
+    it("recordDoorTap persists tap event and increments visit's tapCount", async () => {
+      const result = await repo.recordDoorTap({
+        visitId: "vis-act-1",
+        doorIndexCode: "door-gate-1",
+        doorName: "Main Entrance SpeedGate",
+        direction: "in",
+        tappedAtUtc: "2026-11-13T08:30:00.000Z",
+      });
+
+      expect(result.tapCount).toBe(2);
+      expect(result.visit.tapCount).toBe(2);
+      expect(result.event.id).toBeDefined();
+
+      const events = await repo.listDoorTapEvents("vis-act-1");
+      expect(events).toHaveLength(1);
+      expect(events[0].doorIndexCode).toBe("door-gate-1");
+
+      const updatedVisit = await repo.getVisit("vis-act-1");
+      expect(updatedVisit?.tapCount).toBe(2);
+    });
+
+    it("checkOutVisit transitions status to CHECKED_OUT and logs check-out audit event", async () => {
+      const updated = await repo.checkOutVisit("vis-act-1", {
+        actualCheckOutTimeUtc: "2026-11-13T09:45:00.000Z",
+        operatorUserId: "usr-sec-99",
+        operatorName: "Officer Herman",
+        reason: "Visit concluded normally",
+        isForced: false,
+        appointRecordIdRevoked: "hc-rec-1",
+      });
+
+      expect(updated.status).toBe("CHECKED_OUT");
+      expect(updated.actualCheckOutTimeUtc).toBe("2026-11-13T09:45:00.000Z");
+      expect(updated.checkOutReason).toBe("Visit concluded normally");
+      expect(updated.isForcedCheckOut).toBe(false);
+      expect(updated.checkedOutByUserId).toBe("usr-sec-99");
+
+      // Verify no longer in listActiveVisits
+      const active = await repo.listActiveVisits("fac-jakarta");
+      expect(active).toHaveLength(0);
+
+      // Verify check-out audit event
+      const logs = await repo.listCheckOutEvents("vis-act-1");
+      expect(logs).toHaveLength(1);
+      expect(logs[0].operatorUserId).toBe("usr-sec-99");
+      expect(logs[0].appointRecordIdRevoked).toBe("hc-rec-1");
+    });
+
+    it("throws when checking out non-existent visit", async () => {
+      await expect(
+        repo.checkOutVisit("non-existent-id", {
+          actualCheckOutTimeUtc: "2026-11-13T10:00:00Z",
+          operatorUserId: "usr-1",
+          isForced: false,
+        }),
+      ).rejects.toThrow("Visit not found");
+    });
+  });
 });

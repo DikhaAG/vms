@@ -12,6 +12,10 @@ import type {
   CheckInAuditEvent,
   VerificationMethod,
 } from "./checkin-contract";
+import type {
+  CheckOutAuditEvent,
+  DoorTapEvent,
+} from "./checkout-contract";
 
 export interface ListVisitsFilter {
   facilityId?: string;
@@ -32,6 +36,21 @@ export interface CheckInVisitParams {
   hikCentral?: HikCentralVisitReference;
   credentialSyncStatus?: CredentialSyncStatus;
   notes?: string;
+}
+
+export interface CheckOutVisitParams {
+  actualCheckOutTimeUtc: string;
+  operatorUserId: string;
+  operatorName?: string;
+  reason?: string;
+  isForced: boolean;
+  appointRecordIdRevoked?: string;
+}
+
+export interface RecordDoorTapResult {
+  event: DoorTapEvent;
+  visit: Visit;
+  tapCount: number;
 }
 
 export interface IVmsRepository {
@@ -81,6 +100,14 @@ export interface IVmsRepository {
   getAccessLevel(id: string): Promise<AccessLevel | undefined>;
   saveAccessLevel(accessLevel: AccessLevel): Promise<void>;
   deleteAccessLevel(id: string): Promise<void>;
+
+  // Active monitoring, door taps, and check-out
+  listActiveVisits(facilityId?: string): Promise<Visit[]>;
+  recordDoorTap(tapEvent: DoorTapEvent): Promise<RecordDoorTapResult>;
+  listDoorTapEvents(visitId?: string): Promise<DoorTapEvent[]>;
+  checkOutVisit(visitId: string, checkOutData: CheckOutVisitParams): Promise<Visit>;
+  saveCheckOutEvent(event: CheckOutAuditEvent): Promise<void>;
+  listCheckOutEvents(visitId?: string): Promise<CheckOutAuditEvent[]>;
 }
 
 export const DEFAULT_FACILITIES: Facility[] = [
@@ -167,6 +194,8 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private approvalRecords: ApprovalRecord[] = [];
   private accessLevels = new Map<string, AccessLevel>();
   private checkInEvents: CheckInAuditEvent[] = [];
+  private doorTapEvents: DoorTapEvent[] = [];
+  private checkOutEvents: CheckOutAuditEvent[] = [];
 
   constructor(
     initialFacilities: Facility[] = DEFAULT_FACILITIES,
@@ -451,6 +480,113 @@ export class InMemoryVmsRepository implements IVmsRepository {
         (a, b) =>
           new Date(b.checkedInAtUtc).getTime() -
           new Date(a.checkedInAtUtc).getTime(),
+      );
+  }
+
+  async listActiveVisits(facilityId?: string): Promise<Visit[]> {
+    let list = Array.from(this.visits.values()).filter(
+      (v) => v.status === "CHECKED_IN",
+    );
+    if (facilityId) {
+      list = list.filter((v) => v.facilityId === facilityId);
+    }
+    return list.map((v) => structuredClone(v));
+  }
+
+  async recordDoorTap(tapEvent: DoorTapEvent): Promise<RecordDoorTapResult> {
+    const existing = this.visits.get(tapEvent.visitId);
+    if (!existing) {
+      throw new Error(`Visit not found: ${tapEvent.visitId}`);
+    }
+
+    const eventToStore: DoorTapEvent = {
+      ...tapEvent,
+      id:
+        tapEvent.id ||
+        `tap-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      tappedAtUtc: tapEvent.tappedAtUtc || new Date().toISOString(),
+    };
+    this.doorTapEvents.push(structuredClone(eventToStore));
+
+    const newTapCount = (existing.tapCount ?? 0) + 1;
+    const updatedVisit: Visit = {
+      ...existing,
+      tapCount: newTapCount,
+      updatedAtUtc: new Date().toISOString(),
+    };
+    this.visits.set(tapEvent.visitId, structuredClone(updatedVisit));
+
+    return {
+      event: structuredClone(eventToStore),
+      visit: structuredClone(updatedVisit),
+      tapCount: newTapCount,
+    };
+  }
+
+  async listDoorTapEvents(visitId?: string): Promise<DoorTapEvent[]> {
+    let list = this.doorTapEvents;
+    if (visitId) {
+      list = list.filter((e) => e.visitId === visitId);
+    }
+    return list
+      .map((e) => structuredClone(e))
+      .sort(
+        (a, b) =>
+          new Date(b.tappedAtUtc).getTime() -
+          new Date(a.tappedAtUtc).getTime(),
+      );
+  }
+
+  async checkOutVisit(
+    visitId: string,
+    checkOutData: CheckOutVisitParams,
+  ): Promise<Visit> {
+    const existing = this.visits.get(visitId);
+    if (!existing) {
+      throw new Error(`Visit not found: ${visitId}`);
+    }
+
+    const auditEvent: CheckOutAuditEvent = {
+      id: `chkout-audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId,
+      checkedOutAtUtc: checkOutData.actualCheckOutTimeUtc,
+      operatorUserId: checkOutData.operatorUserId,
+      operatorName: checkOutData.operatorName,
+      reason: checkOutData.reason,
+      isForced: checkOutData.isForced,
+      appointRecordIdRevoked: checkOutData.appointRecordIdRevoked,
+    };
+    await this.saveCheckOutEvent(auditEvent);
+
+    const updated: Visit = {
+      ...existing,
+      status: "CHECKED_OUT",
+      actualCheckOutTimeUtc: checkOutData.actualCheckOutTimeUtc,
+      checkOutReason: checkOutData.reason,
+      isForcedCheckOut: checkOutData.isForced,
+      checkedOutByUserId: checkOutData.operatorUserId,
+      updatedAtUtc: new Date().toISOString(),
+    };
+
+    this.visits.set(visitId, structuredClone(updated));
+    return structuredClone(updated);
+  }
+
+  async saveCheckOutEvent(event: CheckOutAuditEvent): Promise<void> {
+    this.checkOutEvents.push(structuredClone(event));
+  }
+
+  async listCheckOutEvents(visitId?: string): Promise<CheckOutAuditEvent[]> {
+    let list = this.checkOutEvents;
+    if (visitId) {
+      list = list.filter((e) => e.visitId === visitId);
+    }
+    return list
+      .map((e) => structuredClone(e))
+      .sort(
+        (a, b) =>
+          new Date(b.checkedOutAtUtc).getTime() -
+          new Date(a.checkedOutAtUtc).getTime(),
       );
   }
 }

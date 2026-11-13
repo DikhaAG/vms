@@ -100,6 +100,11 @@ export interface Visit {
   scheduledStartTimeFacility: string;
   scheduledEndTimeFacility: string;
   actualCheckInTimeUtc?: string;
+  actualCheckOutTimeUtc?: string;
+  tapCount?: number;
+  checkOutReason?: string;
+  isForcedCheckOut?: boolean;
+  checkedOutByUserId?: string;
   status: VisitStatus;
   facePhoto?: string;
   credentialSyncStatus?: CredentialSyncStatus;

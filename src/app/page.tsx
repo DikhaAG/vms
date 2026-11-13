@@ -120,9 +120,32 @@ export default function HomePage() {
         <div className="mt-4">
           <Link
             href="/vms/reception"
-            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
           >
             Open Front-Desk Reception &rarr;
+          </Link>
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-neutral-900">
+            Active Attendance & Security Monitor
+          </h2>
+          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
+            Ticket 07
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-neutral-600">
+          Live on-premise attendance monitor, door tap quota enforcement with automated revocation,
+          facility overstay grace period alerts, and single-click normal or forced check-out via HikCentral.
+        </p>
+        <div className="mt-4">
+          <Link
+            href="/vms/active-monitoring"
+            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600"
+          >
+            Open Active Attendance Monitor &rarr;
           </Link>
         </div>
       </section>
