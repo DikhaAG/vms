@@ -13,3 +13,4 @@
 - [ ] Active emergency grants display remaining time badge and a one-click "Revoke Access" button with confirmation prompt.
 - [ ] Visitors checked in via fast-track auto check-in display a `Fast-Track` badge distinguishing them from manual reception check-ins.
 - [ ] Form submission validates inputs on client and renders structured error banners on API failure.
+

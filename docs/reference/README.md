@@ -38,3 +38,22 @@ Chapter and line-number index into [HikCentral Professional OpenAPI V3.1.1_Devel
 | 5.9 Access Control API | 24283–25542 | Doors, privilege groups, access logs |
 | 5.10–5.15 Domain Modules | 25543–33242 | On-Board (L25543), Display (L26047), Video Tracing (L27038), Attendance (L27327), Canteen (L27582), Education (L29136) |
 
+## Key Endpoints for Visitor & Access Control
+
+Direct line numbers for high-frequency integration endpoints in the developer guide:
+
+| Endpoint | Guide Line | Description |
+| --- | --- | --- |
+| `POST /artemis/api/resource/v1/acsDevice/acsDeviceList` | L3254 | Query all Access Control devices and MinMoe face terminals |
+| `POST /artemis/api/resource/v1/acsDevice/indexCode/acsDeviceInfo` | L3330 | Query details, IP, port, and serial of a specific ACS device |
+| `POST /artemis/api/resource/v1/door/doorList` | L3450 | Query physical doors, channels, and parent controller index codes |
+| `POST /artemis/api/eventService/v1/eventSubscriptionByEventTypes` | L17674 | Register real-time REST callback webhook for access events (e.g. 196893, 197121) |
+| `POST /artemis/api/eventService/v1/eventSubscriptionView` | L17757 | Inspect active event subscriptions and destination URLs |
+| `POST /artemis/api/visitor/v2/appointment` | L18590 | Pre-registration and appointment reservation with face photo data |
+| `POST /artemis/api/visitor/v1/registerment` | L18720 | Front-desk check-in and terminal credential provisioning |
+| `POST /artemis/api/visitor/v1/out` | L18850 | Visitor check-out and instant hardware terminal de-authorization |
+| `POST /artemis/api/acs/v1/privilege/group` | L24300 | Query access level privilege groups |
+| `POST /artemis/api/acs/v1/privilege/group/single/addPersons` | L24400 | Dynamically assign additional doors or access levels to a person/visitor |
+| `POST /artemis/api/acs/v1/door/events` | L24500 | Historical query of card-swiping and face-recognition door passage events |
+
+

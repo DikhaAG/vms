@@ -10,3 +10,4 @@
 - [ ] Verifies graceful fallback and clear structured error responses when HikCentral OpenAPI encounters network timeout or authentication failures during emergency grant synchronization.
 - [ ] Confirms that full regression test suite passes cleanly (`pnpm check` exits 0 with all test files passing).
 - [ ] Next.js 16 production build compiles with Turbopack (`pnpm build`) without errors or bundle warnings.
+

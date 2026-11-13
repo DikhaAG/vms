@@ -76,4 +76,25 @@ _Avoid_: Server timezone, Client timezone, Local time
 A security register of individuals flagged for denied entry or mandatory security review.
 _Avoid_: Blacklist, Blocklist, Watchlist
 
+**Fast-Track Auto Check-In**:
+The automated transition of an approved Visit to checked-in status upon the first successful biometric or QR scan at a designated Perimeter Door during the scheduled appointment window without receptionist intervention.
+_Avoid_: Touchless entry, Direct check-in, Auto-entry, Skip reception
+
+**Perimeter Door**:
+An outer entry or exit point (such as a lobby speedgate or exterior turnstile) that defines the physical boundary between the outside world and the secured facility interior.
+_Avoid_: Outer door, External gate, Boundary point
+
+**Door Directionality**:
+The hardware access configuration of a physical door, distinguishing between Dual-Direction (readers on both entry and exit) and Single-Direction In (reader on entry, unauthenticated push-to-exit button or sensor on exit).
+_Avoid_: Door type, One-way door, Bi-directional door
+
+**Implicit Room Transition**:
+The logical deduction that a Visitor has exited a Single-Direction room upon scanning into a different room or area, updating active physical location without requiring an unattainable exit scan.
+_Avoid_: Invisible exit, Ghost exit, Auto-departure, Zone hop
+
+**Emergency Access Grant**:
+A time-bounded, justification-backed temporary permission granted to an active Visit for specific physical doors outside their default Access Level, with automatic hardware synchronization and revocation upon expiration or check-out.
+_Avoid_: Ad-hoc access, Temporary privilege, Over-ride, Elevation pass
+
+
 

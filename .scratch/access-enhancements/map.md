@@ -19,3 +19,4 @@ Task graph for Fast-Track Auto Check-In, Time-Bounded Emergency Access, and Door
 
 ## Frontier
 - `01-door-topology-and-implicit-transitions.md` is currently unblocked and ready for immediate implementation.
+

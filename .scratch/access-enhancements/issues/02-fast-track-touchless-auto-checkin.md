@@ -13,3 +13,4 @@
 - [ ] On successful auto check-in, atomically updates visit status to `CHECKED_IN`, sets `checkInTimeUtc`, initializes `tapCount: 1`, logs initial `DoorTapEvent`, and creates an arrival notification for the host.
 - [ ] Idempotent against duplicate webhook deliveries (subsequent taps while already `CHECKED_IN` record normal door passage without resetting check-in timestamp).
 - [ ] Unit and route integration tests verify on-time arrival auto check-in, early arrival denial, internal door rejection, and idempotency.
+

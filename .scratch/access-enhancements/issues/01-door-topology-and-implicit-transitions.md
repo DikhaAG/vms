@@ -12,3 +12,4 @@
 - [ ] When a visitor whose last seen location was a single-direction door scans into a different room, the system logs an implicit departure breadcrumb from the previous door before logging entry to the new door.
 - [ ] Taps on outer perimeter doors (`isPerimeter: true`) are flagged as perimeter crossing events.
 - [ ] Unit tests verify single vs dual-direction event handling, implicit exit transitions, and perimeter tagging.
+

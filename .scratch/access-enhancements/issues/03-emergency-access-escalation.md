@@ -13,3 +13,4 @@
 - [ ] HTTP endpoint `DELETE /api/vms/active-visits/[visitId]/emergency-access/[grantId]` permits early manual revocation by authorized operators.
 - [ ] Check-out workflow (`performCheckOut`) automatically sets all active emergency grants for the visit to `REVOKED` and de-authorizes terminal privileges on hardware.
 - [ ] Service and route unit tests verify emergency grant creation, HikCentral sync dispatch, tap permission verification, early manual revocation, and automatic check-out revocation.
+
