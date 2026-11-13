@@ -26,8 +26,8 @@ Membangun modul bisnis enterprise **Visitor Management System (VMS)** berbasis N
 ## Frontier
 
 - [03: Public Self-Registration Portal (External Visitor Invitation Link)](issues/03-public-self-registration-portal.md) — `Status: ready-for-agent`, unblocked by 01 & 02.
-- [04: Approval Workflow & Monitoring List (Blacklist) Screening](issues/04-approval-workflow-blacklist-screening.md) — `Status: ready-for-agent`, unblocked.
-- [05: Dynamic Access Level Management (Door/Floor Bundling & Tap Quota)](issues/05-dynamic-access-level-tap-quota.md) — `Status: ready-for-agent`, unblocked.
+- [04: Approval Workflow & Monitoring List (Blacklist) Screening](issues/04-approval-workflow-blacklist-screening.md) — `Status: ready-for-agent`, unblocked by 01.
+- [05: Dynamic Access Level Management (Door/Floor Bundling & Tap Quota)](issues/05-dynamic-access-level-tap-quota.md) — `Status: ready-for-agent`, unblocked by 01.
 
 ## Issues Index
 
