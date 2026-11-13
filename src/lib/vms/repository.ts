@@ -1,7 +1,17 @@
-import type { CredentialSyncStatus, Facility, Visit, VisitStatus } from "./vms-contract";
+import type {
+  CredentialSyncStatus,
+  Facility,
+  HikCentralVisitReference,
+  Visit,
+  VisitStatus,
+} from "./vms-contract";
 import type { InvitationToken } from "./invitation-contract";
 import type { ApprovalRecord } from "./approval-contract";
 import type { AccessLevel } from "./access-level-contract";
+import type {
+  CheckInAuditEvent,
+  VerificationMethod,
+} from "./checkin-contract";
 
 export interface ListVisitsFilter {
   facilityId?: string;
@@ -14,6 +24,16 @@ export interface UpdateVisitApprovalParams {
   credentialSyncStatus?: CredentialSyncStatus;
 }
 
+export interface CheckInVisitParams {
+  actualCheckInTimeUtc: string;
+  receptionistUserId: string;
+  receptionistName?: string;
+  verificationMethod?: VerificationMethod | string;
+  hikCentral?: HikCentralVisitReference;
+  credentialSyncStatus?: CredentialSyncStatus;
+  notes?: string;
+}
+
 export interface IVmsRepository {
   getFacility(id: string): Promise<Facility | undefined>;
   listFacilities(): Promise<Facility[]>;
@@ -22,6 +42,16 @@ export interface IVmsRepository {
   listVisits(filter?: ListVisitsFilter): Promise<Visit[]>;
   saveVisit(visit: Visit): Promise<void>;
   updateVisit(id: string, updates: Partial<Visit>): Promise<Visit>;
+
+  // Check-in and search operations
+  searchVisits(
+    query: string,
+    facilityId?: string,
+    status?: VisitStatus | VisitStatus[],
+  ): Promise<Visit[]>;
+  checkInVisit(visitId: string, checkInData: CheckInVisitParams): Promise<Visit>;
+  saveCheckInEvent(event: CheckInAuditEvent): Promise<void>;
+  listCheckInEvents(visitId?: string): Promise<CheckInAuditEvent[]>;
 
   // Approval and review queue operations
   getVisitsByStatus(
@@ -136,6 +166,7 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private invitationTokens = new Map<string, InvitationToken>();
   private approvalRecords: ApprovalRecord[] = [];
   private accessLevels = new Map<string, AccessLevel>();
+  private checkInEvents: CheckInAuditEvent[] = [];
 
   constructor(
     initialFacilities: Facility[] = DEFAULT_FACILITIES,
@@ -317,6 +348,110 @@ export class InMemoryVmsRepository implements IVmsRepository {
 
   async deleteAccessLevel(id: string): Promise<void> {
     this.accessLevels.delete(id);
+  }
+
+  async searchVisits(
+    query: string,
+    facilityId?: string,
+    status?: VisitStatus | VisitStatus[],
+  ): Promise<Visit[]> {
+    let list = Array.from(this.visits.values());
+
+    if (facilityId) {
+      list = list.filter((v) => v.facilityId === facilityId);
+    }
+
+    if (status) {
+      const allowed = Array.isArray(status) ? status : [status];
+      list = list.filter((v) => allowed.includes(v.status));
+    }
+
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      return list.map((v) => structuredClone(v));
+    }
+
+    return list
+      .filter((v) => {
+        const fullName1 =
+          `${v.visitorGivenName} ${v.visitorFamilyName}`.toLowerCase();
+        const fullName2 =
+          `${v.visitorFamilyName} ${v.visitorGivenName}`.toLowerCase();
+        return (
+          v.id.toLowerCase().includes(q) ||
+          v.visitorGivenName.toLowerCase().includes(q) ||
+          v.visitorFamilyName.toLowerCase().includes(q) ||
+          fullName1.includes(q) ||
+          fullName2.includes(q) ||
+          (v.visitorPhone && v.visitorPhone.toLowerCase().includes(q)) ||
+          (v.visitorEmail && v.visitorEmail.toLowerCase().includes(q)) ||
+          (v.certificateNo && v.certificateNo.toLowerCase().includes(q)) ||
+          (v.hikCentral?.appointCode &&
+            v.hikCentral.appointCode.toLowerCase().includes(q)) ||
+          (v.hikCentral?.appointRecordId &&
+            v.hikCentral.appointRecordId.toLowerCase().includes(q)) ||
+          (v.invitationToken && v.invitationToken.toLowerCase().includes(q))
+        );
+      })
+      .map((v) => structuredClone(v));
+  }
+
+  async checkInVisit(
+    visitId: string,
+    checkInData: CheckInVisitParams,
+  ): Promise<Visit> {
+    const existing = this.visits.get(visitId);
+    if (!existing) {
+      throw new Error(`Visit not found: ${visitId}`);
+    }
+
+    const auditEvent: CheckInAuditEvent = {
+      id: `chk-audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId,
+      checkedInAtUtc: checkInData.actualCheckInTimeUtc,
+      receptionistUserId: checkInData.receptionistUserId,
+      receptionistName: checkInData.receptionistName,
+      verificationMethod:
+        (checkInData.verificationMethod as VerificationMethod) || "manual",
+      notes: checkInData.notes,
+    };
+    await this.saveCheckInEvent(auditEvent);
+
+    const updated: Visit = {
+      ...existing,
+      status: "CHECKED_IN",
+      actualCheckInTimeUtc: checkInData.actualCheckInTimeUtc,
+      hikCentral: checkInData.hikCentral
+        ? {
+            ...existing.hikCentral,
+            ...checkInData.hikCentral,
+          }
+        : existing.hikCentral,
+      credentialSyncStatus:
+        checkInData.credentialSyncStatus ?? existing.credentialSyncStatus,
+      updatedAtUtc: new Date().toISOString(),
+    };
+
+    this.visits.set(visitId, structuredClone(updated));
+    return structuredClone(updated);
+  }
+
+  async saveCheckInEvent(event: CheckInAuditEvent): Promise<void> {
+    this.checkInEvents.push(structuredClone(event));
+  }
+
+  async listCheckInEvents(visitId?: string): Promise<CheckInAuditEvent[]> {
+    let list = this.checkInEvents;
+    if (visitId) {
+      list = list.filter((e) => e.visitId === visitId);
+    }
+    return list
+      .map((e) => structuredClone(e))
+      .sort(
+        (a, b) =>
+          new Date(b.checkedInAtUtc).getTime() -
+          new Date(a.checkedInAtUtc).getTime(),
+      );
   }
 }
 

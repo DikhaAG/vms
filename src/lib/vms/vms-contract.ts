@@ -78,6 +78,7 @@ export interface HikCentralVisitReference {
   visitorId: string;
   appointCode?: string;
   qrCodeImage?: string;
+  pinCode?: string;
 }
 
 export interface Visit {
@@ -98,6 +99,7 @@ export interface Visit {
   scheduledEndTimeUtc: string;
   scheduledStartTimeFacility: string;
   scheduledEndTimeFacility: string;
+  actualCheckInTimeUtc?: string;
   status: VisitStatus;
   facePhoto?: string;
   credentialSyncStatus?: CredentialSyncStatus;

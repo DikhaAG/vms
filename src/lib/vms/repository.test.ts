@@ -366,4 +366,151 @@ describe("InMemoryVmsRepository", () => {
       expect(deleted).toBeUndefined();
     });
   });
+
+  describe("searchVisits and checkInVisit", () => {
+    const visit1: Visit = {
+      id: "vis-search-01",
+      facilityId: "fac-jakarta",
+      facilityName: "Jakarta Corporate HQ",
+      visitorFamilyName: "Santoso",
+      visitorGivenName: "Budi",
+      visitorPhone: "+62812345678",
+      visitorEmail: "budi.santoso@example.com",
+      certificateType: 111,
+      certificateNo: "3171010101010001",
+      visitReasonType: 0,
+      scheduledStartTimeUtc: "2026-11-13T02:00:00Z",
+      scheduledEndTimeUtc: "2026-11-13T06:00:00Z",
+      scheduledStartTimeFacility: "2026-11-13T09:00:00+07:00",
+      scheduledEndTimeFacility: "2026-11-13T13:00:00+07:00",
+      status: "APPROVED",
+      hikCentral: {
+        appointRecordId: "rec-hc-01",
+        visitorId: "hc-vis-01",
+        appointCode: "8899",
+      },
+      createdAtUtc: "2026-11-13T01:00:00Z",
+      updatedAtUtc: "2026-11-13T01:00:00Z",
+    };
+
+    const visit2: Visit = {
+      id: "vis-search-02",
+      facilityId: "fac-bali",
+      facilityName: "Bali Innovation Center",
+      visitorFamilyName: "Wulandari",
+      visitorGivenName: "Siti",
+      visitorPhone: "+62819876543",
+      visitorEmail: "siti.wulan@example.com",
+      certificateType: 414,
+      certificateNo: "X12345678",
+      visitReasonType: 1,
+      scheduledStartTimeUtc: "2026-11-13T03:00:00Z",
+      scheduledEndTimeUtc: "2026-11-13T07:00:00Z",
+      scheduledStartTimeFacility: "2026-11-13T11:00:00+08:00",
+      scheduledEndTimeFacility: "2026-11-13T15:00:00+08:00",
+      status: "CHECKED_IN",
+      invitationToken: "tok-inv-bali-01",
+      createdAtUtc: "2026-11-13T01:00:00Z",
+      updatedAtUtc: "2026-11-13T01:00:00Z",
+    };
+
+    beforeEach(async () => {
+      await repo.saveVisit(visit1);
+      await repo.saveVisit(visit2);
+    });
+
+    it("searches visits by visitor given/family name or full name case-insensitively", async () => {
+      const matchGiven = await repo.searchVisits("budi");
+      expect(matchGiven).toHaveLength(1);
+      expect(matchGiven[0].id).toBe("vis-search-01");
+
+      const matchFamily = await repo.searchVisits("WULANDARI");
+      expect(matchFamily).toHaveLength(1);
+      expect(matchFamily[0].id).toBe("vis-search-02");
+
+      const matchFull = await repo.searchVisits("Budi Santoso");
+      expect(matchFull).toHaveLength(1);
+      expect(matchFull[0].id).toBe("vis-search-01");
+    });
+
+    it("searches visits by phone number, email, certificateNo, appointment code, id, or token", async () => {
+      const matchPhone = await repo.searchVisits("+62812345");
+      expect(matchPhone).toHaveLength(1);
+      expect(matchPhone[0].id).toBe("vis-search-01");
+
+      const matchCert = await repo.searchVisits("X12345678");
+      expect(matchCert).toHaveLength(1);
+      expect(matchCert[0].id).toBe("vis-search-02");
+
+      const matchCode = await repo.searchVisits("8899");
+      expect(matchCode).toHaveLength(1);
+      expect(matchCode[0].id).toBe("vis-search-01");
+
+      const matchToken = await repo.searchVisits("tok-inv-bali-01");
+      expect(matchToken).toHaveLength(1);
+      expect(matchToken[0].id).toBe("vis-search-02");
+
+      const matchId = await repo.searchVisits("vis-search-01");
+      expect(matchId).toHaveLength(1);
+      expect(matchId[0].id).toBe("vis-search-01");
+    });
+
+    it("filters search results by facilityId and status", async () => {
+      const matchesJakarta = await repo.searchVisits("", "fac-jakarta");
+      expect(matchesJakarta).toHaveLength(1);
+      expect(matchesJakarta[0].id).toBe("vis-search-01");
+
+      const matchesApproved = await repo.searchVisits("", undefined, "APPROVED");
+      expect(matchesApproved).toHaveLength(1);
+      expect(matchesApproved[0].id).toBe("vis-search-01");
+
+      const matchesStatusArray = await repo.searchVisits(
+        "",
+        undefined,
+        ["APPROVED", "CHECKED_IN"],
+      );
+      expect(matchesStatusArray).toHaveLength(2);
+    });
+
+    it("checks in a visit, transitions status to CHECKED_IN, updates actualCheckInTimeUtc and audit log", async () => {
+      const updated = await repo.checkInVisit("vis-search-01", {
+        actualCheckInTimeUtc: "2026-11-13T02:05:00Z",
+        receptionistUserId: "rec-user-01",
+        receptionistName: "Dewi Frontdesk",
+        verificationMethod: "qr",
+        hikCentral: {
+          appointRecordId: "rec-hc-01-updated",
+          visitorId: "hc-vis-01",
+          appointCode: "8899",
+          qrCodeImage: "qr-data-updated",
+          pinCode: "123456",
+        },
+        credentialSyncStatus: "Applied",
+        notes: "Identity verified with physical passport",
+      });
+
+      expect(updated.status).toBe("CHECKED_IN");
+      expect(updated.actualCheckInTimeUtc).toBe("2026-11-13T02:05:00Z");
+      expect(updated.hikCentral?.appointRecordId).toBe("rec-hc-01-updated");
+      expect(updated.hikCentral?.pinCode).toBe("123456");
+      expect(updated.credentialSyncStatus).toBe("Applied");
+
+      // Verify audit event persisted
+      const events = await repo.listCheckInEvents("vis-search-01");
+      expect(events).toHaveLength(1);
+      expect(events[0].receptionistUserId).toBe("rec-user-01");
+      expect(events[0].verificationMethod).toBe("qr");
+      expect(events[0].checkedInAtUtc).toBe("2026-11-13T02:05:00Z");
+    });
+
+    it("throws when checking in a non-existent visit", async () => {
+      await expect(
+        repo.checkInVisit("non-existent-id", {
+          actualCheckInTimeUtc: "2026-11-13T02:00:00Z",
+          receptionistUserId: "rec-user-01",
+          verificationMethod: "manual",
+        }),
+      ).rejects.toThrow("Visit not found");
+    });
+  });
 });
