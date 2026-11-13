@@ -179,3 +179,4 @@ describe("POST /api/vms/active-visits/[visitId]/emergency-access", () => {
     expect(json.error.kind).toBe("upstream");
   });
 });
+

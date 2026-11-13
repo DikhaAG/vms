@@ -127,3 +127,4 @@ describe("DELETE /api/vms/active-visits/[visitId]/emergency-access/[grantId]", (
     expect(json.error.kind).toBe("upstream");
   });
 });
+

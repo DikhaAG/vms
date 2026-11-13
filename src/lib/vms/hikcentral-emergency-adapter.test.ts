@@ -131,3 +131,4 @@ describe("hikcentral-emergency-adapter", () => {
     });
   });
 });
+
