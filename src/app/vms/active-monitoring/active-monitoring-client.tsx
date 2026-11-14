@@ -249,7 +249,7 @@ export function ActiveMonitoringClient({
 
   // Handle Normal Check-out
   const handleNormalCheckOut = async (visit: ActiveVisitSummary) => {
-    if (!confirm(`Are you sure you want to check out ${visit.visitor.fullName}? This will revoke door turnstile access immediately.`)) {
+    if (!confirm(`Apakah Anda yakin ingin menyelesaikan kunjungan (check-out) untuk ${visit.visitor.fullName}? Hak akses pintu turnstile akan segera dicabut.`)) {
       return;
     }
 
@@ -264,7 +264,7 @@ export function ActiveMonitoringClient({
           operatorUserId: "sec-operator-01",
           operatorName: "Security Frontdesk",
           isForced: false,
-          reason: "Normal visit completion",
+          reason: "Penyelesaian kunjungan normal",
           mode,
           stubScenario,
         }),
@@ -272,12 +272,12 @@ export function ActiveMonitoringClient({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error?.message || "Failed to check out visitor.");
+        throw new Error(data.error?.message || "Gagal menyelesaikan kunjungan tamu.");
       }
 
       setNotification({
         type: "success",
-        message: `✓ ${visit.visitor.fullName} successfully checked out. Access privileges revoked on physical hardware.`,
+        message: `✓ Kunjungan ${visit.visitor.fullName} berhasil diselesaikan. Hak akses pada perangkat pintu fisik telah dicabut.`,
       });
 
       // Remove from active visits
@@ -285,7 +285,7 @@ export function ActiveMonitoringClient({
     } catch (err) {
       setNotification({
         type: "error",
-        message: err instanceof Error ? err.message : "Failed to check out visitor.",
+        message: err instanceof Error ? err.message : "Gagal menyelesaikan kunjungan tamu.",
       });
     } finally {
       setActionLoadingId(null);
@@ -295,14 +295,14 @@ export function ActiveMonitoringClient({
   // Open Force Check-out Modal
   const openForceCheckOutModal = (visit: ActiveVisitSummary) => {
     setForceVisit(visit);
-    setForceReason(visit.isOverstay ? `Overstay grace period exceeded by ${visit.overstayMinutes} minutes` : "");
+    setForceReason(visit.isOverstay ? `Batas waktu toleransi kunjungan (grace period) terlewati ${visit.overstayMinutes} menit` : "");
   };
 
   // Submit Force Check-out
   const handleConfirmForceCheckOut = async () => {
     if (!forceVisit) return;
     if (!forceReason.trim()) {
-      alert("Please specify a security reason for forced check-out.");
+      alert("Harap cantumkan alasan keamanan untuk melakukan check-out paksa.");
       return;
     }
 
@@ -323,12 +323,12 @@ export function ActiveMonitoringClient({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error?.message || data.errors?.reason || "Failed to force check-out visitor.");
+        throw new Error(data.error?.message || data.errors?.reason || "Gagal mengeksekusi check-out paksa.");
       }
 
       setNotification({
         type: "warning",
-        message: `⚠️ Force check-out completed for ${forceVisit.visitor.fullName}. Reason logged: "${forceReason.trim()}". Hardware permissions revoked.`,
+        message: `⚠️ Check-out paksa berhasil dilakukan untuk ${forceVisit.visitor.fullName}. Alasan tercatat: "${forceReason.trim()}". Hak akses perangkat dicabut.`,
       });
 
       // Remove from active visits
@@ -336,7 +336,7 @@ export function ActiveMonitoringClient({
       setForceVisit(null);
       setForceReason("");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to execute force check-out.");
+      alert(err instanceof Error ? err.message : "Gagal mengeksekusi check-out paksa.");
     } finally {
       setIsForceSubmitting(false);
     }
@@ -354,7 +354,7 @@ export function ActiveMonitoringClient({
     const confirmed =
       typeof window !== "undefined" && window.confirm
         ? window.confirm(
-            `Are you sure you want to revoke emergency access to ${grant.doorNames?.join(", ") || "doors"} for ${visit.visitor.fullName}? This takes effect immediately.`,
+            `Apakah Anda yakin ingin mencabut izin akses darurat pintu ${grant.doorNames?.join(", ") || "terkait"} untuk ${visit.visitor.fullName}? Tindakan ini langsung berlaku seketika.`,
           )
         : true;
 
@@ -385,7 +385,7 @@ export function ActiveMonitoringClient({
 
       setNotification({
         type: "success",
-        message: `✓ Emergency access to ${grant.doorNames?.join(", ") || "doors"} revoked for ${visit.visitor.fullName}.`,
+        message: `✓ Izin akses darurat pintu ${grant.doorNames?.join(", ") || "terkait"} untuk ${visit.visitor.fullName} berhasil dicabut.`,
       });
 
       setVisits((prev) =>
@@ -405,7 +405,7 @@ export function ActiveMonitoringClient({
     } catch (err) {
       setNotification({
         type: "error",
-        message: err instanceof Error ? err.message : "Failed to revoke emergency access.",
+        message: err instanceof Error ? err.message : "Gagal mencabut izin akses darurat.",
       });
     } finally {
       setActionLoadingId(null);
@@ -417,14 +417,14 @@ export function ActiveMonitoringClient({
       {/* Simulation / API Mode Banner */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-xs text-neutral-700">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-neutral-900">HikCentral Execution Mode:</span>
+          <span className="font-semibold text-neutral-900">Mode Eksekusi Gateway:</span>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as PreRegistrationMode)}
             className="rounded border border-neutral-300 bg-white px-2 py-1 font-medium text-neutral-800"
           >
-            <option value="stub">Stub Mode (Local Simulation)</option>
-            <option value="live">Live Client Mode (HikCentral Artemis Gateway)</option>
+            <option value="stub">Mode Simulasi (Stub Lokal)</option>
+            <option value="live">Mode Gateway Langsung (HikCentral Artemis)</option>
           </select>
           {mode === "stub" && (
             <select
@@ -432,18 +432,18 @@ export function ActiveMonitoringClient({
               onChange={(e) => setStubScenario(e.target.value as StubScenario)}
               className="rounded border border-neutral-300 bg-white px-2 py-1 font-medium text-neutral-800"
             >
-              <option value="success">Scenario: Success (200 code=0)</option>
-              <option value="auth-error">Scenario: Auth Error (0x00072002)</option>
-              <option value="network-error">Scenario: Network Offline (ECONNREFUSED)</option>
+              <option value="success">Skenario: Sukses (200)</option>
+              <option value="auth-error">Skenario: Kendala Autentikasi (0x00072002)</option>
+              <option value="network-error">Skenario: Jaringan Terputus (Offline)</option>
             </select>
           )}
         </div>
         <button
           onClick={refreshVisits}
           disabled={isRefreshing}
-          className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 shadow-xs hover:bg-neutral-50 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 shadow-xs hover:bg-neutral-50 disabled:opacity-50 cursor-pointer"
         >
-          {isRefreshing ? "Refreshing..." : "↻ Refresh On-Premise List"}
+          {isRefreshing ? "Menyegarkan..." : "↻ Segarkan Daftar Tamu Aktif"}
         </button>
       </div>
 
@@ -484,7 +484,7 @@ export function ActiveMonitoringClient({
           <span className={`text-xs font-medium ${activeTab === "all" ? "text-neutral-300" : "text-neutral-500"}`}>
             Total Tamu di Gedung
           </span>
-          <span className="mt-1 text-2xl font-bold tracking-tight">{stats.total}</span>
+          <span className="mt-1 text-2xl font-bold tracking-tight font-mono tabular-nums">{stats.total}</span>
           <span className={`mt-0.5 text-[11px] ${activeTab === "all" ? "text-neutral-400" : "text-neutral-500"}`}>
             Tamu aktif di dalam
           </span>
@@ -501,7 +501,7 @@ export function ActiveMonitoringClient({
           <span className={`text-xs font-medium ${activeTab === "normal" ? "text-emerald-100" : "text-emerald-700"}`}>
             Status Normal
           </span>
-          <span className="mt-1 text-2xl font-bold tracking-tight text-emerald-800 dark:text-emerald-300">
+          <span className="mt-1 text-2xl font-bold tracking-tight text-emerald-800 dark:text-emerald-300 font-mono tabular-nums">
             {stats.normal}
           </span>
           <span className={`mt-0.5 text-[11px] ${activeTab === "normal" ? "text-emerald-100" : "text-neutral-500"}`}>
@@ -524,10 +524,10 @@ export function ActiveMonitoringClient({
               Peringatan Overstay
             </span>
             {stats.overstay > 0 && activeTab !== "overstay" && (
-              <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+              <span className="flex h-2 w-2 rounded-full bg-rose-500" />
             )}
           </div>
-          <span className={`mt-1 text-2xl font-bold tracking-tight ${activeTab === "overstay" ? "text-white" : "text-rose-700"}`}>
+          <span className={`mt-1 text-2xl font-bold tracking-tight font-mono tabular-nums ${activeTab === "overstay" ? "text-white" : "text-rose-700"}`}>
             {stats.overstay}
           </span>
           <span className={`mt-0.5 text-[11px] ${activeTab === "overstay" ? "text-rose-100" : "text-rose-600"}`}>
@@ -548,7 +548,7 @@ export function ActiveMonitoringClient({
           <span className={`text-xs font-medium ${activeTab === "quota" ? "text-amber-100" : "text-amber-800"}`}>
             Peringatan Kuota Tap
           </span>
-          <span className={`mt-1 text-2xl font-bold tracking-tight ${activeTab === "quota" ? "text-white" : "text-amber-800"}`}>
+          <span className={`mt-1 text-2xl font-bold tracking-tight font-mono tabular-nums ${activeTab === "quota" ? "text-white" : "text-amber-800"}`}>
             {stats.quota}
           </span>
           <span className={`mt-0.5 text-[11px] ${activeTab === "quota" ? "text-amber-100" : "text-amber-700"}`}>
@@ -623,11 +623,11 @@ export function ActiveMonitoringClient({
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 text-xl font-bold">
             0
           </div>
-          <h3 className="mt-3 text-sm font-semibold text-neutral-900">No active visitors match filters</h3>
+          <h3 className="mt-3 text-sm font-semibold text-neutral-900">Tidak Ada Tamu Aktif Sesuai Saringan</h3>
           <p className="mt-1 text-xs text-neutral-500">
             {visits.length === 0
-              ? "There are currently no checked-in visitors on-premise."
-              : "Try adjusting your search query, facility selection, or active filter tab."}
+              ? "Saat ini tidak ada tamu aktif yang berada di dalam area gedung."
+              : "Coba sesuaikan kata kunci pencarian, pemilihan fasilitas gedung, atau tab penyaring."}
           </p>
         </div>
       ) : (
@@ -1020,40 +1020,40 @@ export function ActiveMonitoringClient({
                 </p>
                 {forceVisit.isOverstay && (
                   <p className="mt-1 font-bold text-rose-700">
-                    Overstay: {forceVisit.overstayMinutes} minutes past scheduled departure
+                    Kunjungan Melebihi Waktu (Overstay): Melewati jadwal keluar sebesar {forceVisit.overstayMinutes} menit
                   </p>
                 )}
               </div>
 
               <div>
                 <label htmlFor="securityReason" className="block text-xs font-semibold text-neutral-700 mb-1">
-                  Security Check-out Reason <span className="text-rose-600">*</span>
+                  Alasan Keamanan Check-Out Paksa <span className="text-rose-600">*</span>
                 </label>
                 <textarea
                   id="securityReason"
                   rows={3}
                   value={forceReason}
                   onChange={(e) => setForceReason(e.target.value)}
-                  placeholder="Specify why visitor is being force checked out..."
+                  placeholder="Cantumkan alasan detail check-out paksa tamu..."
                   className="w-full rounded-lg border border-neutral-300 p-2.5 text-xs text-neutral-900 focus:border-rose-600 focus:outline-hidden"
                 />
               </div>
 
               {/* Quick preset chips */}
               <div className="space-y-1">
-                <span className="text-[11px] font-medium text-neutral-500">Quick reasons:</span>
+                <span className="text-[11px] font-medium text-neutral-500">Pilihan alasan cepat:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {[
-                    "Overstay grace period policy breach",
-                    "Security escort off premises",
-                    "Building closing / operational curfew",
-                    "Unauthorized zone entry detected",
+                    "Melewati batas toleransi waktu kunjungan (Overstay)",
+                    "Didampingi petugas keamanan meninggalkan gedung",
+                    "Jam operasional gedung berakhir (Jam Malam)",
+                    "Terdeteksi masuk ke area terlarang / tanpa izin",
                   ].map((preset) => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => setForceReason(preset)}
-                      className="rounded border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-700 hover:bg-neutral-200"
+                      className="rounded border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-700 hover:bg-neutral-200 cursor-pointer"
                     >
                       {preset}
                     </button>
@@ -1062,7 +1062,7 @@ export function ActiveMonitoringClient({
               </div>
 
               <div className="rounded-lg bg-amber-50 p-3 text-[11px] text-amber-900 border border-amber-200">
-                <strong>Hardware Effect:</strong> Revokes all RFID turnstile cards, face recognition, and dynamic QR passes across physical access controllers immediately.
+                <strong>Dampak Perangkat Fisik:</strong> Langsung mencabut seluruh izin kartu RFID, pencocokan biometrik wajah, dan kode QR dinamis di seluruh controller pintu fisik seketika.
               </div>
             </div>
 
@@ -1071,17 +1071,17 @@ export function ActiveMonitoringClient({
                 type="button"
                 onClick={() => setForceVisit(null)}
                 disabled={isForceSubmitting}
-                className="rounded-lg border border-neutral-300 px-3.5 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50"
+                className="rounded-lg border border-neutral-300 px-3.5 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 cursor-pointer"
               >
-                Cancel
+                Batal
               </button>
               <button
                 type="button"
                 onClick={handleConfirmForceCheckOut}
                 disabled={isForceSubmitting || !forceReason.trim()}
-                className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 disabled:opacity-50"
+                className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
               >
-                {isForceSubmitting ? "Revoking..." : "Revoke Access & Force Check-out"}
+                {isForceSubmitting ? "Mencabut izin..." : "Cabut Izin Akses & Eksekusi Check-Out Paksa"}
               </button>
             </div>
           </div>

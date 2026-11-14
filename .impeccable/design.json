@@ -1,0 +1,219 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-14T11:53:45.000Z",
+  "title": "Design System: Visitor Management System (VMS)",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Institutional Blue",
+        "canonical": "#1d4ed8",
+        "tonalRamp": ["#172554", "#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#dbeafe"]
+      },
+      "primary-hover": {
+        "role": "primary",
+        "displayName": "Deep Navy",
+        "canonical": "#1e40af",
+        "tonalRamp": ["#172554", "#1e3a8a", "#1e40af", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#bfdbfe"]
+      },
+      "primary-subtle": {
+        "role": "primary",
+        "displayName": "Subtle Blue Tint",
+        "canonical": "#eff6ff",
+        "tonalRamp": ["#1e3a8a", "#1d4ed8", "#3b82f6", "#93c5fd", "#bfdbfe", "#dbeafe", "#eff6ff", "#ffffff"]
+      },
+      "neutral-dark": {
+        "role": "neutral",
+        "displayName": "Slate Void",
+        "canonical": "#0f172a",
+        "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1"]
+      },
+      "neutral-card": {
+        "role": "neutral",
+        "displayName": "Clean Slate White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#ffffff"]
+      },
+      "neutral-bg": {
+        "role": "neutral",
+        "displayName": "Canvas Mist",
+        "canonical": "#f8fafc",
+        "tonalRamp": ["#1e293b", "#334155", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f8fafc", "#ffffff"]
+      },
+      "neutral-border": {
+        "role": "neutral",
+        "displayName": "Architectural Border",
+        "canonical": "#e2e8f0",
+        "tonalRamp": ["#1e293b", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#ffffff"]
+      },
+      "neutral-muted": {
+        "role": "neutral",
+        "displayName": "Muted Steel",
+        "canonical": "#64748b",
+        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0"]
+      },
+      "success": {
+        "role": "accent",
+        "displayName": "Operational Emerald",
+        "canonical": "#059669",
+        "tonalRamp": ["#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#34d399", "#6ee7b7", "#d1fae5"]
+      },
+      "warning": {
+        "role": "accent",
+        "displayName": "Cautionary Amber",
+        "canonical": "#d97706",
+        "tonalRamp": ["#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fbbf24", "#fcd34d", "#fef3c7"]
+      },
+      "danger": {
+        "role": "accent",
+        "displayName": "Alert Rose",
+        "canonical": "#dc2626",
+        "tonalRamp": ["#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Page titles and primary headers" },
+      "headline": { "displayName": "Headline", "purpose": "Section titles and modal headers" },
+      "title": { "displayName": "Title", "purpose": "Card titles, table headers, and navigation groups" },
+      "body": { "displayName": "Body", "purpose": "Form inputs, descriptions, and table rows" },
+      "label": { "displayName": "Label", "purpose": "Status badges, timestamps, and caption tags" }
+    },
+    "shadows": [
+      {
+        "name": "micro",
+        "value": "0 1px 2px 0 rgba(0, 0, 0, 0.05)",
+        "purpose": "Resting buttons, inputs, and cards"
+      },
+      {
+        "name": "interactive",
+        "value": "0 2px 4px -1px rgba(0, 0, 0, 0.08)",
+        "purpose": "Hover and focus states"
+      },
+      {
+        "name": "modal-overlay",
+        "value": "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
+        "purpose": "PageGuideModal and confirmation dialogs"
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Sidebar collapse/expand, modal fade, button transitions"
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary operational action button for saving, check-in, and sending invitations.",
+      "html": "<button class=\"ds-btn-primary\">Simpan Data Tamu</button>",
+      "css": ".ds-btn-primary { background: #1d4ed8; color: #ffffff; padding: 8px 16px; border-radius: 8px; font-weight: 500; font-size: 14px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); transition: background-color 0.15s ease, box-shadow 0.15s ease; } .ds-btn-primary:hover { background: #1e40af; box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.08); } .ds-btn-primary:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Neutral secondary button for cancellations, filters, and standard dialog closes.",
+      "html": "<button class=\"ds-btn-secondary\">Batal</button>",
+      "css": ".ds-btn-secondary { background: #ffffff; color: #334155; padding: 8px 16px; border-radius: 8px; font-weight: 500; font-size: 14px; border: 1px solid #cbd5e1; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); transition: background-color 0.15s ease, border-color 0.15s ease; } .ds-btn-secondary:hover { background: #f8fafc; border-color: #94a3b8; } .ds-btn-secondary:focus-visible { outline: 2px solid #64748b; outline-offset: 2px; }"
+    },
+    {
+      "name": "Page Guide Button",
+      "kind": "button",
+      "refersTo": "button-guide",
+      "description": "Persistent header button opening the standardized 5-section operational guide modal.",
+      "html": "<button class=\"ds-btn-guide\"><svg width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253\"/></svg> Panduan Halaman Ini</button>",
+      "css": ".ds-btn-guide { background: #eff6ff; color: #1d4ed8; padding: 6px 12px; border-radius: 8px; font-weight: 500; font-size: 12px; border: 1px solid #bfdbfe; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background-color 0.15s ease, border-color 0.15s ease; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); } .ds-btn-guide:hover { background: #dbeafe; border-color: #93c5fd; } .ds-btn-guide:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Status Badge (Disetujui)",
+      "kind": "chip",
+      "refersTo": "badge-approved",
+      "description": "Semantic operational status badge indicating an approved visit with active turnstile privileges.",
+      "html": "<span class=\"ds-badge ds-badge-approved\"><span class=\"ds-badge-dot ds-dot-approved\"></span>Disetujui</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600; line-height: 1.4; border: 1px solid; } .ds-badge-approved { background: #ecfdf5; color: #065f46; border-color: #6ee7b7; } .ds-badge-dot { width: 6px; height: 6px; border-radius: 9999px; display: inline-block; } .ds-dot-approved { background: #059669; }"
+    },
+    {
+      "name": "Status Badge (Menunggu Persetujuan)",
+      "kind": "chip",
+      "refersTo": "badge-pending",
+      "description": "Semantic operational status badge indicating a visit awaiting manager or host review.",
+      "html": "<span class=\"ds-badge ds-badge-pending\"><span class=\"ds-badge-dot ds-dot-pending\"></span>Menunggu Persetujuan</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 9999px; font-size: 12px; font-weight: 600; line-height: 1.4; border: 1px solid; } .ds-badge-pending { background: #fffbeb; color: #92400e; border-color: #fcd34d; } .ds-badge-dot { width: 6px; height: 6px; border-radius: 9999px; display: inline-block; } .ds-dot-pending { background: #d97706; }"
+    },
+    {
+      "name": "Standard Form Input",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "High-contrast text field with clear focus rings and support for tabular figures.",
+      "html": "<input type=\"text\" class=\"ds-input\" placeholder=\"Nomor KTP / Paspor Tamu...\" />",
+      "css": ".ds-input { width: 100%; background: #ffffff; color: #0f172a; padding: 8px 12px; border-radius: 8px; font-size: 14px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); transition: border-color 0.15s ease, box-shadow 0.15s ease; box-sizing: border-box; } .ds-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3); }"
+    },
+    {
+      "name": "Metric Summary Card",
+      "kind": "card",
+      "refersTo": "card-kpi",
+      "description": "Summary metric card displaying real-time counts with subtle hover feedback.",
+      "html": "<div class=\"ds-kpi-card\"><span class=\"ds-kpi-label\">Total Tamu di Gedung</span><span class=\"ds-kpi-value\">42</span><span class=\"ds-kpi-subtext\">Tamu aktif saat ini</span></div>",
+      "css": ".ds-kpi-card { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); } .ds-kpi-label { font-size: 12px; font-weight: 500; color: #64748b; } .ds-kpi-value { font-size: 28px; font-weight: 700; color: #0f172a; margin-top: 4px; line-height: 1.1; } .ds-kpi-subtext { font-size: 11px; color: #94a3b8; margin-top: 4px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Gerbang Presisi Terpercaya (The Sovereign Concierge)",
+    "overview": "The Visitor Management System visual system combines the institutional rigor and precision of enterprise access control with the dignified, polite hospitality of modern Indonesian corporate governance. Tailored for continuous operational shifts by receptionists, security officers, and hosts, the interface prioritizes high information density, instantaneous scannability, and cognitive clarity over decorative novelty.\n\nThe aesthetic philosophy is rooted in structured restraint: a serene slate-tinted canvas (#f8fafc), crisp white modular surfaces (#ffffff), 1px architectural dividers (#e2e8f0), and an authoritative Institutional Blue (#1d4ed8 / #2563eb) signaling operational state and active controls. Operational statuses are communicated through unambiguous, high-contrast semantic palettes (Emerald, Amber, Rose, Slate) accompanied by live status dots, ensuring operators never mistake a pending approval for an active clearance.\n\nConfirmed visual anti-references: generic consumer SaaS pastel gradients, cartoonish illustrations, low-density marketing fluff, and dark, retro CCTV terminal styling that causes eye strain during long security shifts.",
+    "keyCharacteristics": [
+      "High-density Operate Mode designed for rapid data entry and verification.",
+      "Flat architectural layering with subtle 1px structural boundaries.",
+      "Dedicated, polite Indonesian UI vocabulary free from technical acronyms.",
+      "Universal keyboard accessibility with focus traps and Escape listeners.",
+      "Complete visual isolation between staff operational consoles and public mobile visitor portals."
+    ],
+    "rules": [
+      {
+        "name": "The Semantic Purity Rule",
+        "body": "Status colors (Emerald, Amber, Rose) are strictly reserved for functional operational states (Approved, Pending, Overstay/Error). They must never be applied decoratively, as background wallpapers, or as arbitrary brand accents.",
+        "section": "colors"
+      },
+      {
+        "name": "The Action Singularity Rule",
+        "body": "Every card, form section, or modal dialog has at most one dominant primary action button. Secondary actions must use restrained outline or ghost styling to prevent operator hesitation.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Clarity Rule",
+        "body": "Timestamps, visit identification numbers, certificate numbers, tap quotas, and countdown timers must always render in monospace or tabular figures (font-mono) to prevent layout shifting during real-time telemetry refreshes.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Content surfaces, cards, and data tables remain flat at rest with 1px border lines (border-slate-200). Elevation shadows appear only as a functional response to user interaction or modal elevation.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do wrap every internal operational page in AppShell with the persistent PageGuideModal trigger.",
+      "Do format all dates and timestamps using the active facility's specific timezone (WIB, WITA, WIT).",
+      "Do use centralized Indonesian lay strings from src/lib/vms/i18n/id.ts and GLOSSARY.md.",
+      "Do display status badges with their corresponding dot indicator and descriptive tooltip.",
+      "Do require explicit two-step confirmation dialogs with audit reasons for destructive actions (e.g. force checkout, biometric deletion).",
+      "Do ensure focus is trapped inside open modals and mobile drawers, and that Escape closes them."
+    ],
+    "donts": [
+      "Don't expose technical HikCentral or backend jargon (e.g. 'Artemis', 'Privilege Groups', 'HTTP 500', 'ECONNREFUSED') in operator-facing text.",
+      "Don't display internal staff navigation sidebars or headers on the public guest self-registration screen (/invite/[token]).",
+      "Don't use status colors (emerald, amber, rose) for decorative borders or non-status typography.",
+      "Don't use raw unstyled alert dialogs or native browser prompts (window.prompt); use accessible modal dialogs with focus traps.",
+      "Don't rely on client local time; all visit windows must validate against the facility's canonical IANA timezone."
+    ]
+  }
+}
+

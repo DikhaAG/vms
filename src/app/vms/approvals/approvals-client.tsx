@@ -98,15 +98,15 @@ export function ApprovalsClient({
       setRejectionComment("");
       setRejectionError(null);
 
-      const actionText = action === "approve" ? "approved" : "rejected";
+      const actionText = action === "approve" ? "disetujui" : "ditolak";
       setNotification({
         type: "success",
-        message: `Visit for ${visit.visitorFamilyName} ${visit.visitorGivenName} was successfully ${actionText}.`,
+        message: `Pengajuan kunjungan untuk ${visit.visitorFamilyName} ${visit.visitorGivenName} berhasil ${actionText}.`,
       });
     } catch (err) {
       setNotification({
         type: "error",
-        message: err instanceof Error ? err.message : "An unexpected error occurred.",
+        message: err instanceof Error ? err.message : "Terjadi kendala yang tidak terduga.",
       });
     } finally {
       setSubmittingVisitId(null);
@@ -282,10 +282,10 @@ export function ApprovalsClient({
             {filteredPending.length === 0 ? (
               <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 p-12 text-center">
                 <p className="text-sm font-medium text-neutral-900">
-                  No visits awaiting approval
+                  Tidak Ada Kunjungan Menunggu Persetujuan
                 </p>
                 <p className="mt-1 text-xs text-neutral-500">
-                  All scheduled visits for this facility have been processed.
+                  Seluruh jadwal kunjungan untuk fasilitas ini telah selesai diproses.
                 </p>
               </div>
             ) : (
@@ -307,10 +307,10 @@ export function ApprovalsClient({
             {filteredEscalated.length === 0 ? (
               <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 p-12 text-center">
                 <p className="text-sm font-medium text-neutral-900">
-                  No security escalations pending
+                  Tidak Ada Eskalasi Daftar Pantauan
                 </p>
                 <p className="mt-1 text-xs text-neutral-500">
-                  No visitors have matched HikCentral Monitoring Lists (Blacklists).
+                  Tidak ada tamu yang teridentifikasi dalam Daftar Pantauan Keamanan (Monitoring List).
                 </p>
               </div>
             ) : (
@@ -333,7 +333,7 @@ export function ApprovalsClient({
       {decidedVisits.length > 0 && (
         <div className="mt-12 pt-8 border-t border-neutral-200">
           <h2 className="text-sm font-semibold text-neutral-900 mb-4">
-            Recently Decided in This Session ({decidedVisits.length})
+            Kunjungan yang Baru Saja Diputuskan Sesi Ini ({decidedVisits.length})
           </h2>
           <div className="space-y-3">
             {decidedVisits.map((v) => (
@@ -499,22 +499,22 @@ function VisitCard({
           </svg>
           <div>
             <span className="font-bold uppercase tracking-wider text-[11px] text-rose-800">
-              HikCentral Monitoring List Match Intercept
+              Peringatan: Tamu Teridentifikasi Dalam Daftar Pantauan Keamanan
             </span>
             <p className="mt-0.5">
               {visit.monitoringListFlag?.reason ||
-                "Visitor certificate matched an active security monitoring list."}
+                "Nomor identitas tamu cocok dengan daftar pantauan keamanan aktif."}
             </p>
             {visit.monitoringListFlag?.matches &&
               visit.monitoringListFlag.matches.length > 0 && (
                 <div className="mt-1 flex flex-wrap gap-2 text-[11px] font-medium text-rose-700">
                   <span>
-                    Matched ID:{" "}
+                    Nomor Identitas Cocok:{" "}
                     <code>{visit.monitoringListFlag.matches[0].certificateNo}</code>
                   </span>
                   <span>&bull;</span>
                   <span>
-                    Category: {visit.monitoringListFlag.matches[0].type || "Prohibited"}
+                    Kategori: {visit.monitoringListFlag.matches[0].type || "Prohibited"}
                   </span>
                 </div>
               )}
@@ -550,7 +550,7 @@ function VisitCard({
               <p className="text-xs text-neutral-500">
                 {certificateLabel}:{" "}
                 <span className="font-mono font-medium text-neutral-700">
-                  {visit.certificateNo || "None provided"}
+                  {visit.certificateNo || "Tidak dicantumkan"}
                 </span>
                 {visit.visitorPhone && (
                   <>
@@ -574,31 +574,31 @@ function VisitCard({
                   : "bg-blue-100 text-blue-800"
               }`}
             >
-              {isEscalated ? "SECURITY ESCALATED" : "PENDING APPROVAL"}
+              {isEscalated ? "ESKALASI KEAMANAN" : "MENUNGGU PERSETUJUAN"}
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-4 text-xs text-neutral-600">
             <div>
-              <span className="font-medium text-neutral-700">Facility:</span>{" "}
+              <span className="font-medium text-neutral-700">Gedung:</span>{" "}
               {visit.facilityName}
             </div>
             <div>
-              <span className="font-medium text-neutral-700">Host:</span>{" "}
-              {visit.hostName || "Unassigned"}{" "}
+              <span className="font-medium text-neutral-700">Tuan Rumah:</span>{" "}
+              {visit.hostName || "Belum ditentukan"}{" "}
               {visit.hostId && (
                 <span className="text-neutral-400">({visit.hostId})</span>
               )}
             </div>
             <div>
-              <span className="font-medium text-neutral-700">Visiting Window:</span>{" "}
+              <span className="font-medium text-neutral-700">Jadwal Kunjungan:</span>{" "}
               <span className="font-mono text-neutral-800">
                 {visit.scheduledStartTimeFacility} &rarr;{" "}
                 {visit.scheduledEndTimeFacility}
               </span>
             </div>
             <div>
-              <span className="font-medium text-neutral-700">Purpose:</span>{" "}
+              <span className="font-medium text-neutral-700">Keperluan:</span>{" "}
               {reasonLabel}
               {visit.visitReasonDetail && ` - ${visit.visitReasonDetail}`}
             </div>

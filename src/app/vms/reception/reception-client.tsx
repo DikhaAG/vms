@@ -468,7 +468,7 @@ export function ReceptionClient({
               </span>
             </div>
             <p className="text-xs text-neutral-500">
-              Active Front-Desk Terminal &bull; {facilities.find((f) => f.id === selectedFacilityId)?.name || "All Facilities"}
+              Terminal Resepsionis Lobi &bull; {facilities.find((f) => f.id === selectedFacilityId)?.name || "Semua Gedung Fasilitas"}
             </p>
           </div>
         </div>
@@ -583,14 +583,14 @@ export function ReceptionClient({
           <button
             type="button"
             onClick={() => setActiveTab("expected")}
-            className={`pb-2 px-3 border-b-2 font-medium transition cursor-pointer ${
+            className={`pb-2.5 px-3.5 border-b-2 font-medium transition cursor-pointer flex items-center gap-2 ${
               activeTab === "expected"
-                ? "border-emerald-600 text-emerald-700 font-semibold"
+                ? "border-emerald-600 text-emerald-800 font-semibold"
                 : "border-transparent text-neutral-500 hover:text-neutral-800"
             }`}
           >
-            Tamu Diharapkan Hari Ini{" "}
-            <span className={`ml-1.5 rounded-full px-2 py-0.5 text-2xs ${
+            <span>Tamu Diharapkan Hari Ini</span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-mono font-medium ${
               activeTab === "expected" ? "bg-emerald-100 text-emerald-800" : "bg-neutral-100 text-neutral-600"
             }`}>
               {countExpected}
@@ -599,14 +599,14 @@ export function ReceptionClient({
           <button
             type="button"
             onClick={() => setActiveTab("checked_in")}
-            className={`pb-2 px-3 border-b-2 font-medium transition cursor-pointer ${
+            className={`pb-2.5 px-3.5 border-b-2 font-medium transition cursor-pointer flex items-center gap-2 ${
               activeTab === "checked_in"
-                ? "border-blue-600 text-blue-700 font-semibold"
+                ? "border-blue-600 text-blue-800 font-semibold"
                 : "border-transparent text-neutral-500 hover:text-neutral-800"
             }`}
           >
-            Sedang di Gedung{" "}
-            <span className={`ml-1.5 rounded-full px-2 py-0.5 text-2xs ${
+            <span>Sedang di Gedung</span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-mono font-medium ${
               activeTab === "checked_in" ? "bg-blue-100 text-blue-800" : "bg-neutral-100 text-neutral-600"
             }`}>
               {countCheckedIn}
@@ -615,14 +615,14 @@ export function ReceptionClient({
           <button
             type="button"
             onClick={() => setActiveTab("all")}
-            className={`pb-2 px-3 border-b-2 font-medium transition cursor-pointer ${
+            className={`pb-2.5 px-3.5 border-b-2 font-medium transition cursor-pointer flex items-center gap-2 ${
               activeTab === "all"
                 ? "border-neutral-900 text-neutral-900 font-semibold"
                 : "border-transparent text-neutral-500 hover:text-neutral-800"
             }`}
           >
-            Semua Kunjungan{" "}
-            <span className="ml-1.5 rounded-full bg-neutral-100 px-2 py-0.5 text-2xs text-neutral-600">
+            <span>Semua Kunjungan</span>
+            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-mono font-medium text-neutral-600">
               {countAll}
             </span>
           </button>
@@ -632,7 +632,7 @@ export function ReceptionClient({
       {/* Arrival Queue / Visits Display */}
       {isSearching ? (
         <div className="rounded-xl border border-neutral-200 bg-white p-12 text-center text-sm text-neutral-500 shadow-xs">
-          Loading arriving visitors...
+          Memuat antrean kedatangan tamu...
         </div>
       ) : filteredVisits.length === 0 ? (
         <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-12 text-center shadow-xs">
@@ -644,11 +644,11 @@ export function ReceptionClient({
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <h3 className="mt-3 text-sm font-semibold text-neutral-900">No visitors found</h3>
+          <h3 className="mt-3 text-sm font-semibold text-neutral-900">Tidak Ada Tamu Ditemukan</h3>
           <p className="mt-1 text-xs text-neutral-500 max-w-sm mx-auto">
             {searchQuery
-              ? `No arrivals match "${searchQuery}". Try searching by another detail or register a walk-in visitor.`
-              : "No visitors in this queue. Walk-in guests can be registered using the button above."}
+              ? `Tidak ada tamu yang cocok dengan "${searchQuery}". Coba gunakan kata kunci lain atau daftarkan tamu datang langsung (walk-in).`
+              : "Tidak ada tamu dalam antrean ini. Tamu datang langsung (walk-in) dapat didaftarkan melalui tombol di atas."}
           </p>
           <button
             type="button"
@@ -658,7 +658,7 @@ export function ReceptionClient({
             }}
             className="mt-4 inline-flex items-center rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 cursor-pointer"
           >
-            Register Walk-in Guest &rarr;
+            Daftarkan Tamu Datang Langsung &rarr;
           </button>
         </div>
       ) : (
@@ -844,10 +844,10 @@ export function ReceptionClient({
             <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
               <div>
                 <h3 className="text-base font-bold text-neutral-900">
-                  Visitor Identity Verification
+                  Verifikasi Identitas Tamu
                 </h3>
                 <p className="text-xs text-neutral-500">
-                  Verify photo & document before activating physical credentials.
+                  Periksa kesesuaian foto dan dokumen identitas fisik sebelum mengaktifkan hak akses pintu.
                 </p>
               </div>
               <button
@@ -872,29 +872,29 @@ export function ReceptionClient({
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={toJpegDataUri(verifyingVisit.facePhoto)}
-                    alt="Visitor Face"
+                    alt="Foto Tamu"
                     className="h-28 w-28 rounded-xl object-cover border-2 border-emerald-500 shadow-sm"
                   />
                 ) : (
                   <div className="flex h-28 w-28 items-center justify-center rounded-xl bg-neutral-100 text-neutral-400 font-medium text-xs border border-neutral-300">
-                    No Photo
+                    Tanpa Foto Wajah
                   </div>
                 )}
                 <span className="mt-1.5 text-3xs font-medium text-neutral-500">
-                  {verifyingVisit.facePhoto ? "Biometric Enrolled" : "Physical Badge Only"}
+                  {verifyingVisit.facePhoto ? "Biometrik Wajah Terdaftar" : "Hanya Lencana Fisik / Kartu"}
                 </span>
               </div>
 
               {/* Identity details */}
               <div className="flex-1 space-y-1.5 text-xs text-neutral-700">
                 <div>
-                  <span className="text-neutral-400">Full Name:</span>
+                  <span className="text-neutral-400">Nama Lengkap:</span>
                   <p className="font-bold text-neutral-900 text-sm">
                     {verifyingVisit.visitorGivenName} {verifyingVisit.visitorFamilyName}
                   </p>
                 </div>
                 <div>
-                  <span className="text-neutral-400">Certificate / ID:</span>
+                  <span className="text-neutral-400">Nomor Identitas:</span>
                   <p className="font-mono text-neutral-900">
                     {verifyingVisit.certificateType
                       ? CERTIFICATE_TYPE_LABELS[verifyingVisit.certificateType]
@@ -903,15 +903,15 @@ export function ReceptionClient({
                   </p>
                 </div>
                 <div>
-                  <span className="text-neutral-400">Host & Facility:</span>
+                  <span className="text-neutral-400">Tuan Rumah &amp; Fasilitas:</span>
                   <p className="text-neutral-900 font-medium">
                     {verifyingVisit.hostName || "Host"} &bull; {verifyingVisit.facilityName || verifyingVisit.facilityId}
                   </p>
                 </div>
                 <div>
-                  <span className="text-neutral-400">Visiting Hours:</span>
+                  <span className="text-neutral-400">Jam Kunjungan:</span>
                   <p className="font-mono text-neutral-900">
-                    {verifyingVisit.scheduledStartTimeFacility} to {verifyingVisit.scheduledEndTimeFacility}
+                    {verifyingVisit.scheduledStartTimeFacility.split("T")[1]?.substring(0, 5)} - {verifyingVisit.scheduledEndTimeFacility.split("T")[1]?.substring(0, 5)}
                   </p>
                 </div>
               </div>
@@ -920,42 +920,50 @@ export function ReceptionClient({
             {/* Verification Method Radio Selection */}
             <div className="mt-5 border-t border-neutral-100 pt-4">
               <label className="block text-xs font-semibold text-neutral-900 mb-2">
-                Verification Method Applied:
+                Metode Verifikasi yang Diterapkan:
               </label>
               <div className="grid grid-cols-2 gap-2 text-xs">
-                {VERIFICATION_METHODS.map((m) => (
-                  <label
-                    key={m}
-                    className={`flex items-center gap-2 rounded-lg border p-2 cursor-pointer transition ${
-                      verificationMethod === m
-                        ? "border-emerald-600 bg-emerald-50 text-emerald-900 font-medium"
-                        : "border-neutral-200 hover:bg-neutral-50 text-neutral-700"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="verificationMethod"
-                      value={m}
-                      checked={verificationMethod === m}
-                      onChange={() => setVerificationMethod(m)}
-                      className="text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span className="capitalize">{m.replace("_", " ")}</span>
-                  </label>
-                ))}
+                {VERIFICATION_METHODS.map((m) => {
+                  const methodLabels: Record<string, string> = {
+                    id_card: "KTP / Dokumen Fisik",
+                    biometric_face: "Biometrik Wajah",
+                    escort: "Didampingi Petugas",
+                    manual_override: "Izin Khusus / Override",
+                  };
+                  return (
+                    <label
+                      key={m}
+                      className={`flex items-center gap-2 rounded-lg border p-2 cursor-pointer transition ${
+                        verificationMethod === m
+                          ? "border-emerald-600 bg-emerald-50 text-emerald-900 font-medium"
+                          : "border-neutral-200 hover:bg-neutral-50 text-neutral-700"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="verificationMethod"
+                        value={m}
+                        checked={verificationMethod === m}
+                        onChange={() => setVerificationMethod(m)}
+                        className="text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span>{methodLabels[m] || m.replace("_", " ")}</span>
+                    </label>
+                  );
+                })}
               </div>
             </div>
 
             {/* Receptionist Notes */}
             <div className="mt-3">
               <label className="block text-xs font-medium text-neutral-700 mb-1">
-                Front-Desk Notes (optional):
+                Catatan Resepsionis (Opsional):
               </label>
               <input
                 type="text"
                 value={checkInNotes}
                 onChange={(e) => setCheckInNotes(e.target.value)}
-                placeholder="e.g. Physical badge issued #042, visitor signed NDA"
+                placeholder="Contoh: Kartu KTP asli telah diperiksa dan sesuai identitas tamu."
                 className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
               />
             </div>
@@ -968,7 +976,7 @@ export function ReceptionClient({
                 disabled={isCheckingIn}
                 className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer"
               >
-                Cancel
+                Batal
               </button>
               <button
                 type="button"
@@ -976,7 +984,7 @@ export function ReceptionClient({
                 disabled={isCheckingIn}
                 className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50 cursor-pointer"
               >
-                {isCheckingIn ? "Processing Check-in..." : "Confirm & Check In"}
+                {isCheckingIn ? "Memproses Masuk..." : "Konfirmasi & Proses Masuk"}
               </button>
             </div>
           </div>
@@ -994,10 +1002,10 @@ export function ReceptionClient({
             <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
               <div>
                 <h3 className="text-base font-bold text-neutral-900">
-                  New Walk-in Visitor Registration
+                  Pendaftaran Tamu Datang Langsung (Walk-in)
                 </h3>
                 <p className="text-xs text-neutral-500">
-                  Instant registration and credential activation for unscheduled lobby arrivals.
+                  Pendaftaran kilat dan pengaktifan hak akses pintu untuk tamu lobi tanpa janji temu sebelumnya.
                 </p>
               </div>
               <button
@@ -1023,7 +1031,7 @@ export function ReceptionClient({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Facility *
+                    Gedung Fasilitas *
                   </label>
                   <select
                     value={walkInFacilityId}
@@ -1039,7 +1047,7 @@ export function ReceptionClient({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Host Employee *
+                    Karyawan Tuan Rumah *
                   </label>
                   <select
                     value={walkInHostId}
@@ -1062,27 +1070,27 @@ export function ReceptionClient({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Given / First Name *
+                    Nama Depan *
                   </label>
                   <input
                     type="text"
                     required
                     value={walkInGivenName}
                     onChange={(e) => setWalkInGivenName(e.target.value)}
-                    placeholder="e.g. Hendra"
+                    placeholder="Contoh: Hendra"
                     className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Family / Last Name *
+                    Nama Belakang / Marga *
                   </label>
                   <input
                     type="text"
                     required
                     value={walkInFamilyName}
                     onChange={(e) => setWalkInFamilyName(e.target.value)}
-                    placeholder="e.g. Gunawan"
+                    placeholder="Contoh: Gunawan"
                     className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
                   />
                 </div>
@@ -1092,7 +1100,7 @@ export function ReceptionClient({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Phone Number
+                    Nomor Telepon / WhatsApp
                   </label>
                   <input
                     type="tel"
@@ -1104,13 +1112,13 @@ export function ReceptionClient({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Email Address
+                    Alamat Email (Opsional)
                   </label>
                   <input
                     type="email"
                     value={walkInEmail}
                     onChange={(e) => setWalkInEmail(e.target.value)}
-                    placeholder="visitor@company.com"
+                    placeholder="tamu@instansi.com"
                     className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
                   />
                 </div>
@@ -1120,7 +1128,7 @@ export function ReceptionClient({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Certificate / ID Type
+                    Jenis Kartu Identitas
                   </label>
                   <select
                     value={walkInCertType}
@@ -1136,7 +1144,7 @@ export function ReceptionClient({
                 </div>
                 <div>
                   <label htmlFor="walk-in-cert-no" className="block text-xs font-medium text-neutral-700 mb-1">
-                    Certificate Number
+                    Nomor Dokumen Identitas (NIK/Paspor)
                   </label>
                   <div className="relative">
                     <input
@@ -1151,12 +1159,12 @@ export function ReceptionClient({
                         setWalkInCertNo(e.target.value);
                         if (walkInReturningProfile) setWalkInReturningProfile(null);
                       }}
-                      placeholder="e.g. 3171010101010001"
+                      placeholder="Contoh: 3171010101010001"
                       className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 font-mono focus:border-emerald-600 focus:ring-emerald-600"
                     />
                     {isLookingUpWalkIn && (
                       <span className="absolute right-2 top-1.5 text-[11px] text-neutral-400">
-                        Searching...
+                        Mencari data...
                       </span>
                     )}
                   </div>
@@ -1171,7 +1179,7 @@ export function ReceptionClient({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={walkInReturningProfile.facePhoto}
-                        alt="Stored Face Photo"
+                        alt="Foto Wajah Tersimpan"
                         width={36}
                         height={36}
                         className="h-9 w-9 rounded-full object-cover border border-emerald-200"
@@ -1183,12 +1191,12 @@ export function ReceptionClient({
                     )}
                     <div>
                       <p className="text-xs font-semibold text-emerald-950">
-                        Returning Visitor Found!
+                        Tamu Sebelumnya Ditemukan!
                       </p>
                       <p className="text-[11px] text-emerald-800">
                         {walkInReturningProfile.fullName ||
                           `${walkInReturningProfile.givenName} ${walkInReturningProfile.familyName}`}{" "}
-                        &bull; Saved profile & encrypted face photo ready
+                        &bull; Profil tersimpan &amp; foto biometrik siap digunakan
                       </p>
                     </div>
                   </div>
@@ -1199,7 +1207,7 @@ export function ReceptionClient({
                     }
                     className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
                   >
-                    Auto-fill Details & Photo
+                    Isi Otomatis Data &amp; Foto
                   </button>
                 </div>
               )}
@@ -1208,7 +1216,7 @@ export function ReceptionClient({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Visit Purpose *
+                    Keperluan Kunjungan *
                   </label>
                   <select
                     value={walkInReasonType}
@@ -1224,14 +1232,14 @@ export function ReceptionClient({
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Purpose Detail {walkInReasonType === 4 ? "*" : "(optional)"}
+                    Rincian Keperluan {walkInReasonType === 4 ? "*" : "(opsional)"}
                   </label>
                   <input
                     type="text"
                     required={walkInReasonType === 4}
                     value={walkInReasonDetail}
                     onChange={(e) => setWalkInReasonDetail(e.target.value)}
-                    placeholder="e.g. Vendor server maintenance"
+                    placeholder="Contoh: Pemeliharaan perangkat server vendor"
                     className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
                   />
                 </div>
@@ -1240,7 +1248,7 @@ export function ReceptionClient({
               {/* Access Levels selection */}
               <div>
                 <label className="block text-xs font-semibold text-neutral-900 mb-1.5">
-                  Assigned Access Levels (Facility Specific):
+                  Hak Akses Pintu Fisik (Khusus Gedung Terpilih):
                 </label>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {availableAccessLevels.map((al) => (
@@ -1386,10 +1394,10 @@ export function ReceptionClient({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      Open Reception Webcam
+                      Buka Kamera Resepsionis
                     </button>
                     <label className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer">
-                      <span>Upload File</span>
+                      <span>Unggah Berkas Foto</span>
                       <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                     </label>
                     <button
@@ -1397,7 +1405,7 @@ export function ReceptionClient({
                       onClick={handleLoadSamplePhoto}
                       className="rounded-lg border border-neutral-200 bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-600 hover:bg-neutral-200 cursor-pointer"
                     >
-                      Load Sample Photo
+                      Muat Contoh Foto
                     </button>
                   </div>
                 )}
@@ -1416,14 +1424,14 @@ export function ReceptionClient({
                   disabled={isSubmittingWalkIn}
                   className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer"
                 >
-                  Cancel
+                  Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingWalkIn || isNormalizing}
                   className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
                 >
-                  {isSubmittingWalkIn ? "Registering & Checking In..." : "Register & Check In Immediately"}
+                  {isSubmittingWalkIn ? "Mendaftarkan & Memproses Masuk..." : "Daftarkan & Berikan Izin Masuk"}
                 </button>
               </div>
             </form>
@@ -1443,10 +1451,10 @@ export function ReceptionClient({
             <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
               <div>
                 <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-3xs font-bold uppercase tracking-wider text-emerald-800">
-                  Active Check-In Pass
+                  Lencana Masuk Aktif
                 </span>
                 <h3 className="text-base font-bold text-neutral-900 mt-1">
-                  {issuedPass.facilityName || "Visitor Pass"}
+                  {issuedPass.facilityName || "Lencana Kunjungan Tamu"}
                 </h3>
               </div>
               <button
@@ -1466,12 +1474,12 @@ export function ReceptionClient({
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
                     src={`data:image/png;base64,${issuedPass.qrCodeImage}`}
-                    alt="Visitor Access QR Pass"
+                    alt="QR Akses Masuk Tamu"
                     className="h-44 w-44 object-contain"
                   />
                 ) : (
                   <div className="flex h-44 w-44 items-center justify-center rounded-lg bg-neutral-200 text-neutral-500 font-mono text-xs">
-                    QR Badge Active
+                    Lencana QR Aktif
                   </div>
                 )}
               </div>
@@ -1480,7 +1488,7 @@ export function ReceptionClient({
               {issuedPass.pinCode && (
                 <div className="mt-3 w-full rounded-xl bg-neutral-900 py-2 text-white">
                   <span className="block text-3xs uppercase tracking-wider text-neutral-400">
-                    Physical Keypad Entry PIN
+                    Kode PIN Masuk Terminal Pintu
                   </span>
                   <span className="font-mono text-xl font-extrabold tracking-widest text-emerald-400">
                     {issuedPass.pinCode}
@@ -1491,23 +1499,23 @@ export function ReceptionClient({
               {/* Visitor Details */}
               <div className="mt-4 w-full space-y-1.5 text-left text-xs text-neutral-700 bg-neutral-50 p-3.5 rounded-xl border border-neutral-200">
                 <div className="flex justify-between">
-                  <span className="text-neutral-400">Visitor:</span>
+                  <span className="text-neutral-400">Nama Tamu:</span>
                   <span className="font-bold text-neutral-900">{issuedPass.visitorName}</span>
                 </div>
                 {issuedPass.hostName && (
                   <div className="flex justify-between">
-                    <span className="text-neutral-400">Host:</span>
+                    <span className="text-neutral-400">Tuan Rumah:</span>
                     <span className="font-medium text-neutral-800">{issuedPass.hostName}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-neutral-400">Visiting Hours:</span>
+                  <span className="text-neutral-400">Jam Kunjungan:</span>
                   <span className="font-mono text-neutral-800">
                     {issuedPass.scheduledStartTime.split("T")[1]?.substring(0, 5)} - {issuedPass.scheduledEndTime.split("T")[1]?.substring(0, 5)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-400">Checked In At:</span>
+                  <span className="text-neutral-400">Waktu Masuk:</span>
                   <span className="font-mono text-blue-700 font-medium">
                     {new Date(issuedPass.actualCheckInTimeUtc).toLocaleTimeString()}
                   </span>
@@ -1515,7 +1523,7 @@ export function ReceptionClient({
 
                 {/* Credential Sync Status */}
                 <div className="flex items-center justify-between pt-2 border-t border-neutral-200">
-                  <span className="text-neutral-500 font-medium">Controller Sync:</span>
+                  <span className="text-neutral-500 font-medium">Sinkronisasi Terminal:</span>
                   <div className="flex items-center gap-2">
                     <span
                       className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${
@@ -1537,7 +1545,7 @@ export function ReceptionClient({
                         disabled={isRetryingSync}
                         className="rounded bg-neutral-200 px-2 py-0.5 text-3xs font-medium text-neutral-800 hover:bg-neutral-300 cursor-pointer"
                       >
-                        {isRetryingSync ? "Retrying..." : "Retry Sync"}
+                        {isRetryingSync ? "Mengulang..." : "Kirim Ulang"}
                       </button>
                     )}
                   </div>
@@ -1556,14 +1564,14 @@ export function ReceptionClient({
                 <svg className="h-4 w-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
-                Print Visitor Pass
+                Cetak Lencana Tamu
               </button>
               <button
                 type="button"
                 onClick={() => setIssuedPass(null)}
                 className="flex-1 rounded-lg bg-neutral-900 py-2 text-xs font-semibold text-white hover:bg-neutral-800 cursor-pointer"
               >
-                Done
+                Selesai
               </button>
             </div>
           </div>
