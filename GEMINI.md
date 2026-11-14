@@ -12,6 +12,10 @@ Default five canonical triage roles (`needs-triage`, `needs-info`, `ready-for-ag
 
 Single-context layout (`GLOSSARY.md` and `docs/adr/` at the repo root). See `docs/agents/domain.md`.
 
+### Indonesian UI dictionary
+
+Centralized single source of truth for lay terminology, status badges, and page guides. See `src/lib/vms/i18n/id.ts`.
+
 ### Coding standards
 
 Judgement-call conventions for `/code-review`, module boundaries, and Next.js/HikCentral contracts. See `CODING_STANDARDS.md`.
