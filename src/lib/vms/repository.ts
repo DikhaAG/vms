@@ -1228,6 +1228,7 @@ export class InMemoryVmsRepository implements IVmsRepository {
       actualCheckInTimeUtc: params.actualCheckInTimeUtc,
       tapCount: 1,
       lastSeenDoor: updatedLastSeenDoor,
+      isFastTrack: true,
       updatedAtUtc: new Date().toISOString(),
     };
     this.visits.set(params.visitId, structuredClone(updatedVisit));

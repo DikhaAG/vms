@@ -81,6 +81,25 @@ export class ActiveMonitoringService {
         visit.tapQuota,
       );
 
+      const tapEvents = await this.repository.listDoorTapEvents(visit.id);
+      tapEvents.sort(
+        (a, b) =>
+          new Date(a.tappedAtUtc).getTime() - new Date(b.tappedAtUtc).getTime(),
+      );
+
+      const checkInEvents = await this.repository.listCheckInEvents(visit.id);
+      const isFastTrack = Boolean(
+        visit.isFastTrack ||
+          checkInEvents.some(
+            (c) =>
+              c.receptionistUserId === "system-auto-checkin" ||
+              c.receptionistName?.toLowerCase().includes("fast-track") ||
+              c.notes?.toLowerCase().includes("auto check-in") ||
+              (c.verificationMethod === "biometric" &&
+                c.receptionistUserId.includes("auto")),
+          ),
+      );
+
       const fullName = `${visit.visitorGivenName} ${visit.visitorFamilyName}`.trim();
       const maxTaps =
         visit.tapQuota?.mode === "limited"
@@ -127,6 +146,8 @@ export class ActiveMonitoringService {
         accessLevelIds: visit.accessLevelIds,
         emergencyGrants: visit.emergencyGrants,
         lastSeenDoor: visit.lastSeenDoor,
+        isFastTrack,
+        movementBreadcrumbs: tapEvents,
       });
     }
 

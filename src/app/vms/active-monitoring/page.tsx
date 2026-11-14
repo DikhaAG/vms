@@ -12,6 +12,7 @@ export const metadata = {
 export default async function ActiveMonitoringPage() {
   const facilities = await defaultVmsRepository.listFacilities();
   const initialVisits = await defaultActiveMonitoringService.getActiveVisits();
+  const doors = await defaultVmsRepository.listDoors();
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -36,6 +37,7 @@ export default async function ActiveMonitoringPage() {
         <p className="mt-2 text-sm text-neutral-600 max-w-3xl">
           Real-time security dashboard tracking checked-in guests currently on-premise.
           Enforces door tap quotas (via physical access events), calculates facility overstay grace periods,
+          tracks door directionality &amp; implicit room transitions, manages time-bounded emergency access escalations,
           and enables one-click normal or forced check-out which immediately deauthorizes terminal permissions
           via HikCentral <code className="text-xs bg-neutral-100 px-1 py-0.5 rounded font-mono">POST /artemis/api/visitor/v1/visitor/out</code>.
         </p>
@@ -44,6 +46,7 @@ export default async function ActiveMonitoringPage() {
       <ActiveMonitoringClient
         facilities={facilities}
         initialVisits={initialVisits}
+        doors={doors}
       />
     </main>
   );

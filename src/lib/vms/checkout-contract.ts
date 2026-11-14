@@ -179,6 +179,8 @@ export interface ActiveVisitSummary {
   accessLevelIds?: string[];
   emergencyGrants?: EmergencyAccessGrant[];
   lastSeenDoor?: VisitLastSeenDoor;
+  isFastTrack?: boolean;
+  movementBreadcrumbs?: DoorTapEvent[];
 }
 
 export interface OverstayEvaluation {

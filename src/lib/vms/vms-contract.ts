@@ -161,6 +161,7 @@ export interface Visit {
   tapQuota?: TapQuotaConfig;
   emergencyGrants?: EmergencyAccessGrant[];
   lastSeenDoor?: VisitLastSeenDoor;
+  isFastTrack?: boolean;
   createdAtUtc: string;
   updatedAtUtc: string;
 }
