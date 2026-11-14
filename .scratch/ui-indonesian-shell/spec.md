@@ -126,3 +126,4 @@ Deliver a cohesive, high-craft user experience adhering to the **Impeccable (Ope
 - Adheres strictly to ADR 0001 (Hybrid State), ADR 0002 (Timezone Normalization), and ADR 0005 (Indonesian Localization & Guided App Shell).
 - Follows the Impeccable (Operate Mode) guidelines: high scannability, subtle micro-interactions, distinct contrast ratios for status chips, and crisp form inputs without autocorrect bugs.
 - All modifications must pass `pnpm check` (100% test pass rate, 0 lint/typecheck errors) and maintain Turbopack production build compatibility (`pnpm build`).
+
