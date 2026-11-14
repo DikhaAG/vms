@@ -331,7 +331,11 @@ export function ActiveMonitoringClient({
         throw new Error(data.error?.message || data.errors?.reason || "Gagal mengeksekusi check-out paksa.");
       }
 
-      const receipt = (forceVisit.visitId || "").slice(0, 8).toUpperCase();
+      const receipt =
+        data.visit?.appointRecordId ||
+        data.auditEvent?.appointRecordIdRevoked ||
+        forceVisit.appointRecordId ||
+        forceVisit.visitId.slice(0, 8).toUpperCase();
       setNotification({
         type: "warning",
         message: `Check-out paksa berhasil dilakukan untuk ${forceVisit.visitor.fullName}. Alasan tercatat: "${forceReason.trim()}". Hak akses perangkat dicabut seketika. Bukti Mesin: #${receipt}.`,

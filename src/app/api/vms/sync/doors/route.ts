@@ -9,9 +9,19 @@ export async function POST(request: Request): Promise<NextResponse> {
   if (request.headers.get("content-type")?.includes("application/json")) {
     try {
       const parsed = await request.json();
-      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
-        body = parsed as Record<string, unknown>;
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: {
+              kind: "validation",
+              message: "Request body must be a JSON object.",
+            },
+          },
+          { status: 400 },
+        );
       }
+      body = parsed as Record<string, unknown>;
     } catch {
       return NextResponse.json(
         {

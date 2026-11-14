@@ -3,13 +3,62 @@
 import { useState, useEffect } from "react";
 import { idDict } from "@/lib/vms/i18n/id";
 
-export type GatewayStatus = "checking" | "online" | "offline" | "config";
+export const GATEWAY_STATUSES = [
+  "checking",
+  "online",
+  "offline",
+  "config",
+] as const;
+
+export type GatewayStatus = (typeof GATEWAY_STATUSES)[number];
+
+export function isGatewayStatus(value: unknown): value is GatewayStatus {
+  return (
+    typeof value === "string" &&
+    (GATEWAY_STATUSES as readonly string[]).includes(value)
+  );
+}
 
 export interface HikCentralStatusBadgeProps {
   initialStatus?: GatewayStatus;
   initialLatencyMs?: number;
   errorMessage?: string;
   autoCheck?: boolean;
+}
+
+interface GatewayHealthResult {
+  status: GatewayStatus;
+  latencyMs?: number;
+  errorMessage?: string;
+}
+
+async function checkGatewayHealth(): Promise<GatewayHealthResult> {
+  try {
+    const res = await fetch("/api/hikcentral/version");
+    const data = await res.json();
+
+    if (data.ok) {
+      return {
+        status: "online",
+        latencyMs: data.latencyMs ?? 0,
+      };
+    }
+
+    return {
+      status: data.error?.kind === "config" ? "config" : "offline",
+      latencyMs: data.latencyMs,
+      errorMessage:
+        data.error?.message || "Tidak dapat terhubung ke server HikCentral.",
+    };
+  } catch (err) {
+    return {
+      status: "offline",
+      errorMessage:
+        err instanceof Error
+          ? err.message
+          : "Kegagalan jaringan saat menghubungi gateway.",
+    };
+  }
 }
 
 export function HikCentralStatusBadge({
@@ -26,34 +75,17 @@ export function HikCentralStatusBadge({
   const [isChecking, setIsChecking] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
+  const applyHealthResult = (result: GatewayHealthResult) => {
+    setStatus(result.status);
+    setLatencyMs(result.latencyMs);
+    setErrorMessage(result.errorMessage);
+  };
+
   const handleManualCheck = async () => {
     setIsChecking(true);
     try {
-      const res = await fetch("/api/hikcentral/version");
-      const data = await res.json();
-
-      if (data.ok) {
-        setStatus("online");
-        setLatencyMs(data.latencyMs ?? 0);
-        setErrorMessage(undefined);
-      } else {
-        if (data.error?.kind === "config") {
-          setStatus("config");
-        } else {
-          setStatus("offline");
-        }
-        setLatencyMs(data.latencyMs);
-        setErrorMessage(
-          data.error?.message || "Tidak dapat terhubung ke server HikCentral.",
-        );
-      }
-    } catch (err) {
-      setStatus("offline");
-      setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : "Kegagalan jaringan saat menghubungi gateway.",
-      );
+      const result = await checkGatewayHealth();
+      applyHealthResult(result);
     } finally {
       setIsChecking(false);
     }
@@ -64,35 +96,9 @@ export function HikCentralStatusBadge({
     let isCancelled = false;
 
     async function pingGateway() {
-      try {
-        const res = await fetch("/api/hikcentral/version");
-        const data = await res.json();
-        if (isCancelled) return;
-
-        if (data.ok) {
-          setStatus("online");
-          setLatencyMs(data.latencyMs ?? 0);
-          setErrorMessage(undefined);
-        } else {
-          if (data.error?.kind === "config") {
-            setStatus("config");
-          } else {
-            setStatus("offline");
-          }
-          setLatencyMs(data.latencyMs);
-          setErrorMessage(
-            data.error?.message || "Tidak dapat terhubung ke server HikCentral.",
-          );
-        }
-      } catch (err) {
-        if (isCancelled) return;
-        setStatus("offline");
-        setErrorMessage(
-          err instanceof Error
-            ? err.message
-            : "Kegagalan jaringan saat menghubungi gateway.",
-        );
-      }
+      const result = await checkGatewayHealth();
+      if (isCancelled) return;
+      applyHealthResult(result);
     }
 
     void pingGateway();

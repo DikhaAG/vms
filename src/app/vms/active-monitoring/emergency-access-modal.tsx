@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import type {
   ActiveVisitSummary,
   FacilityDoor,
@@ -21,6 +21,7 @@ export function EmergencyAccessModal({
   onClose,
   onSuccess,
 }: EmergencyAccessModalProps) {
+  const modalRef = useRef<HTMLDivElement>(null);
   const [selectedDoorCodes, setSelectedDoorCodes] = useState<string[]>([]);
   const [durationHours, setDurationHours] = useState<number>(1);
   const [emergencyReason, setEmergencyReason] = useState("");
@@ -34,7 +35,32 @@ export function EmergencyAccessModal({
     if (!visit) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        e.preventDefault();
         onClose();
+        return;
+      }
+
+      if (e.key === "Tab") {
+        if (!modalRef.current) return;
+        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -135,6 +161,7 @@ export function EmergencyAccessModal({
 
   return (
     <div
+      ref={modalRef}
       role="dialog"
       aria-modal="true"
       aria-labelledby="emergencyAccessTitle"
