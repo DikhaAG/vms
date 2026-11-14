@@ -96,5 +96,30 @@ _Avoid_: Invisible exit, Ghost exit, Auto-departure, Zone hop
 A time-bounded, justification-backed temporary permission granted to an active Visit for specific physical doors outside their default Access Level, with automatic hardware synchronization and revocation upon expiration or check-out.
 _Avoid_: Ad-hoc access, Temporary privilege, Over-ride, Elevation pass
 
+## Glosarium Bahasa Indonesia (Istilah Ramah Awam)
+
+| Istilah Domain Asli | Istilah Bahasa Indonesia Awam | Penjelasan Ringkas untuk Pengguna |
+|---|---|---|
+| **Visitor** | **Tamu / Pengunjung** | Orang dari luar perusahaan/gedung yang berkunjung sementara. |
+| **Host** | **Karyawan Tuan Rumah** | Karyawan internal yang mengundang, membuat janji temu, dan bertanggung jawab atas tamu. |
+| **Receptionist** | **Petugas Resepsionis** | Staf meja depan yang melayani tamu datang langsung (*walk-in*), verifikasi identitas, dan cetak lencana/kartu akses. |
+| **Approver** | **Pejabat Penyetuju / Atasan** | Manajer atau staf keamanan yang berhak menyetujui atau menolak permohonan kunjungan. |
+| **Facility** | **Gedung / Lokasi Fasilitas** | Bangunan fisik tempat kunjungan berlangsung (misal: Kantor Pusat Jakarta, Cabang Bali, Gudang Jayapura). |
+| **Visit** | **Kunjungan / Janji Temu** | Sesi kehadiran satu tamu dalam jangka waktu tertentu di suatu gedung. |
+| **Pre-Registration** | **Pendaftaran Tamu Terjadwal** | Pendaftaran janji tamu di muka oleh karyawan sebelum tamu tiba di lokasi. |
+| **Self-Registration Link** | **Tautan Pendaftaran Mandiri** | Tautan web khusus bagi tamu untuk mengisi data diri dan foto selfie dari smartphone sebelum datang. |
+| **Walk-in** | **Tamu Datang Langsung** | Tamu yang datang mendadak ke meja resepsionis tanpa janji temu sebelumnya. |
+| **Access Level** | **Hak Akses Pintu** | Paket izin pintu mana saja dan lantai berapa yang boleh dilewati oleh tamu. |
+| **Tap Quota** | **Jatah Buka Pintu (Kuota Tap)** | Jumlah maksimal tamu boleh men-tap kartu/wajah di pintu putar selama masa kunjungan. |
+| **Overstay** | **Melewati Batas Waktu Kunjungan** | Kondisi saat tamu belum keluar gedung melebihi batas toleransi jam kunjungan yang ditentukan. |
+| **Overstay Grace Period** | **Toleransi Keterlambatan Pulang** | Waktu ekstra (misal 30 menit) sebelum sistem menandai tamu sebagai terlambat keluar (*overstay*). |
+| **Fast-Track Auto Check-In** | **Masuk Otomatis Tanpa Antre** | Tamu yang sudah disetujui dapat langsung men-tap wajah/QR di pintu putar luar tanpa antre di resepsionis. |
+| **Perimeter Door** | **Pintu Luar / Pintu Putar Lobi** | Pintu terluar gedung yang memisahkan area publik luar dengan area dalam gedung. |
+| **Door Directionality** | **Arah Akses Pintu** | Pintu Dua Arah (*Dual-Direction*) vs Pintu Masuk Saja (*Single-Direction In* dengan tombol keluar). |
+| **Implicit Room Transition** | **Perpindahan Ruangan Otomatis** | Sistem mendeteksi tamu telah keluar dari ruangan lama ketika men-tap di ruangan baru. |
+| **Emergency Access Grant** | **Izin Akses Darurat Sementara** | Izin tambahan waktu terbatas (1-4 jam) untuk memasuki ruangan khusus yang awalnya tidak diizinkan. |
+| **Monitoring List** | **Daftar Pantauan Keamanan** | Daftar orang yang dilarang masuk atau membutuhkan pemeriksaan keamanan ketat. |
+
+
 
 
