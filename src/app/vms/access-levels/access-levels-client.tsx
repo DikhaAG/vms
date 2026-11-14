@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useEffect } from "react";
 import type { Facility } from "@/lib/vms/vms-contract";
 import {
   TIME_SCHEDULE_LABELS,
@@ -43,6 +43,17 @@ export function AccessLevelsClient({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isFormOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsFormOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFormOpen]);
 
   // Form Fields
   const [targetFacilityId, setTargetFacilityId] = useState(
@@ -459,7 +470,7 @@ export function AccessLevelsClient({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="cth. Pintu Putar Lobi & Lantai 1"
-                  className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-hidden ${
+                  className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 ${
                     formErrors.name
                       ? "border-rose-300 focus:border-rose-500"
                       : "border-neutral-300 dark:border-slate-700 focus:border-neutral-900 dark:focus:border-blue-500"
@@ -484,7 +495,7 @@ export function AccessLevelsClient({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="cth. Izin masuk standar gerbang lobi dan pintu putar resepsionis"
-                  className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
+                  className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
                 />
               </div>
 
@@ -574,7 +585,7 @@ export function AccessLevelsClient({
                     value={newDoorInput}
                     onChange={(e) => setNewDoorInput(e.target.value)}
                     placeholder="Ketik nama pintu atau kode pintu..."
-                    className="flex-1 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
+                    className="flex-1 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
                   />
                   <button
                     type="button"
@@ -617,7 +628,7 @@ export function AccessLevelsClient({
                     value={newFloorInput}
                     onChange={(e) => setNewFloorInput(e.target.value)}
                     placeholder="Lantai khusus (cth. Atap, Mezanin)..."
-                    className="flex-1 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
+                    className="flex-1 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
                   />
                   <button
                     type="button"

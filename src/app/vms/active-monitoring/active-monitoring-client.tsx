@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Facility, PreRegistrationMode, StubScenario } from "@/lib/vms/vms-contract";
 import type {
   ActiveVisitSummary,
@@ -50,6 +50,18 @@ export function ActiveMonitoringClient({
     type: "success" | "error" | "warning";
     message: string;
   } | null>(null);
+
+  useEffect(() => {
+    if (!forceVisit) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setForceVisit(null);
+        setForceReason("");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [forceVisit]);
 
   // Helper to resolve door access directionality
   const resolveDoorAccessType = (
@@ -213,16 +225,16 @@ export function ActiveMonitoringClient({
       if (data.autoCheckedOut) {
         setNotification({
           type: "warning",
-          message: `🚨 Tap Quota Exhausted (${data.tapCount}/${data.maxTaps})! ${visit.visitor.fullName} was automatically checked out and terminal permissions have been revoked across all physical controllers.`,
+          message: `Batas Tap Terlampaui (${data.tapCount}/${data.maxTaps})! Hak akses fisik ${visit.visitor.fullName} telah dicabut secara otomatis di semua kontroler.`,
         });
         // Remove visit from active on-premise list
         setVisits((prev) => prev.filter((v) => v.visitId !== visit.visitId));
       } else {
         const remainingText =
-          data.remainingTaps !== undefined ? ` (${data.remainingTaps} remaining)` : "";
+          data.remainingTaps !== undefined ? ` (${data.remainingTaps} sisa)` : "";
         setNotification({
           type: "success",
-          message: `✓ Door tap recorded for ${visit.visitor.fullName}. Cumulative taps: ${data.tapCount}${remainingText}.`,
+          message: `Tap pintu tercatat untuk ${visit.visitor.fullName}. Total tap: ${data.tapCount}${remainingText}.`,
         });
         // Update local visit tap count
         setVisits((prev) =>
@@ -277,7 +289,7 @@ export function ActiveMonitoringClient({
 
       setNotification({
         type: "success",
-        message: `✓ Kunjungan ${visit.visitor.fullName} berhasil diselesaikan. Hak akses pada perangkat pintu fisik telah dicabut.`,
+        message: `Kunjungan ${visit.visitor.fullName} berhasil diselesaikan. Hak akses pada perangkat pintu fisik telah dicabut.`,
       });
 
       // Remove from active visits
@@ -328,7 +340,7 @@ export function ActiveMonitoringClient({
 
       setNotification({
         type: "warning",
-        message: `⚠️ Check-out paksa berhasil dilakukan untuk ${forceVisit.visitor.fullName}. Alasan tercatat: "${forceReason.trim()}". Hak akses perangkat dicabut.`,
+        message: `Check-out paksa berhasil dilakukan untuk ${forceVisit.visitor.fullName}. Alasan tercatat: "${forceReason.trim()}". Hak akses perangkat dicabut.`,
       });
 
       // Remove from active visits
@@ -385,7 +397,7 @@ export function ActiveMonitoringClient({
 
       setNotification({
         type: "success",
-        message: `✓ Izin akses darurat pintu ${grant.doorNames?.join(", ") || "terkait"} untuk ${visit.visitor.fullName} berhasil dicabut.`,
+        message: `Izin akses darurat pintu ${grant.doorNames?.join(", ") || "terkait"} untuk ${visit.visitor.fullName} berhasil dicabut.`,
       });
 
       setVisits((prev) =>
@@ -464,9 +476,12 @@ export function ActiveMonitoringClient({
           </div>
           <button
             onClick={() => setNotification(null)}
-            className="text-xs font-bold opacity-60 hover:opacity-100"
+            className="p-1 text-slate-500 hover:text-slate-800 rounded-md cursor-pointer"
+            aria-label="Tutup notifikasi"
           >
-            ✕
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
       )}
@@ -568,7 +583,7 @@ export function ActiveMonitoringClient({
               id="facilityFilter"
               value={selectedFacilityId}
               onChange={(e) => handleFacilityChange(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-hidden"
+              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             >
               <option value="all">Semua Gedung Fasilitas</option>
               {facilities.map((fac) => (
@@ -589,7 +604,7 @@ export function ActiveMonitoringClient({
               placeholder="Cari nama tamu, tuan rumah, atau nomor kunjungan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-hidden"
+              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             />
           </div>
         </div>
@@ -695,13 +710,13 @@ export function ActiveMonitoringClient({
                               data-testid="fast-track-badge"
                               className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-semibold text-cyan-800 border border-cyan-200"
                             >
-                              ⚡ Masuk Otomatis Tanpa Antre
+                              Masuk Otomatis Tanpa Antre
                             </span>
                           )}
                         </h2>
                         {visit.visitorGroupName && (
                           <span className="inline-block rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 border border-indigo-200 mt-0.5">
-                            👥 Rombongan: {visit.visitorGroupName}
+                            Rombongan: {visit.visitorGroupName}
                           </span>
                         )}
                         <p className="text-xs text-neutral-500">
@@ -714,17 +729,17 @@ export function ActiveMonitoringClient({
                     {/* Status Badges */}
                     <div className="flex flex-col items-end gap-1.5">
                       {visit.isOverstay ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-bold text-rose-800 animate-pulse">
-                          ⚠️ {visit.overstayMinutes}m Overstay
+                        <span className="inline-flex items-center rounded-full bg-rose-50 border border-rose-300 px-2.5 py-0.5 text-xs font-bold text-rose-800">
+                          {visit.overstayMinutes}m Overstay
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-                          ✓ Sesuai Jadwal
+                          Sesuai Jadwal
                         </span>
                       )}
 
                       {visit.appointRecordId && (
-                        <span className="text-[10px] font-mono text-neutral-400">
+                        <span className="text-[10px] font-mono text-neutral-500">
                           HC: {visit.appointRecordId}
                         </span>
                       )}
@@ -734,19 +749,19 @@ export function ActiveMonitoringClient({
                   {/* Metadata Grid */}
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs border-y border-neutral-100 py-3">
                     <div>
-                      <span className="text-neutral-400">Gedung:</span>{" "}
+                      <span className="text-neutral-600 dark:text-slate-400">Gedung:</span>{" "}
                       <span className="font-semibold text-neutral-800">{visit.facility.name}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-400">Karyawan Tuan Rumah:</span>{" "}
+                      <span className="text-neutral-600 dark:text-slate-400">Karyawan Tuan Rumah:</span>{" "}
                       <span className="font-semibold text-neutral-800">{visit.host?.name || "Tamu Datang Langsung (Walk-in)"}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-400">Waktu Masuk:</span>{" "}
+                      <span className="text-neutral-600 dark:text-slate-400">Waktu Masuk:</span>{" "}
                       <span className="font-semibold text-neutral-800">{checkInFormatted}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-400">Jadwal Keluar:</span>{" "}
+                      <span className="text-neutral-600 dark:text-slate-400">Jadwal Keluar:</span>{" "}
                       <span className={`font-semibold ${visit.isOverstay ? "text-rose-700" : "text-neutral-800"}`}>
                         {scheduledEndFormatted}
                       </span>
@@ -760,7 +775,7 @@ export function ActiveMonitoringClient({
                       className="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg bg-neutral-50 px-3 py-2 text-xs border border-neutral-100"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="text-neutral-500 font-medium">📍 Lokasi Terakhir:</span>
+                        <span className="text-neutral-600 dark:text-slate-400 font-medium">Lokasi Terakhir:</span>
                         <span className="font-semibold text-neutral-900">
                           {visit.lastSeenDoor.doorName || visit.lastSeenDoor.doorIndexCode}
                         </span>
@@ -794,8 +809,8 @@ export function ActiveMonitoringClient({
                   {/* Movement Breadcrumbs */}
                   {visit.movementBreadcrumbs && visit.movementBreadcrumbs.length > 0 && (
                     <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50/70 p-2.5">
-                      <div className="text-[11px] font-semibold text-neutral-500 mb-1.5 flex items-center gap-1">
-                        <span>🧭 Riwayat Pergerakan Pintu</span>
+                      <div className="text-[11px] font-semibold text-neutral-600 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                        <span>Riwayat Pergerakan Pintu</span>
                       </div>
                       <div
                         className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-800"
@@ -860,7 +875,7 @@ export function ActiveMonitoringClient({
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-neutral-900 flex items-center gap-1">
-                                  <span>🚨 Izin Akses Darurat Sementara:</span>
+                                  <span>Izin Akses Darurat Sementara:</span>
                                   <span>{grant.doorNames?.join(", ") || grant.doorIndexCodes?.join(", ")}</span>
                                 </span>
                                 {isActive && (
@@ -957,7 +972,7 @@ export function ActiveMonitoringClient({
                       title="Simulasi tap pintu putar terhadap HikCentral acs/v1/door/events"
                       className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-xs hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-50"
                     >
-                      <span>🚪 Simulasi Tap Pintu (+1)</span>
+                      <span>Simulasi Tap Pintu (+1)</span>
                     </button>
 
                     {canGrantEmergency && (
@@ -966,7 +981,7 @@ export function ActiveMonitoringClient({
                         disabled={isLoading}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-2xs hover:bg-amber-100 active:bg-amber-200 disabled:opacity-50"
                       >
-                        <span>🚨 Izin Akses Darurat</span>
+                        <span>Izin Akses Darurat</span>
                       </button>
                     )}
                   </div>
@@ -1001,14 +1016,16 @@ export function ActiveMonitoringClient({
           <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
-                <span className="text-rose-600">⚠️</span> Check-Out Paksa Tamu
+                Check-Out Paksa Tamu
               </h3>
               <button
                 onClick={() => setForceVisit(null)}
-                className="text-neutral-400 hover:text-neutral-600 font-bold"
+                className="text-neutral-400 hover:text-neutral-600 p-1 rounded-lg cursor-pointer"
                 aria-label="Tutup dialog"
               >
-                ✕
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
 
@@ -1035,7 +1052,7 @@ export function ActiveMonitoringClient({
                   value={forceReason}
                   onChange={(e) => setForceReason(e.target.value)}
                   placeholder="Cantumkan alasan detail check-out paksa tamu..."
-                  className="w-full rounded-lg border border-neutral-300 p-2.5 text-xs text-neutral-900 focus:border-rose-600 focus:outline-hidden"
+                  className="w-full rounded-lg border border-neutral-300 p-2.5 text-xs text-neutral-900 focus:border-rose-600 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-500"
                 />
               </div>
 

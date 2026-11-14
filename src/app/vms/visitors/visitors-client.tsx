@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import type { VisitorProfile } from "@/lib/vms/group-contract";
 import { CERTIFICATE_TYPE_LABELS, type CertificateType } from "@/lib/vms/vms-contract";
@@ -27,6 +27,17 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
   const [deleteReason, setDeleteReason] = useState(
     "Permintaan penghapusan data pribadi oleh pemilik identitas sesuai kepatuhan UU PDP",
   );
+
+  useEffect(() => {
+    if (!selectedForDelete) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedForDelete(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedForDelete]);
 
   const activeCount = profiles.filter((p) => !p.isDeleted).length;
   const deletedCount = profiles.filter((p) => p.isDeleted).length;
@@ -173,8 +184,24 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
             <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
               {filteredProfiles.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-neutral-500 dark:text-slate-400">
-                    Tidak ada profil tamu yang cocok dengan pencarian Anda.
+                  <td colSpan={6} className="px-4 py-10 text-center">
+                    <p className="text-sm font-semibold text-neutral-800 dark:text-slate-200">
+                      {searchQuery ? `Tidak ada profil tamu yang cocok dengan "${searchQuery}".` : "Belum ada data tamu terdaftar."}
+                    </p>
+                    <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
+                      {searchQuery
+                        ? "Periksa ejaan kata kunci atau hapus pencarian untuk menampilkan seluruh tamu."
+                        : "Tamu yang mendaftar atau berkunjung akan otomatis tercatat dalam basis data ini."}
+                    </p>
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="mt-3.5 inline-flex items-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-slate-200 hover:bg-neutral-50 dark:hover:bg-slate-700 transition cursor-pointer"
+                      >
+                        Reset Pencarian
+                      </button>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -222,12 +249,12 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
                     </td>
 
                     <td className="px-4 py-3.5 text-xs">
-                      {profile.phone && <p>{profile.phone}</p>}
+                      {profile.phone && <p className="text-neutral-800 dark:text-slate-200">{profile.phone}</p>}
                       {profile.email && (
-                        <p className="text-neutral-400">{profile.email}</p>
+                        <p className="text-neutral-600 dark:text-slate-400">{profile.email}</p>
                       )}
                       {!profile.phone && !profile.email && (
-                        <span className="text-neutral-400">&mdash;</span>
+                        <span className="text-neutral-500 dark:text-slate-400">-</span>
                       )}
                     </td>
 

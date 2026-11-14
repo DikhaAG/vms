@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, useEffect } from "react";
 import type { Facility, Visit } from "@/lib/vms/vms-contract";
 import {
   CERTIFICATE_TYPE_LABELS,
@@ -40,6 +40,19 @@ export function ApprovalsClient({
   const [rejectionTarget, setRejectionTarget] = useState<Visit | null>(null);
   const [rejectionComment, setRejectionComment] = useState("");
   const [rejectionError, setRejectionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!rejectionTarget) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setRejectionTarget(null);
+        setRejectionComment("");
+        setRejectionError(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [rejectionTarget]);
 
   const facilityFilterId = useId();
   const approverPersonaId = useId();
@@ -406,7 +419,7 @@ export function ApprovalsClient({
                   setRejectionComment(e.target.value);
                   if (rejectionError) setRejectionError(null);
                 }}
-                placeholder="e.g. Host traveling, incorrect facility selected, or prohibited entry..."
+                placeholder="Contoh: Tuan rumah sedang dinas luar, lokasi gedung tidak sesuai, atau akses tidak diizinkan..."
                 className={`w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-1 ${
                   rejectionError
                     ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"

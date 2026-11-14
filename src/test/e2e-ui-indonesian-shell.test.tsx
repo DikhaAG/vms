@@ -232,7 +232,7 @@ describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
       expect(html).toContain("2. Data Identitas Tamu");
       expect(html).toContain("3. Pengambilan &amp; Verifikasi Foto Biometrik Wajah");
       expect(html).toContain("6. Kelompok Hak Akses Pintu &amp; Batas Tap");
-      expect(html).toContain("🔗 Buat Tautan Pendaftaran Mandiri");
+      expect(html).toContain("Buat Tautan Pendaftaran Mandiri");
       expect(html).toContain("Kirim Janji Temu Tamu");
     });
 

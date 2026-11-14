@@ -53,7 +53,7 @@ describe("PreRegistration UI Localization", () => {
     expect(html).toContain("6. Kelompok Hak Akses Pintu &amp; Batas Tap");
 
     // Action buttons
-    expect(html).toContain("🔗 Buat Tautan Pendaftaran Mandiri");
+    expect(html).toContain("Buat Tautan Pendaftaran Mandiri");
     expect(html).toContain("Kirim Janji Temu Tamu");
     expect(html).toContain("Unggah Berkas Foto");
     expect(html).toContain("Batas Buka Pintu / Kuota Tap Pintu Putar");

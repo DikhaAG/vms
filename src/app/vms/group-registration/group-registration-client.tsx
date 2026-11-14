@@ -514,7 +514,7 @@ export function GroupRegistrationClient({
               type="text"
               value={hostName}
               onChange={(e) => setHostName(e.target.value)}
-              placeholder="Budi Santoso"
+              placeholder="Nama Karyawan Tuan Rumah"
               className="mt-1.5 w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
             />
           </div>
@@ -760,7 +760,7 @@ export function GroupRegistrationClient({
                         ),
                       );
                     }}
-                    placeholder="cth. Demis"
+                    placeholder="cth. Nama Depan"
                     className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>
@@ -781,7 +781,7 @@ export function GroupRegistrationClient({
                         ),
                       );
                     }}
-                    placeholder="cth. Hassabis"
+                    placeholder="cth. Nama Belakang"
                     className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
                   />
                 </div>

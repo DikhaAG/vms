@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { PreRegistrationMode, StubScenario } from "@/lib/vms/vms-contract";
 import type {
   ActiveVisitSummary,
@@ -33,6 +33,17 @@ export function EmergencyAccessModal({
   const [operatorName, setOperatorName] = useState("Petugas Keamanan");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visit) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [visit, onClose]);
 
   const availableDoors = useMemo(() => {
     if (!visit) return [];
@@ -104,7 +115,7 @@ export function EmergencyAccessModal({
         return;
       }
 
-      const summaryMessage = `✓ Izin akses darurat ke ${selectedDoorNames.join(", ")} berhasil diberikan untuk ${visit.visitor.fullName} (${durationHours} jam).`;
+      const summaryMessage = `Izin akses darurat ke ${selectedDoorNames.join(", ")} berhasil diberikan untuk ${visit.visitor.fullName} (${durationHours} jam).`;
       onSuccess(data.grant, summaryMessage);
     } catch (err) {
       setError(
@@ -128,15 +139,17 @@ export function EmergencyAccessModal({
             id="emergencyAccessTitle"
             className="text-base font-bold text-neutral-900 dark:text-white flex items-center gap-2"
           >
-            <span className="text-amber-600 dark:text-amber-400">🚨</span> Izin Akses Pintu Darurat Sementara
+            Izin Akses Pintu Darurat Sementara
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 font-bold p-1 rounded-lg"
+            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 p-1 rounded-lg cursor-pointer"
             aria-label="Tutup dialog"
           >
-            ✕
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
@@ -159,14 +172,17 @@ export function EmergencyAccessModal({
               className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/40 dark:border-rose-800 p-3 text-xs text-rose-900 dark:text-rose-200 flex items-start justify-between gap-2"
             >
               <div className="flex items-center gap-1.5 font-medium">
-                <span>⚠️ {error}</span>
+                <span>{error}</span>
               </div>
               <button
                 type="button"
                 onClick={() => setError(null)}
-                className="text-xs font-bold text-rose-700 hover:text-rose-900 dark:text-rose-400"
+                className="text-xs font-bold text-rose-700 hover:text-rose-900 dark:text-rose-400 cursor-pointer"
+                aria-label="Tutup pesan error"
               >
-                ✕
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
           )}

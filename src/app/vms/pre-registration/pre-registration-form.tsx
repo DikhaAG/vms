@@ -583,7 +583,7 @@ export function PreRegistrationForm({
                 autoCorrect="off"
                 autoCapitalize="none"
                 spellCheck={false}
-                placeholder="Rian"
+                placeholder="Nama Depan Tamu"
                 className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-none focus:ring-2 ${
                   fieldErrors.visitorGivenName
                     ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
@@ -613,7 +613,7 @@ export function PreRegistrationForm({
                 autoCorrect="off"
                 autoCapitalize="none"
                 spellCheck={false}
-                placeholder="Pratama"
+                placeholder="Nama Belakang Tamu"
                 className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-none focus:ring-2 ${
                   fieldErrors.visitorFamilyName
                     ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
@@ -893,7 +893,7 @@ export function PreRegistrationForm({
                   </span>
                 </p>
                 <p className="text-emerald-700 dark:text-emerald-400">
-                  ✓ Memenuhi standar batas ukuran terminal pintu (10 KB – 100 KB)
+                  Memenuhi standar batas ukuran terminal pintu (10 KB - 100 KB)
                 </p>
               </div>
             </div>
@@ -1048,7 +1048,7 @@ export function PreRegistrationForm({
                 type="text"
                 value={hostName}
                 onChange={(e) => setHostName(e.target.value)}
-                placeholder="Budi Santoso"
+                placeholder="Nama Karyawan Tuan Rumah"
                 className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
               />
             </div>
@@ -1323,7 +1323,7 @@ export function PreRegistrationForm({
               disabled={isGeneratingInvite || isSubmitting}
               className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-neutral-800 dark:text-slate-200 shadow-xs transition hover:bg-neutral-50 dark:hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isGeneratingInvite ? "Membuat Tautan..." : "🔗 Buat Tautan Pendaftaran Mandiri"}
+              {isGeneratingInvite ? "Membuat Tautan..." : "Buat Tautan Pendaftaran Mandiri"}
             </button>
             <button
               type="submit"
@@ -1345,7 +1345,9 @@ export function PreRegistrationForm({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                🔗
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                </svg>
               </span>
               <h2 className="text-sm font-bold text-blue-950 dark:text-blue-200">
                 Tautan Pendaftaran Mandiri Berhasil Dibuat
@@ -1366,15 +1368,15 @@ export function PreRegistrationForm({
               type="text"
               readOnly
               value={typeof window !== "undefined" ? `${window.location.origin}${generatedInviteUrl}` : generatedInviteUrl}
-              className="flex-1 rounded-lg border border-blue-300 dark:border-blue-800 bg-white dark:bg-slate-900 px-3 py-2 font-mono text-xs text-neutral-800 dark:text-slate-200 shadow-xs focus:outline-hidden"
+              className="flex-1 rounded-lg border border-blue-300 dark:border-blue-800 bg-white dark:bg-slate-900 px-3 py-2 font-mono text-xs text-neutral-800 dark:text-slate-200 shadow-xs focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleCopyInviteLink}
-                className="inline-flex min-h-9 items-center justify-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-xs transition hover:bg-blue-700"
+                className="inline-flex min-h-9 items-center justify-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-xs transition hover:bg-blue-700 cursor-pointer"
               >
-                {copiedInvite ? "✓ Berhasil Disalin!" : "Salin Tautan"}
+                {copiedInvite ? "Berhasil Disalin!" : "Salin Tautan"}
               </button>
               <a
                 href={generatedInviteUrl}
@@ -1382,7 +1384,7 @@ export function PreRegistrationForm({
                 rel="noreferrer"
                 className="inline-flex min-h-9 items-center justify-center rounded-lg border border-blue-300 dark:border-blue-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-300 shadow-xs transition hover:bg-blue-50 dark:hover:bg-slate-800"
               >
-                Buka Portal ↗
+                Buka Portal
               </a>
             </div>
           </div>
@@ -1517,13 +1519,13 @@ export function PreRegistrationForm({
                       appointRecordId
                     </dt>
                     <dd className="font-semibold text-neutral-900 dark:text-white">
-                      {createdVisit.hikCentral?.appointRecordId ?? "—"}
+                      {createdVisit.hikCentral?.appointRecordId ?? "-"}
                     </dd>
                   </div>
                   <div>
                     <dt className="text-[11px] text-neutral-500 dark:text-slate-400">visitorId</dt>
                     <dd className="font-semibold text-neutral-900 dark:text-white">
-                      {createdVisit.hikCentral?.visitorId ?? "—"}
+                      {createdVisit.hikCentral?.visitorId ?? "-"}
                     </dd>
                   </div>
                   <div>
@@ -1531,7 +1533,7 @@ export function PreRegistrationForm({
                       appointCode
                     </dt>
                     <dd className="font-semibold text-neutral-900 dark:text-white">
-                      {createdVisit.hikCentral?.appointCode ?? "—"}
+                      {createdVisit.hikCentral?.appointCode ?? "-"}
                     </dd>
                   </div>
                   <div>
@@ -1539,7 +1541,7 @@ export function PreRegistrationForm({
                       ID Karyawan Tuan Rumah
                     </dt>
                     <dd className="font-semibold text-neutral-900 dark:text-white">
-                      {createdVisit.hostId ?? "—"}
+                      {createdVisit.hostId ?? "-"}
                     </dd>
                   </div>
                 </dl>

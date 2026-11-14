@@ -289,8 +289,10 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
     return (
       <section className="space-y-6">
         <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 p-6 text-center shadow-xs">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
-            ✓
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
+            <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+            </svg>
           </div>
           <h2 className="mt-3 text-xl font-bold tracking-tight text-neutral-950 dark:text-white sm:text-2xl">
             Pendaftaran Berhasil Lengkap!
@@ -399,7 +401,7 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                 onClick={handleCopyPassDetails}
                 className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-neutral-800 dark:text-slate-200 shadow-xs transition hover:bg-neutral-50 dark:hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
               >
-                {copiedPass ? "✓ Rincian Berhasil Disalin!" : "Salin Ringkasan Tiket"}
+                {copiedPass ? "Rincian Berhasil Disalin!" : "Salin Ringkasan Tiket"}
               </button>
 
               <button
@@ -635,8 +637,8 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
               }`}
             >
               {isFacePhotoSizeValid(faceByteSize)
-                ? `✓ ${formatFacePhotoSize(faceByteSize)} (Sesuai Standar)`
-                : `⚠ ${formatFacePhotoSize(faceByteSize)} (Memerlukan 10–100 KB)`}
+                ? `${formatFacePhotoSize(faceByteSize)} (Sesuai Standar)`
+                : `${formatFacePhotoSize(faceByteSize)} (Memerlukan 10–100 KB)`}
             </span>
           )}
         </div>
@@ -754,7 +756,7 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                     onClick={handleLoadSamplePhoto}
                     className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800 px-2.5 py-1.5 text-xs text-neutral-600 dark:text-slate-300 hover:bg-neutral-100 dark:hover:bg-slate-700"
                   >
-                    ⚡ Gunakan Contoh
+                    Gunakan Contoh
                   </button>
                 )}
               </div>

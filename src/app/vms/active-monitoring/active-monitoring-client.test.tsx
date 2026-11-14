@@ -111,7 +111,6 @@ describe("ActiveMonitoringClient Component", () => {
       );
 
       expect(html).toContain("Masuk Otomatis Tanpa Antre");
-      expect(html).toContain("⚡ Masuk Otomatis Tanpa Antre");
     });
 
     it("does not render Fast-Track badge when isFastTrack is false or undefined", () => {
@@ -128,7 +127,7 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).not.toContain("⚡ Masuk Otomatis Tanpa Antre");
+      expect(html).not.toContain("Masuk Otomatis Tanpa Antre");
     });
 
     it("renders Dual-Direction badge when lastSeenDoor is DUAL_DIRECTION", () => {

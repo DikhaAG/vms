@@ -120,6 +120,29 @@ export function ReceptionClient({
     facePhoto?: string;
   } | null>(null);
 
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(verifyingVisit || isWalkInModalOpen || issuedPass);
+    if (!isAnyModalOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (verifyingVisit) {
+          setVerifyingVisit(null);
+          setCheckInError(null);
+        } else if (isWalkInModalOpen) {
+          setIsWalkInModalOpen(false);
+          setWalkInError(null);
+        } else if (issuedPass) {
+          setIssuedPass(null);
+          setSyncFeedback(null);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [verifyingVisit, isWalkInModalOpen, issuedPass]);
+
   async function checkReturningWalkInVisitor(cert: string) {
     const trimmed = cert.trim();
     if (!trimmed) {
@@ -658,7 +681,7 @@ export function ReceptionClient({
             }}
             className="mt-4 inline-flex items-center rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 cursor-pointer"
           >
-            Daftarkan Tamu Datang Langsung &rarr;
+            Daftarkan Tamu Datang Langsung
           </button>
         </div>
       ) : (
@@ -792,7 +815,7 @@ export function ReceptionClient({
                       }}
                       className="w-full inline-flex min-h-9 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 cursor-pointer"
                     >
-                      Verifikasi &amp; Proses Masuk &rarr;
+                      Verifikasi &amp; Proses Masuk
                     </button>
                   )}
                   {isCheckedIn && (
@@ -1499,23 +1522,23 @@ export function ReceptionClient({
               {/* Visitor Details */}
               <div className="mt-4 w-full space-y-1.5 text-left text-xs text-neutral-700 bg-neutral-50 p-3.5 rounded-xl border border-neutral-200">
                 <div className="flex justify-between">
-                  <span className="text-neutral-400">Nama Tamu:</span>
+                  <span className="text-neutral-600 dark:text-slate-400">Nama Tamu:</span>
                   <span className="font-bold text-neutral-900">{issuedPass.visitorName}</span>
                 </div>
                 {issuedPass.hostName && (
                   <div className="flex justify-between">
-                    <span className="text-neutral-400">Tuan Rumah:</span>
+                    <span className="text-neutral-600 dark:text-slate-400">Tuan Rumah:</span>
                     <span className="font-medium text-neutral-800">{issuedPass.hostName}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-neutral-400">Jam Kunjungan:</span>
+                  <span className="text-neutral-600 dark:text-slate-400">Jam Kunjungan:</span>
                   <span className="font-mono text-neutral-800">
                     {issuedPass.scheduledStartTime.split("T")[1]?.substring(0, 5)} - {issuedPass.scheduledEndTime.split("T")[1]?.substring(0, 5)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-400">Waktu Masuk:</span>
+                  <span className="text-neutral-600 dark:text-slate-400">Waktu Masuk:</span>
                   <span className="font-mono text-blue-700 font-medium">
                     {new Date(issuedPass.actualCheckInTimeUtc).toLocaleTimeString()}
                   </span>
