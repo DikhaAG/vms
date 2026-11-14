@@ -12,11 +12,7 @@ import {
 import {
   CERTIFICATE_TYPES,
   CERTIFICATE_TYPE_LABELS,
-  PRE_REGISTRATION_MODES,
-  STUB_SCENARIOS,
   type CertificateType,
-  type PreRegistrationMode,
-  type StubScenario,
   type VisitReasonType,
 } from "@/lib/vms/vms-contract";
 import {
@@ -68,10 +64,6 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
   // Camera Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-
-  // Simulation Controls
-  const [mode, setMode] = useState<PreRegistrationMode>("stub");
-  const [stubScenario, setStubScenario] = useState<StubScenario>("success");
 
   // Status and Submission State
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -229,8 +221,6 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
         certificateType: certificateType || undefined,
         certificateNo: certificateNo.trim() || undefined,
         facePhoto: facePhoto || undefined,
-        mode,
-        stubScenario,
       };
 
       const res = await fetch(`/api/vms/invite/${token}/register`, {
@@ -775,47 +765,6 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
           </div>
         </div>
       </fieldset>
-
-      {/* Simulation Controls (Optional Collapsible) */}
-      <details className="rounded-xl border border-neutral-200 dark:border-slate-800 bg-neutral-50 dark:bg-slate-850 p-4 text-xs text-neutral-600 dark:text-slate-400">
-        <summary className="cursor-pointer font-semibold text-neutral-700 dark:text-slate-300">
-          Pengaturan Mode Eksekusi & Simulasi (Pengembangan)
-        </summary>
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label className="block text-neutral-600 dark:text-slate-400">Mode Eksekusi</label>
-            <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value as PreRegistrationMode)}
-              className="mt-1 block w-full rounded-md border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-neutral-800 dark:text-slate-200"
-            >
-              {PRE_REGISTRATION_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m.toUpperCase()}
-                </option>
-              ))}
-            </select>
-          </div>
-          {mode === "stub" && (
-            <div>
-              <label className="block text-neutral-600 dark:text-slate-400">Skenario Simulasi Stub</label>
-              <select
-                value={stubScenario}
-                onChange={(e) =>
-                  setStubScenario(e.target.value as StubScenario)
-                }
-                className="mt-1 block w-full rounded-md border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-neutral-800 dark:text-slate-200"
-              >
-                {STUB_SCENARIOS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
-      </details>
 
       {/* Submit Button */}
       <div className="flex justify-end">

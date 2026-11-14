@@ -11,8 +11,6 @@ import {
 } from "react";
 import type {
   Facility,
-  PreRegistrationMode,
-  StubScenario,
   Visit,
   VisitReasonType,
   CertificateType,
@@ -20,8 +18,6 @@ import type {
 import {
   CERTIFICATE_TYPES,
   CERTIFICATE_TYPE_LABELS,
-  PRE_REGISTRATION_MODES,
-  STUB_SCENARIOS,
   VISIT_REASON_TYPES,
   VISIT_REASON_LABELS,
 } from "@/lib/vms/vms-contract";
@@ -65,10 +61,6 @@ export function ReceptionClient({
   const [selectedFacilityId, setSelectedFacilityId] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<"expected" | "checked_in" | "all">("expected");
   const [isSearching, setIsSearching] = useState(false);
-
-  // Mode and stub scenarios for live/stub demo
-  const [mode, setMode] = useState<PreRegistrationMode>("stub");
-  const [stubScenario, setStubScenario] = useState<StubScenario>("success");
 
   // State: Verification Modal (Check-in Approved Visit)
   const [verifyingVisit, setVerifyingVisit] = useState<Visit | null>(null);
@@ -341,8 +333,6 @@ export function ReceptionClient({
           receptionistName: receptionistUser.name,
           verificationMethod,
           notes: checkInNotes.trim() || undefined,
-          mode,
-          stubScenario,
         }),
       });
 
@@ -399,8 +389,6 @@ export function ReceptionClient({
           receptionistUserId: receptionistUser.id,
           receptionistName: receptionistUser.name,
           verificationMethod: "id_card",
-          mode,
-          stubScenario,
         }),
       });
 
@@ -446,8 +434,6 @@ export function ReceptionClient({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           visitorId: issuedPass.visitorId,
-          mode,
-          stubScenario: "success",
         }),
       });
       const json = await res.json();
@@ -567,37 +553,6 @@ export function ReceptionClient({
                 </option>
               ))}
             </select>
-          </div>
-
-          {/* Demo Mode / Scenario Switcher */}
-          <div className="flex items-center gap-2 rounded-lg bg-neutral-50 px-2.5 py-1.5 border border-neutral-200">
-            <span className="text-2xs font-semibold uppercase tracking-wider text-neutral-500">
-              Gateway:
-            </span>
-            <select
-              value={mode}
-              onChange={(e) => setMode(e.target.value as PreRegistrationMode)}
-              className="rounded border-none bg-transparent text-xs font-medium text-neutral-700 py-0 pl-1 pr-6 focus:ring-0"
-            >
-              {PRE_REGISTRATION_MODES.map((m) => (
-                <option key={m} value={m}>
-                  {m.toUpperCase()}
-                </option>
-              ))}
-            </select>
-            {mode === "stub" && (
-              <select
-                value={stubScenario}
-                onChange={(e) => setStubScenario(e.target.value as StubScenario)}
-                className="rounded border-none bg-transparent text-xs text-neutral-600 py-0 pl-1 pr-6 focus:ring-0"
-              >
-                {STUB_SCENARIOS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            )}
           </div>
         </div>
 

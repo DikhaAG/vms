@@ -247,7 +247,9 @@ export const DEFAULT_ACCESS_LEVELS: AccessLevel[] = [
   },
 ];
 
-export const DEFAULT_VISITOR_PROFILES: VisitorProfile[] = [
+export const DEFAULT_VISITOR_PROFILES: VisitorProfile[] = [];
+
+export const TEST_FIXTURE_VISITOR_PROFILES: VisitorProfile[] = [
   {
     id: "prof-ktp-3171",
     certificateType: 111,

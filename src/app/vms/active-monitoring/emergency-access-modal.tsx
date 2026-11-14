@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import type { PreRegistrationMode, StubScenario } from "@/lib/vms/vms-contract";
 import type {
   ActiveVisitSummary,
   FacilityDoor,
@@ -12,8 +11,6 @@ import { idDict } from "@/lib/vms/i18n/id";
 export interface EmergencyAccessModalProps {
   visit: ActiveVisitSummary | null;
   doors: FacilityDoor[];
-  mode?: PreRegistrationMode;
-  stubScenario?: StubScenario;
   onClose: () => void;
   onSuccess: (grant: EmergencyAccessGrant, notificationMessage: string) => void;
 }
@@ -21,8 +18,6 @@ export interface EmergencyAccessModalProps {
 export function EmergencyAccessModal({
   visit,
   doors,
-  mode = "stub",
-  stubScenario = "success",
   onClose,
   onSuccess,
 }: EmergencyAccessModalProps) {
@@ -31,6 +26,7 @@ export function EmergencyAccessModal({
   const [emergencyReason, setEmergencyReason] = useState("");
   const [operatorUserId, setOperatorUserId] = useState("sec-officer-01");
   const [operatorName, setOperatorName] = useState("Petugas Keamanan");
+  const [isConfirming, setIsConfirming] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,11 +52,18 @@ export function EmergencyAccessModal({
 
   const handleToggleDoor = (doorCode: string) => {
     setSelectedDoorCodes((prev) =>
-      prev.includes(doorCode) ? prev.filter((c) => c !== doorCode) : [...prev, doorCode],
+      prev.includes(doorCode)
+        ? prev.filter((c) => c !== doorCode)
+        : [...prev, doorCode],
     );
   };
 
-  const handleConfirm = async () => {
+  const selectedDoors = (doors || []).filter((d) =>
+    selectedDoorCodes.includes(d.doorIndexCode),
+  );
+  const selectedDoorNames = selectedDoors.map((d) => d.doorName);
+
+  const handlePreConfirm = () => {
     setError(null);
 
     if (selectedDoorCodes.length === 0) {
@@ -78,12 +81,13 @@ export function EmergencyAccessModal({
       return;
     }
 
-    const selectedDoors = (doors || []).filter((d) =>
-      selectedDoorCodes.includes(d.doorIndexCode),
-    );
-    const selectedDoorNames = selectedDoors.map((d) => d.doorName);
+    setIsConfirming(true);
+  };
 
+  const handleFinalSubmit = async () => {
+    setError(null);
     setIsSubmitting(true);
+
     try {
       const res = await fetch(
         `/api/vms/active-visits/${visit.visitId}/emergency-access`,
@@ -97,8 +101,6 @@ export function EmergencyAccessModal({
             reason: emergencyReason.trim(),
             grantedByUserId: operatorUserId.trim(),
             grantedByName: operatorName.trim() || undefined,
-            mode,
-            stubScenario,
           }),
         },
       );
@@ -112,15 +114,20 @@ export function EmergencyAccessModal({
           data.error?.message ||
           "Gagal menerbitkan izin akses darurat.";
         setError(msg);
+        setIsConfirming(false);
         return;
       }
 
-      const summaryMessage = `Izin akses darurat ke ${selectedDoorNames.join(", ")} berhasil diberikan untuk ${visit.visitor.fullName} (${durationHours} jam).`;
+      const receiptId = (data.grant?.id || "").slice(0, 8);
+      const summaryMessage = `Izin akses darurat ke ${selectedDoorNames.join(", ")} berhasil diberikan untuk ${visit.visitor.fullName} (${durationHours} jam). Bukti Transaksi Gateway: #${receiptId || "OK"}.`;
       onSuccess(data.grant, summaryMessage);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Terjadi kesalahan jaringan saat menerbitkan izin darurat.",
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan jaringan saat menerbitkan izin darurat.",
       );
+      setIsConfirming(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -139,12 +146,13 @@ export function EmergencyAccessModal({
             id="emergencyAccessTitle"
             className="text-base font-bold text-neutral-900 dark:text-white flex items-center gap-2"
           >
+            <span className="text-amber-600 dark:text-amber-500">🛡️</span>
             Izin Akses Pintu Darurat Sementara
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 p-1 rounded-lg cursor-pointer"
+            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-slate-300 transition-colors"
             aria-label="Tutup dialog"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,233 +161,212 @@ export function EmergencyAccessModal({
           </button>
         </div>
 
-        <div className="mt-4 space-y-4">
-          {/* Visitor summary */}
-          <div className="rounded-lg bg-neutral-50 dark:bg-slate-800/60 p-3 text-xs border border-neutral-100 dark:border-slate-700/60">
-            <p className="font-bold text-neutral-900 dark:text-white">{visit.visitor.fullName}</p>
-            <p className="text-neutral-600 dark:text-neutral-300 mt-0.5">
-              Gedung: {visit.facility.name} • Tuan Rumah: {visit.host?.name || "N/A"}
-            </p>
-            <p className="text-neutral-500 dark:text-neutral-400 mt-0.5">
-              ID Kunjungan: <code className="font-mono text-[11px]">{visit.visitId}</code>
-            </p>
+        {error && (
+          <div
+            role="alert"
+            className="mt-4 rounded-lg bg-rose-50 dark:bg-rose-950/40 p-3 text-xs text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 font-medium"
+          >
+            {error}
           </div>
+        )}
 
-          {/* Structured error banner */}
-          {error && (
-            <div
-              role="alert"
-              className="rounded-lg border border-rose-300 bg-rose-50 dark:bg-rose-950/40 dark:border-rose-800 p-3 text-xs text-rose-900 dark:text-rose-200 flex items-start justify-between gap-2"
-            >
-              <div className="flex items-center gap-1.5 font-medium">
-                <span>{error}</span>
-              </div>
+        {isConfirming ? (
+          /* Confirmation Screen */
+          <div className="mt-4 space-y-4">
+            <div className="rounded-xl border border-rose-300 dark:border-rose-900 bg-rose-50/70 dark:bg-rose-950/40 p-4 text-xs text-rose-950 dark:text-rose-200">
+              <h4 className="font-bold flex items-center gap-1.5 text-sm text-rose-700 dark:text-rose-400">
+                <span>⚠️</span> Konfirmasi Pembukaan Akses Pintu Fisik
+              </h4>
+              <p className="mt-2 leading-relaxed">
+                Tindakan ini akan <strong>langsung mengirimkan sinyal kontrol hardware</strong> ke server HikCentral untuk mengizinkan akses pintu fisik bagi <strong>{visit.visitor.fullName}</strong>:
+              </p>
+              <ul className="mt-2 list-disc list-inside font-semibold space-y-0.5">
+                {selectedDoorNames.map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[11px] text-rose-800 dark:text-rose-300">
+                Durasi Akses: {durationHours} Jam • Petugas Penanggung Jawab: {operatorName} ({operatorUserId})
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-neutral-100 dark:border-slate-800 pt-4">
               <button
                 type="button"
-                onClick={() => setError(null)}
-                className="text-xs font-bold text-rose-700 hover:text-rose-900 dark:text-rose-400 cursor-pointer"
-                aria-label="Tutup pesan error"
+                onClick={() => setIsConfirming(false)}
+                disabled={isSubmitting}
+                className="rounded-lg border border-neutral-300 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                Kembali / Ubah
+              </button>
+              <button
+                type="button"
+                onClick={handleFinalSubmit}
+                disabled={isSubmitting}
+                className="rounded-lg bg-rose-600 hover:bg-rose-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors disabled:opacity-50"
+              >
+                {isSubmitting ? "Mengirim Sinyal Hardware..." : "Ya, Eksekusi Buka Pintu Sekarang"}
               </button>
             </div>
-          )}
-
-          {/* Door Selection */}
-          <div>
-            <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">
-              Pilih Pintu Fisik <span className="text-rose-600">*</span>
-              <span className="ml-1 text-[11px] font-normal text-neutral-500 dark:text-neutral-400">
-                (Tersaring untuk {visit.facility.name})
-              </span>
-            </label>
-            {availableDoors.length === 0 ? (
-              <p className="text-xs text-neutral-500 italic p-2 bg-neutral-50 dark:bg-slate-800 rounded border border-neutral-200 dark:border-slate-700">
-                Belum ada pintu yang dikonfigurasi untuk gedung ini.
-              </p>
-            ) : (
-              <div
-                data-testid="emergency-door-list"
-                className="space-y-1.5 max-h-48 overflow-y-auto rounded-lg border border-neutral-200 dark:border-slate-800 p-2"
-              >
-                {availableDoors.map((door) => {
-                  const isSelected = selectedDoorCodes.includes(door.doorIndexCode);
-                  return (
-                    <label
-                      key={door.doorIndexCode}
-                      className={`flex items-center justify-between rounded-md p-2 text-xs transition cursor-pointer ${
-                        isSelected
-                          ? "bg-amber-50/80 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700"
-                          : "hover:bg-neutral-50 dark:hover:bg-slate-800 border border-transparent"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleToggleDoor(door.doorIndexCode)}
-                          className="rounded border-neutral-300 text-amber-600 focus:ring-amber-500"
-                        />
-                        <div>
-                          <p className="font-semibold text-neutral-900 dark:text-white">{door.doorName}</p>
-                          <p className="font-mono text-[10px] text-neutral-400">
-                            {door.doorIndexCode}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold border ${
-                          door.accessType === "DUAL_DIRECTION"
-                            ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800"
-                            : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800"
-                        }`}
-                      >
-                        {door.accessType === "DUAL_DIRECTION"
-                          ? "Pintu Dua Arah"
-                          : "Pintu Masuk Saja"}
-                      </span>
-                    </label>
-                  );
-                })}
+          </div>
+        ) : (
+          /* Normal Configuration Screen */
+          <>
+            <div className="mt-4 space-y-4">
+              {/* Visitor Summary Banner */}
+              <div className="rounded-xl bg-neutral-50 dark:bg-slate-800/60 p-3 text-xs border border-neutral-200 dark:border-slate-700/60">
+                <p className="font-bold text-neutral-900 dark:text-white">
+                  {visit.visitor.fullName}
+                </p>
+                <p className="text-neutral-600 dark:text-slate-400 mt-0.5">
+                  Fasilitas: <span className="font-medium">{visit.facility.name}</span> • Tuan Rumah: {visit.host?.name || "N/A"}
+                </p>
+                <p className="text-[11px] text-neutral-500 dark:text-slate-500 mt-1">
+                  Keperluan: {visit.visitReason}
+                </p>
               </div>
-            )}
-            {selectedDoorCodes.length > 0 && (
-              <p className="mt-1 text-[11px] text-neutral-500 dark:text-neutral-400">
-                {selectedDoorCodes.length} pintu fisik dipilih
-              </p>
-            )}
-          </div>
 
-          {/* Duration Selection */}
-          <div>
-            <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">
-              Durasi Izin Akses Darurat <span className="text-rose-600">*</span>
-            </label>
-            <div className="grid grid-cols-3 gap-2" data-testid="duration-options">
-              {[1, 2, 4].map((hrs) => (
-                <button
-                  key={hrs}
-                  type="button"
-                  onClick={() => setDurationHours(hrs)}
-                  className={`rounded-lg border py-2 text-xs font-semibold transition ${
-                    durationHours === hrs
-                      ? "border-amber-600 bg-amber-600 text-white shadow-2xs"
-                      : "border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-700"
-                  }`}
-                >
-                  {hrs} Jam
-                </button>
-              ))}
-            </div>
-          </div>
+              {/* Door Selection List */}
+              <div>
+                <label className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1.5">
+                  Pilih Pintu Fisik yang Dibuka Aksesnya <span className="text-rose-600">*</span>
+                </label>
+                {availableDoors.length === 0 ? (
+                  <p className="text-xs text-neutral-500 italic">
+                    Tidak ada pintu terdaftar untuk fasilitas ini.
+                  </p>
+                ) : (
+                  <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border border-neutral-200 dark:border-slate-700 p-2">
+                    {availableDoors.map((door) => {
+                      const isSelected = selectedDoorCodes.includes(door.doorIndexCode);
+                      return (
+                        <label
+                          key={door.doorIndexCode}
+                          className={`flex items-center justify-between rounded-md p-2 text-xs cursor-pointer transition ${
+                            isSelected
+                              ? "bg-amber-50 dark:bg-amber-950/40 text-amber-950 dark:text-amber-200 font-semibold"
+                              : "hover:bg-neutral-50 dark:hover:bg-slate-800 text-neutral-700 dark:text-slate-300"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleDoor(door.doorIndexCode)}
+                              className="rounded border-neutral-300 text-amber-600 focus:ring-amber-500"
+                            />
+                            <span>{door.doorName}</span>
+                          </div>
+                          <span className="text-[10px] text-neutral-400">
+                            {door.accessType === "SINGLE_DIRECTION_IN" ? "1-Arah In" : "2-Arah"}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
 
-          {/* Justification Reason */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label htmlFor="emergencyReason" className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
-                Alasan Justifikasi Operasional <span className="text-rose-600">*</span>
-              </label>
-              <span
-                className={`text-[11px] ${
-                  emergencyReason.trim().length >= 10
-                    ? "text-emerald-600 dark:text-emerald-400 font-semibold"
-                    : "text-neutral-400"
-                }`}
-              >
-                {emergencyReason.trim().length}/10 min karakter
-              </span>
-            </div>
-            <textarea
-              id="emergencyReason"
-              rows={3}
-              value={emergencyReason}
-              onChange={(e) => setEmergencyReason(e.target.value)}
-              placeholder="Jelaskan alasan mengapa eskalasi akses darurat diperlukan (min 10 karakter)..."
-              className="w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white p-2.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-amber-600 focus:outline-hidden"
-            />
+              {/* Duration Slider / Select */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="durationHours" className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
+                    Durasi Izin Darurat
+                  </label>
+                  <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                    {durationHours} Jam
+                  </span>
+                </div>
+                <input
+                  id="durationHours"
+                  type="range"
+                  min="1"
+                  max="12"
+                  step="1"
+                  value={durationHours}
+                  onChange={(e) => setDurationHours(Number(e.target.value))}
+                  className="w-full accent-amber-600"
+                />
+                <div className="flex justify-between text-[10px] text-neutral-400 mt-0.5">
+                  <span>1 Jam</span>
+                  <span>4 Jam</span>
+                  <span>8 Jam</span>
+                  <span>12 Jam</span>
+                </div>
+              </div>
 
-            {/* Quick preset chips */}
-            <div className="mt-1.5 space-y-1">
-              <span className="text-[10px] font-medium text-neutral-500 dark:text-neutral-400">Pilihan Cepat:</span>
-              <div className="flex flex-wrap gap-1">
-                {[
-                  "Pemeliharaan darurat ruang server TI",
-                  "Perbaikan mendesak sistem pendingin/kelistrikan",
-                  "Pemeriksaan fisik diagnostik perangkat vendor",
-                  "Akses darurat kontraktor dengan pendampingan",
-                ].map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setEmergencyReason(preset)}
-                    className="rounded border border-neutral-200 dark:border-slate-700 bg-neutral-100 dark:bg-slate-800 px-2 py-0.5 text-[10px] text-neutral-700 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-slate-700 transition-colors"
-                  >
-                    {preset}
-                  </button>
-                ))}
+              {/* Justification Reason */}
+              <div>
+                <label htmlFor="emergencyReason" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1">
+                  Alasan Justifikasi Operasional <span className="text-rose-600">*</span>
+                </label>
+                <textarea
+                  id="emergencyReason"
+                  rows={2}
+                  value={emergencyReason}
+                  onChange={(e) => setEmergencyReason(e.target.value)}
+                  placeholder="cth. Kunjungan darurat perbaikan server dan panel listrik lantai 3..."
+                  className="w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white p-2.5 text-xs text-neutral-900 focus:border-amber-600 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
+                />
+              </div>
+
+              {/* Operator Responsible */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="operatorUserId" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1">
+                    ID Petugas Keamanan <span className="text-rose-600">*</span>
+                  </label>
+                  <input
+                    id="operatorUserId"
+                    type="text"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    value={operatorUserId}
+                    onChange={(e) => setOperatorUserId(e.target.value)}
+                    className="w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white px-3 py-1.5 text-xs text-neutral-900 focus:border-amber-600 focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="operatorName" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1">
+                    Nama Petugas Keamanan
+                  </label>
+                  <input
+                    id="operatorName"
+                    type="text"
+                    autoCorrect="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    value={operatorName}
+                    onChange={(e) => setOperatorName(e.target.value)}
+                    className="w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white px-3 py-1.5 text-xs text-neutral-900 focus:border-amber-600 focus:outline-hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 p-2.5 text-[11px] text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60">
+                <strong>Sinkronisasi Perangkat Pintu:</strong> Izin akses darurat sementara akan disinkronkan ke pengontrol pintu fisik (HikCentral) dan otomatis dicabut setelah {durationHours} jam, atau saat tamu check-out.
               </div>
             </div>
-          </div>
 
-          {/* Operator Information */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="operatorUserId" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1">
-                ID Petugas Keamanan <span className="text-rose-600">*</span>
-              </label>
-              <input
-                id="operatorUserId"
-                type="text"
-                autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                value={operatorUserId}
-                onChange={(e) => setOperatorUserId(e.target.value)}
-                className="w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white px-3 py-1.5 text-xs text-neutral-900 focus:border-amber-600 focus:outline-hidden"
-              />
+            <div className="mt-6 flex items-center justify-end gap-2 border-t border-neutral-100 dark:border-slate-800 pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-neutral-300 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                {idDict.common.cancel}
+              </button>
+              <button
+                type="button"
+                onClick={handlePreConfirm}
+                className="rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors"
+              >
+                Lanjutkan Otorisasi Pintu
+              </button>
             </div>
-            <div>
-              <label htmlFor="operatorName" className="block text-xs font-semibold text-neutral-800 dark:text-neutral-200 mb-1">
-                Nama Petugas Keamanan
-              </label>
-              <input
-                id="operatorName"
-                type="text"
-                autoCorrect="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                value={operatorName}
-                onChange={(e) => setOperatorName(e.target.value)}
-                className="w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white px-3 py-1.5 text-xs text-neutral-900 focus:border-amber-600 focus:outline-hidden"
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg bg-amber-50 dark:bg-amber-950/40 p-2.5 text-[11px] text-amber-900 dark:text-amber-200 border border-amber-200 dark:border-amber-800/60">
-            <strong>Sinkronisasi Perangkat Pintu:</strong> Izin akses darurat sementara akan disinkronkan ke pengontrol pintu fisik (HikCentral) dan otomatis dicabut setelah {durationHours} jam, atau saat tamu check-out.
-          </div>
-        </div>
-
-        <div className="mt-6 flex items-center justify-end gap-2 border-t border-neutral-100 dark:border-slate-800 pt-4">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="rounded-lg border border-neutral-300 dark:border-slate-700 px-3.5 py-2 text-xs font-semibold text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-slate-800 transition-colors"
-          >
-            {idDict.common.cancel}
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={isSubmitting}
-            className="rounded-lg bg-amber-600 hover:bg-amber-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors disabled:opacity-50"
-          >
-            {isSubmitting ? "Menyinkronkan Akses..." : "Berikan Izin Akses Darurat"}
-          </button>
-        </div>
+          </>
+        )}
       </div>
     </div>
   );

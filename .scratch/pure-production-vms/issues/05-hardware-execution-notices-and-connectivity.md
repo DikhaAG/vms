@@ -4,15 +4,20 @@
 
 **Blocked by:** 03, 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Create `src/components/vms/hikcentral-status-badge.tsx` and integrate it into `src/components/vms/header.tsx`.
-- [ ] Implement confirmation modals for:
+- [x] Create `src/components/vms/hikcentral-status-badge.tsx` and integrate it into `src/components/vms/header.tsx`.
+- [x] Implement confirmation modals for:
   - Emergency door control (`POST /artemis/api/acs/v1/door/doControl`).
   - Forced check-out (`POST /artemis/api/visitor/v1/checkOut`).
-- [ ] Add hardware execution notice toasts/banners displaying official machine proof upon successful operations (e.g. `appointRecordId`, ticket code, sync timestamp).
-- [ ] Disable physical action buttons with explanatory warning tooltips/banners when HikCentral connection is offline.
-- [ ] Write component tests verifying connection badge states, confirmation prompts, and hardware receipts.
+- [x] Add hardware execution notice toasts/banners displaying official machine proof upon successful operations (e.g. `appointRecordId`, ticket code, sync timestamp).
+- [x] Disable physical action buttons with explanatory warning tooltips/banners when HikCentral connection is offline.
+- [x] Write component tests verifying connection badge states, confirmation prompts, and hardware receipts.
 
 ## Comments
+- Implemented real-time `HikCentralStatusBadge` pinging `/api/hikcentral/version` with latency and manual retest trigger.
+- Integrated into `src/components/vms/header.tsx` with full dark mode support.
+- Added explicit physical hardware impact confirmation screen in `EmergencyAccessModal`.
+- Added hardware execution receipt formatting with ticket codes and machine timestamps.
+- Unit and component tests pass.
 

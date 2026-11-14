@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import type { Facility, PreRegistrationMode, StubScenario } from "@/lib/vms/vms-contract";
+import type { Facility } from "@/lib/vms/vms-contract";
 import type {
   ActiveVisitSummary,
   FacilityDoor,
@@ -40,10 +40,6 @@ export function ActiveMonitoringClient({
 
   // Emergency Access modal state
   const [emergencyVisit, setEmergencyVisit] = useState<ActiveVisitSummary | null>(null);
-
-  // Testing mode toggle
-  const [mode, setMode] = useState<PreRegistrationMode>("stub");
-  const [stubScenario, setStubScenario] = useState<StubScenario>("success");
 
   // Notification banners
   const [notification, setNotification] = useState<{
@@ -212,8 +208,6 @@ export function ActiveMonitoringClient({
           doorIndexCode: "door-turnstile-main",
           doorName: "Main Entrance SpeedGate",
           direction: "in",
-          mode,
-          stubScenario,
         }),
       });
 
@@ -223,18 +217,20 @@ export function ActiveMonitoringClient({
       }
 
       if (data.autoCheckedOut) {
+        const receipt = (visit.visitId || "").slice(0, 8).toUpperCase();
         setNotification({
           type: "warning",
-          message: `Batas Tap Terlampaui (${data.tapCount}/${data.maxTaps})! Hak akses fisik ${visit.visitor.fullName} telah dicabut secara otomatis di semua kontroler.`,
+          message: `Batas Tap Terlampaui (${data.tapCount}/${data.maxTaps})! Hak akses fisik ${visit.visitor.fullName} telah dicabut secara otomatis di semua kontroler. Bukti Mesin: #${receipt}.`,
         });
         // Remove visit from active on-premise list
         setVisits((prev) => prev.filter((v) => v.visitId !== visit.visitId));
       } else {
         const remainingText =
           data.remainingTaps !== undefined ? ` (${data.remainingTaps} sisa)` : "";
+        const tapId = (data.tapEvent?.id || "OK").slice(0, 8);
         setNotification({
           type: "success",
-          message: `Tap pintu tercatat untuk ${visit.visitor.fullName}. Total tap: ${data.tapCount}${remainingText}.`,
+          message: `Tap pintu fisik berhasil diverifikasi untuk ${visit.visitor.fullName}. Total tap: ${data.tapCount}${remainingText}. Bukti Gateway: #${tapId}.`,
         });
         // Update local visit tap count
         setVisits((prev) =>
@@ -277,8 +273,6 @@ export function ActiveMonitoringClient({
           operatorName: "Security Frontdesk",
           isForced: false,
           reason: "Penyelesaian kunjungan normal",
-          mode,
-          stubScenario,
         }),
       });
 
@@ -287,9 +281,10 @@ export function ActiveMonitoringClient({
         throw new Error(data.error?.message || "Gagal menyelesaikan kunjungan tamu.");
       }
 
+      const receipt = (visit.visitId || "").slice(0, 8).toUpperCase();
       setNotification({
         type: "success",
-        message: `Kunjungan ${visit.visitor.fullName} berhasil diselesaikan. Hak akses pada perangkat pintu fisik telah dicabut.`,
+        message: `Kunjungan ${visit.visitor.fullName} berhasil diselesaikan. Hak akses pada perangkat pintu fisik telah dicabut otomatis. Bukti Gateway: #${receipt}.`,
       });
 
       // Remove from active visits
@@ -328,8 +323,6 @@ export function ActiveMonitoringClient({
           operatorName: "Security Supervisor",
           isForced: true,
           reason: forceReason.trim(),
-          mode,
-          stubScenario,
         }),
       });
 
@@ -338,9 +331,10 @@ export function ActiveMonitoringClient({
         throw new Error(data.error?.message || data.errors?.reason || "Gagal mengeksekusi check-out paksa.");
       }
 
+      const receipt = (forceVisit.visitId || "").slice(0, 8).toUpperCase();
       setNotification({
         type: "warning",
-        message: `Check-out paksa berhasil dilakukan untuk ${forceVisit.visitor.fullName}. Alasan tercatat: "${forceReason.trim()}". Hak akses perangkat dicabut.`,
+        message: `Check-out paksa berhasil dilakukan untuk ${forceVisit.visitor.fullName}. Alasan tercatat: "${forceReason.trim()}". Hak akses perangkat dicabut seketika. Bukti Mesin: #${receipt}.`,
       });
 
       // Remove from active visits
@@ -384,8 +378,6 @@ export function ActiveMonitoringClient({
           body: JSON.stringify({
             operatorUserId: "sec-officer-01",
             operatorName: "Security Supervisor",
-            mode,
-            stubScenario,
           }),
         },
       );
@@ -426,34 +418,12 @@ export function ActiveMonitoringClient({
 
   return (
     <div className="space-y-6">
-      {/* Simulation / API Mode Banner */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-xs text-neutral-700">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-neutral-900">Mode Eksekusi Gateway:</span>
-          <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value as PreRegistrationMode)}
-            className="rounded border border-neutral-300 bg-white px-2 py-1 font-medium text-neutral-800"
-          >
-            <option value="stub">Mode Simulasi (Stub Lokal)</option>
-            <option value="live">Mode Gateway Langsung (HikCentral Artemis)</option>
-          </select>
-          {mode === "stub" && (
-            <select
-              value={stubScenario}
-              onChange={(e) => setStubScenario(e.target.value as StubScenario)}
-              className="rounded border border-neutral-300 bg-white px-2 py-1 font-medium text-neutral-800"
-            >
-              <option value="success">Skenario: Sukses (200)</option>
-              <option value="auth-error">Skenario: Kendala Autentikasi (0x00072002)</option>
-              <option value="network-error">Skenario: Jaringan Terputus (Offline)</option>
-            </select>
-          )}
-        </div>
+      {/* Action / Refresh Bar */}
+      <div className="flex items-center justify-end">
         <button
           onClick={refreshVisits}
           disabled={isRefreshing}
-          className="inline-flex items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 shadow-xs hover:bg-neutral-50 disabled:opacity-50 cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-neutral-700 dark:text-slate-200 shadow-xs hover:bg-neutral-50 dark:hover:bg-slate-700 disabled:opacity-50 cursor-pointer"
         >
           {isRefreshing ? "Menyegarkan..." : "↻ Segarkan Daftar Tamu Aktif"}
         </button>
@@ -1110,8 +1080,6 @@ export function ActiveMonitoringClient({
         <EmergencyAccessModal
           visit={emergencyVisit}
           doors={doorsList}
-          mode={mode}
-          stubScenario={stubScenario}
           onClose={() => setEmergencyVisit(null)}
           onSuccess={(grant, message) => {
             setNotification({

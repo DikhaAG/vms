@@ -2,6 +2,7 @@
 
 import { useId, useState, useEffect } from "react";
 import type { Facility } from "@/lib/vms/vms-contract";
+import type { FacilityDoor } from "@/lib/vms/checkout-contract";
 import {
   TIME_SCHEDULE_LABELS,
   TIME_SCHEDULE_TEMPLATES,
@@ -13,28 +14,20 @@ import { idDict } from "@/lib/vms/i18n/id";
 interface AccessLevelsClientProps {
   facilities: Facility[];
   initialAccessLevels: AccessLevel[];
+  initialDoors?: FacilityDoor[];
 }
-
-const COMMON_DOOR_PRESETS = [
-  "Lobby Main SpeedGate A",
-  "Lobby Main SpeedGate B",
-  "Visitor Turnstile 01",
-  "3F Elevator Lobby Door",
-  "Executive Boardroom",
-  "DC Server Room 01",
-  "Basement AirLock",
-  "Lab Wing Sliding Door",
-  "Loading Gate 01",
-];
 
 const COMMON_FLOOR_PRESETS = ["B1", "1F", "2F", "3F", "4F", "5F"];
 
 export function AccessLevelsClient({
   facilities,
   initialAccessLevels,
+  initialDoors = [],
 }: AccessLevelsClientProps) {
   const formId = useId();
   const [accessLevels, setAccessLevels] = useState<AccessLevel[]>(initialAccessLevels);
+  const [availableDoors, setAvailableDoors] = useState<FacilityDoor[]>(initialDoors);
+  const [isSyncingDoors, setIsSyncingDoors] = useState(false);
   const [selectedFacilityId, setSelectedFacilityId] = useState<string>("all");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -43,6 +36,23 @@ export function AccessLevelsClient({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load doors from server on mount if not provided
+  useEffect(() => {
+    if (availableDoors.length === 0) {
+      void (async () => {
+        try {
+          const res = await fetch("/api/vms/doors");
+          const data = await res.json();
+          if (data.ok && Array.isArray(data.doors)) {
+            setAvailableDoors(data.doors);
+          }
+        } catch {
+          // Silent fallback on initial passive load
+        }
+      })();
+    }
+  }, [availableDoors.length]);
 
   useEffect(() => {
     if (!isFormOpen) return;
@@ -64,7 +74,7 @@ export function AccessLevelsClient({
   const [timeScheduleId, setTimeScheduleId] =
     useState<TimeScheduleTemplateId>(2);
   const [doors, setDoors] = useState<string[]>([]);
-  const [newDoorInput, setNewDoorInput] = useState("");
+  const [doorSearchQuery, setDoorSearchQuery] = useState("");
   const [floors, setFloors] = useState<string[]>([]);
   const [newFloorInput, setNewFloorInput] = useState("");
   const [isDefault, setIsDefault] = useState(false);
@@ -76,6 +86,72 @@ export function AccessLevelsClient({
       ? accessLevels
       : accessLevels.filter((l) => l.facilityId === selectedFacilityId);
 
+  // Filter available doors by facility and search query
+  const displayedAvailableDoors = availableDoors
+    .filter(
+      (d) =>
+        !targetFacilityId ||
+        !d.facilityId ||
+        d.facilityId === targetFacilityId ||
+        d.facilityId === "fac-main-01",
+    )
+    .filter((d) => {
+      if (!doorSearchQuery.trim()) return true;
+      const q = doorSearchQuery.toLowerCase();
+      return (
+        d.doorName.toLowerCase().includes(q) ||
+        d.doorIndexCode.toLowerCase().includes(q)
+      );
+    });
+
+  const handleSyncDoors = async () => {
+    setIsSyncingDoors(true);
+    setErrorMessage(null);
+    setStatusMessage(null);
+
+    try {
+      const res = await fetch("/api/vms/sync/doors", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          facilityId:
+            targetFacilityId && targetFacilityId !== "all"
+              ? targetFacilityId
+              : undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setErrorMessage(
+          data.error?.message ||
+            "Gagal menyinkronkan daftar pintu dari server HikCentral.",
+        );
+        return;
+      }
+
+      // Re-fetch authoritative doors list
+      const doorsRes = await fetch("/api/vms/doors");
+      const doorsData = await doorsRes.json();
+      if (doorsData.ok && Array.isArray(doorsData.doors)) {
+        setAvailableDoors(doorsData.doors);
+      }
+
+      const count = data.totalSynced ?? data.doors?.length ?? 0;
+      setStatusMessage(
+        `Berhasil menyinkronkan ${count} pintu fisik dari server HikCentral.`,
+      );
+    } catch (err) {
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : "Terjadi kesalahan jaringan saat menyinkronkan pintu.",
+      );
+    } finally {
+      setIsSyncingDoors(false);
+    }
+  };
+
   const openCreateModal = () => {
     setEditingId(null);
     setTargetFacilityId(
@@ -86,10 +162,13 @@ export function AccessLevelsClient({
     setName("");
     setDescription("");
     setTimeScheduleId(2);
-    setDoors(["Lobby Main SpeedGate A"]);
+    // If available doors exist, select first perimeter door by default
+    const firstPerimeter = availableDoors.find((d) => d.isPerimeter);
+    setDoors(firstPerimeter ? [firstPerimeter.doorName] : []);
     setFloors(["1F"]);
     setIsDefault(false);
     setFormErrors({});
+    setDoorSearchQuery("");
     setIsFormOpen(true);
   };
 
@@ -103,17 +182,15 @@ export function AccessLevelsClient({
     setFloors(level.floors ? [...level.floors] : []);
     setIsDefault(Boolean(level.isDefault));
     setFormErrors({});
+    setDoorSearchQuery("");
     setIsFormOpen(true);
   };
 
-  const handleAddDoor = (doorToAdd?: string) => {
-    const val = (doorToAdd || newDoorInput).trim();
-    if (!val) return;
-    if (!doors.includes(val)) {
-      setDoors([...doors, val]);
-    }
-    if (!doorToAdd) {
-      setNewDoorInput("");
+  const handleToggleDoor = (doorIdentifier: string) => {
+    if (doors.includes(doorIdentifier)) {
+      setDoors(doors.filter((d) => d !== doorIdentifier));
+    } else {
+      setDoors([...doors, doorIdentifier]);
     }
   };
 
@@ -168,7 +245,9 @@ export function AccessLevelsClient({
           if (data.error?.fieldErrors) {
             setFormErrors(data.error.fieldErrors);
           } else {
-            setErrorMessage(data.error?.message || "Gagal memperbarui kelompok hak akses.");
+            setErrorMessage(
+              data.error?.message || "Gagal memperbarui kelompok hak akses.",
+            );
           }
           setIsSubmitting(false);
           return;
@@ -190,7 +269,9 @@ export function AccessLevelsClient({
           if (data.error?.fieldErrors) {
             setFormErrors(data.error.fieldErrors);
           } else {
-            setErrorMessage(data.error?.message || "Gagal membuat kelompok hak akses.");
+            setErrorMessage(
+              data.error?.message || "Gagal membuat kelompok hak akses.",
+            );
           }
           setIsSubmitting(false);
           return;
@@ -203,7 +284,9 @@ export function AccessLevelsClient({
       setIsFormOpen(false);
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "Terjadi gangguan jaringan saat menyimpan hak akses.",
+        err instanceof Error
+          ? err.message
+          : "Terjadi gangguan jaringan saat menyimpan hak akses.",
       );
     } finally {
       setIsSubmitting(false);
@@ -211,7 +294,11 @@ export function AccessLevelsClient({
   };
 
   const handleDelete = async (id: string, levelName: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus kelompok hak akses '${levelName}'?`)) {
+    if (
+      !confirm(
+        `Apakah Anda yakin ingin menghapus kelompok hak akses '${levelName}'?`,
+      )
+    ) {
       return;
     }
 
@@ -221,7 +308,9 @@ export function AccessLevelsClient({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setErrorMessage(data.error?.message || "Gagal menghapus kelompok hak akses.");
+        setErrorMessage(
+          data.error?.message || "Gagal menghapus kelompok hak akses.",
+        );
         return;
       }
 
@@ -229,7 +318,9 @@ export function AccessLevelsClient({
       setStatusMessage(`Kelompok hak akses '${levelName}' berhasil dihapus.`);
     } catch (err) {
       setErrorMessage(
-        err instanceof Error ? err.message : "Terjadi gangguan jaringan saat menghapus hak akses.",
+        err instanceof Error
+          ? err.message
+          : "Terjadi gangguan jaringan saat menghapus hak akses.",
       );
     }
   };
@@ -254,7 +345,7 @@ export function AccessLevelsClient({
         </div>
       ) : null}
 
-      {/* Control Bar: Facility Filter and Create Button */}
+      {/* Control Bar: Facility Filter, Door Sync, and Create Button */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <label
@@ -269,7 +360,9 @@ export function AccessLevelsClient({
             onChange={(e) => setSelectedFacilityId(e.target.value)}
             className="rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-neutral-800 dark:text-slate-200 shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
           >
-            <option value="all">Semua Lokasi Fasilitas ({accessLevels.length})</option>
+            <option value="all">
+              Semua Lokasi Fasilitas ({accessLevels.length})
+            </option>
             {facilities.map((fac) => {
               const count = accessLevels.filter(
                 (l) => l.facilityId === fac.id,
@@ -283,13 +376,27 @@ export function AccessLevelsClient({
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 dark:bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-neutral-800 dark:hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
-        >
-          + Tambah Hak Akses Pintu
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={handleSyncDoors}
+            disabled={isSyncingDoors}
+            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-neutral-800 dark:text-slate-200 shadow-xs transition hover:bg-neutral-50 dark:hover:bg-slate-700 disabled:opacity-50"
+          >
+            <span aria-hidden="true">{isSyncingDoors ? "⏳" : "🔄"}</span>
+            {isSyncingDoors
+              ? "Menyinkronkan Pintu..."
+              : "Sinkronkan Pintu dari Server HikCentral"}
+          </button>
+
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 dark:bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-neutral-800 dark:hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+          >
+            + Tambah Hak Akses Pintu
+          </button>
+        </div>
       </div>
 
       {/* Access Level Card List */}
@@ -300,7 +407,8 @@ export function AccessLevelsClient({
               Tidak ada kelompok hak akses yang ditemukan.
             </p>
             <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
-              Buat kelompok hak akses untuk menggabungkan izin pintu dan template jadwal waktu kunjungan.
+              Buat kelompok hak akses untuk menggabungkan izin pintu dan template
+              jadwal waktu kunjungan.
             </p>
             <button
               type="button"
@@ -338,40 +446,43 @@ export function AccessLevelsClient({
                     {level.description || "Tidak ada deskripsi tambahan."}
                   </p>
 
-                  <div className="mt-4 space-y-2 border-t border-neutral-100 dark:border-slate-800 pt-3 text-xs">
+                  <div className="mt-4 space-y-3 border-t border-neutral-100 dark:border-slate-800 pt-3">
                     <div>
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-slate-400">
-                        Jadwal Waktu Akses
+                      <span className="text-[11px] font-medium text-neutral-500 dark:text-slate-400">
+                        Jadwal Waktu Akses:
                       </span>
-                      <p className="mt-0.5 font-medium text-neutral-800 dark:text-slate-200">
+                      <p className="text-xs font-semibold text-neutral-800 dark:text-slate-200">
                         {idDict.timeSchedules[level.timeScheduleId] ??
-                          TIME_SCHEDULE_LABELS[level.timeScheduleId] ??
-                          `Template ${level.timeScheduleId}`}
+                          TIME_SCHEDULE_LABELS[level.timeScheduleId]}
                       </p>
                     </div>
 
                     <div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-slate-400">
-                          Pintu Diberikan ({level.doors.length})
-                        </span>
-                      </div>
+                      <span className="text-[11px] font-medium text-neutral-500 dark:text-slate-400">
+                        Pintu Diberikan ({level.doors.length}):
+                      </span>
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {level.doors.map((door) => (
-                          <span
-                            key={door}
-                            className="inline-flex rounded-md bg-neutral-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-mono text-neutral-700 dark:text-slate-300"
-                          >
-                            {door}
+                        {level.doors.length === 0 ? (
+                          <span className="text-xs text-neutral-400 italic">
+                            Tidak ada pintu terdaftar
                           </span>
-                        ))}
+                        ) : (
+                          level.doors.map((door) => (
+                            <span
+                              key={door}
+                              className="inline-flex rounded-md bg-neutral-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-neutral-800 dark:text-slate-300"
+                            >
+                              {door}
+                            </span>
+                          ))
+                        )}
                       </div>
                     </div>
 
                     {level.floors && level.floors.length > 0 ? (
                       <div>
-                        <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 dark:text-slate-400">
-                          Akses Lantai Lift ({level.floors.length})
+                        <span className="text-[11px] font-medium text-neutral-500 dark:text-slate-400">
+                          Akses Lantai Lift ({level.floors.length}):
                         </span>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {level.floors.map((floor) => (
@@ -420,7 +531,9 @@ export function AccessLevelsClient({
           <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xl">
             <div className="flex items-center justify-between border-b border-neutral-100 dark:border-slate-800 pb-3">
               <h2 className="text-base font-bold text-neutral-950 dark:text-white">
-                {editingId ? "Ubah Kelompok Hak Akses" : "Buat Kelompok Hak Akses Baru"}
+                {editingId
+                  ? "Ubah Kelompok Hak Akses"
+                  : "Buat Kelompok Hak Akses Baru"}
               </h2>
               <button
                 type="button"
@@ -524,15 +637,28 @@ export function AccessLevelsClient({
                 </select>
               </div>
 
-              {/* Doors Management */}
+              {/* Authoritative Doors Selection from HikCentral */}
               <div>
-                <label className="block text-xs font-medium text-neutral-700 dark:text-slate-300">
-                  Daftar Pintu Fisik * (minimal 1 pintu)
-                </label>
-                <div className="mt-1 flex flex-wrap gap-1.5 rounded-lg border border-neutral-300 dark:border-slate-700 p-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium text-neutral-700 dark:text-slate-300">
+                    Daftar Pintu Fisik Server HikCentral * (minimal 1 pintu)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSyncDoors}
+                    disabled={isSyncingDoors}
+                    className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+                  >
+                    <span>{isSyncingDoors ? "⏳" : "🔄"}</span>
+                    {isSyncingDoors ? "Menyinkronkan..." : "Sinkronkan Pintu"}
+                  </button>
+                </div>
+
+                {/* Selected Doors Badges */}
+                <div className="mt-1 flex flex-wrap gap-1.5 rounded-lg border border-neutral-300 dark:border-slate-700 p-2 min-h-[38px] bg-neutral-50/50 dark:bg-slate-800/40">
                   {doors.length === 0 ? (
                     <span className="text-xs text-neutral-400">
-                      Belum ada pintu yang dipilih. Klik preset di bawah atau ketik nama pintu.
+                      Belum ada pintu yang dipilih. Pilih pintu dari daftar di bawah.
                     </span>
                   ) : (
                     doors.map((door) => (
@@ -556,44 +682,80 @@ export function AccessLevelsClient({
                   <p className="mt-1 text-xs text-rose-600">{formErrors.doors}</p>
                 ) : null}
 
-                {/* Common Presets */}
-                <div className="mt-2">
-                  <span className="text-[11px] font-medium text-neutral-500 dark:text-slate-400">
-                    Preset Pilihan Cepat:
-                  </span>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {COMMON_DOOR_PRESETS.map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => handleAddDoor(preset)}
-                        className="rounded-md border border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800 px-2 py-0.5 text-[11px] text-neutral-700 dark:text-slate-300 transition hover:bg-neutral-100 dark:hover:bg-slate-700"
-                      >
-                        + {preset}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom Door Input */}
-                <div className="mt-2 flex gap-2">
+                {/* Door Checklist Box */}
+                <div className="mt-2 space-y-2">
                   <input
                     type="text"
-                    autoCorrect="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    value={newDoorInput}
-                    onChange={(e) => setNewDoorInput(e.target.value)}
-                    placeholder="Ketik nama pintu atau kode pintu..."
-                    className="flex-1 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                    value={doorSearchQuery}
+                    onChange={(e) => setDoorSearchQuery(e.target.value)}
+                    placeholder="Cari pintu gedung..."
+                    className="w-full rounded-md border border-neutral-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
                   />
-                  <button
-                    type="button"
-                    onClick={() => handleAddDoor()}
-                    className="rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-neutral-800 dark:text-slate-200 transition hover:bg-neutral-50 dark:hover:bg-slate-700"
-                  >
-                    Tambah Pintu
-                  </button>
+
+                  <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-neutral-100 dark:divide-slate-700/50">
+                    {displayedAvailableDoors.length === 0 ? (
+                      <div className="p-4 text-center">
+                        <p className="text-xs text-neutral-500 dark:text-slate-400">
+                          Belum ada pintu terdaftar dari HikCentral.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleSyncDoors}
+                          disabled={isSyncingDoors}
+                          className="mt-2 inline-flex items-center gap-1 rounded-md bg-neutral-900 dark:bg-blue-600 px-2.5 py-1 text-xs font-medium text-white shadow-xs hover:bg-neutral-800 dark:hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {isSyncingDoors ? "Menyinkronkan..." : "Sinkronkan Sekarang"}
+                        </button>
+                      </div>
+                    ) : (
+                      displayedAvailableDoors.map((door) => {
+                        const isChecked =
+                          doors.includes(door.doorName) ||
+                          doors.includes(door.doorIndexCode);
+                        return (
+                          <label
+                            key={door.doorIndexCode}
+                            className={`flex items-center justify-between p-2.5 text-xs cursor-pointer transition hover:bg-neutral-50 dark:hover:bg-slate-700/40 ${
+                              isChecked ? "bg-blue-50/60 dark:bg-blue-950/20" : ""
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => handleToggleDoor(door.doorName)}
+                                className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
+                              />
+                              <div>
+                                <span className="font-semibold text-neutral-900 dark:text-white">
+                                  {door.doorName}
+                                </span>
+                                <span className="ml-1.5 text-[10px] text-neutral-400">
+                                  #{door.doorIndexCode}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {door.isPerimeter ? (
+                                <span className="rounded-sm bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.5 text-[10px] font-medium">
+                                  Perimeter
+                                </span>
+                              ) : (
+                                <span className="rounded-sm bg-neutral-100 dark:bg-slate-700 text-neutral-600 dark:text-slate-300 px-1.5 py-0.5 text-[10px]">
+                                  Interior
+                                </span>
+                              )}
+                              <span className="rounded-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 text-[10px]">
+                                {door.accessType === "SINGLE_DIRECTION_IN"
+                                  ? "1-Arah In"
+                                  : "2-Arah"}
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -651,26 +813,31 @@ export function AccessLevelsClient({
                 />
                 <label
                   htmlFor={`${formId}-is-default`}
-                  className="text-xs font-medium text-neutral-800 dark:text-slate-200"
+                  className="text-xs font-medium text-neutral-700 dark:text-slate-300"
                 >
-                  Tetapkan sebagai Hak Akses Standar untuk tamu di gedung ini
+                  Jadikan kelompok hak akses standar untuk tamu baru
                 </label>
               </div>
 
-              <div className="flex items-center justify-end gap-2 border-t border-neutral-100 dark:border-slate-800 pt-4">
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-slate-800 pt-4">
                 <button
                   type="button"
                   onClick={() => setIsFormOpen(false)}
-                  className="rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-neutral-700 dark:text-slate-300 hover:bg-neutral-50 dark:hover:bg-slate-700"
+                  className="rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-neutral-700 dark:text-slate-200 transition hover:bg-neutral-50 dark:hover:bg-slate-700"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="rounded-lg bg-neutral-900 dark:bg-blue-600 px-4 py-2 text-xs font-semibold text-white hover:bg-neutral-800 dark:hover:bg-blue-700 disabled:opacity-60"
+                  className="inline-flex min-h-9 items-center justify-center rounded-lg bg-neutral-900 dark:bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-neutral-800 dark:hover:bg-blue-700 disabled:opacity-50"
                 >
-                  {isSubmitting ? "Menyimpan..." : editingId ? "Perbarui Hak Akses" : "Simpan Hak Akses Baru"}
+                  {isSubmitting
+                    ? "Menyimpan..."
+                    : editingId
+                      ? "Simpan Perubahan"
+                      : "Buat Hak Akses"}
                 </button>
               </div>
             </form>

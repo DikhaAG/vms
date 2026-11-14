@@ -13,17 +13,13 @@ import Image from "next/image";
 import {
   CERTIFICATE_TYPES,
   CERTIFICATE_TYPE_LABELS,
-  PRE_REGISTRATION_MODES,
-  STUB_SCENARIOS,
   VISIT_REASON_LABELS,
   VISIT_REASON_TYPES,
   validatePreRegistrationInput,
   type CertificateType,
   type CredentialSyncStatus,
   type Facility,
-  type PreRegistrationMode,
   type PreRegistrationResult,
-  type StubScenario,
   type Visit,
   type VisitReasonType,
 } from "@/lib/vms/vms-contract";
@@ -143,10 +139,6 @@ export function PreRegistrationForm({
   const [faceError, setFaceError] = useState<string | null>(null);
   const [isNormalizing, setIsNormalizing] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
-
-  // Execution & Simulation Controls
-  const [mode, setMode] = useState<PreRegistrationMode>("stub");
-  const [stubScenario, setStubScenario] = useState<StubScenario>("success");
 
   // Status and Validation State
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -348,8 +340,6 @@ export function PreRegistrationForm({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           visitorId: createdVisit.hikCentral.visitorId,
-          mode,
-          stubScenario,
         }),
       });
 
@@ -388,8 +378,6 @@ export function PreRegistrationForm({
         visitorGivenName: visitorGivenName.trim() || undefined,
         visitorPhone: visitorPhone.trim() || undefined,
         visitorEmail: visitorEmail.trim() || undefined,
-        mode,
-        stubScenario,
       };
 
       const res = await fetch("/api/vms/invite", {
@@ -454,8 +442,6 @@ export function PreRegistrationForm({
         mode: tapQuotaMode,
         maxTaps: tapQuotaMode === "limited" ? maxTaps : undefined,
       },
-      mode,
-      stubScenario,
     };
 
     const validation = validatePreRegistrationInput(payload);
@@ -1239,64 +1225,6 @@ export function PreRegistrationForm({
           </div>
         </fieldset>
 
-        {/* Section 7: Execution & Simulation Controls */}
-        <fieldset className="space-y-4 border-t border-neutral-100 dark:border-slate-800 pt-6">
-          <legend className="text-sm font-semibold text-neutral-900 dark:text-white">
-            7. Mode Eksekusi & Simulasi Integrasi
-          </legend>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label
-                htmlFor={`${formId}-mode`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
-              >
-                Mode Eksekusi
-              </label>
-              <select
-                id={`${formId}-mode`}
-                value={mode}
-                onChange={(e) =>
-                  setMode(e.target.value as PreRegistrationMode)
-                }
-                className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
-              >
-                {PRE_REGISTRATION_MODES.map((m) => (
-                  <option key={m} value={m}>
-                    {m === "live"
-                      ? "Live HikCentral OpenAPI"
-                      : "Simulasi Stub (Pengembangan)"}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {mode === "stub" ? (
-              <div>
-                <label
-                  htmlFor={`${formId}-stub-scenario`}
-                  className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
-                >
-                  Skenario Simulasi Stub
-                </label>
-                <select
-                  id={`${formId}-stub-scenario`}
-                  value={stubScenario}
-                  onChange={(e) =>
-                    setStubScenario(e.target.value as StubScenario)
-                  }
-                  className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
-                >
-                  {STUB_SCENARIOS.map((sc) => (
-                    <option key={sc} value={sc}>
-                      {sc}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-          </div>
-        </fieldset>
 
         {globalError ? (
           <div

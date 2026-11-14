@@ -54,6 +54,14 @@ describe("Visitors UI Localization", () => {
     expect(html).toContain("Pulihkan");
   });
 
+  it("renders polite empty state when initialProfiles is empty", () => {
+    const html = renderToStaticMarkup(<VisitorsClient initialProfiles={[]} />);
+    expect(html).toContain("Belum ada data tamu terdaftar.");
+    expect(html).toContain(
+      "Tamu yang mendaftar atau berkunjung akan otomatis tercatat dalam basis data ini.",
+    );
+  });
+
   it("renders page header with PageGuideModal for visitors", async () => {
     const pageComponent = await VisitorsPage();
     const html = renderToStaticMarkup(pageComponent);

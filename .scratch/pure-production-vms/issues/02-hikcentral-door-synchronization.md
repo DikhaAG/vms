@@ -4,13 +4,18 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Create `src/lib/vms/hikcentral-door-adapter.ts` with typed inputs/outputs and `syncHikCentralDoors()` function.
-- [ ] Implement live HikCentral Artemis client call to `POST /artemis/api/resource/v1/acsDoor/acsDoorList`.
-- [ ] Map raw HikCentral doors to domain `FacilityDoor` structures with accurate `doorIndexCode`, `facilityId`, and `accessType`.
-- [ ] Create route handler `POST /api/vms/sync/doors` in `src/app/api/vms/sync/doors/route.ts` with error handling and transaction counts.
-- [ ] Write unit tests in `src/lib/vms/hikcentral-door-adapter.test.ts` and `src/app/api/vms/sync/doors/route.test.ts`.
+- [x] Create `src/lib/vms/hikcentral-door-adapter.ts` with typed inputs/outputs and `syncHikCentralDoors()` function.
+- [x] Implement live HikCentral Artemis client call to `POST /artemis/api/resource/v1/acsDoor/acsDoorList`.
+- [x] Map raw HikCentral doors to domain `FacilityDoor` structures with accurate `doorIndexCode`, `facilityId`, and `accessType`.
+- [x] Create route handler `POST /api/vms/sync/doors` in `src/app/api/vms/sync/doors/route.ts` with error handling and transaction counts.
+- [x] Write unit tests in `src/lib/vms/hikcentral-door-adapter.test.ts` and `src/app/api/vms/sync/doors/route.test.ts`.
 
 ## Comments
+- Implemented `syncHikCentralDoors()` using HikCentral OpenAPI V3.1.1 `POST /artemis/api/resource/v1/acsDoor/acsDoorList`.
+- Automatic perimeter barrier deduction (turnstiles, speedgates, lobby, barriers, gates) vs interior doors.
+- Automatic reader capability deduction (`SINGLE_DIRECTION_IN` when `doorOutState === -1` vs `DUAL_DIRECTION`).
+- Implemented route handler `POST /api/vms/sync/doors` with comprehensive error mapping.
+- All unit tests passing.
 

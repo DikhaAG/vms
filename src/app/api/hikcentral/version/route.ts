@@ -83,6 +83,11 @@ function statusForVersionResult(result: VersionCheckResult): number {
   }
 }
 
+export async function GET(): Promise<NextResponse> {
+  const result = await checkHikCentralVersion({ userId: "admin" });
+  return NextResponse.json(result, { status: statusForVersionResult(result) });
+}
+
 /**
  * Executes a server-side HikCentral version connectivity check and maps errors to HTTP status codes.
  */

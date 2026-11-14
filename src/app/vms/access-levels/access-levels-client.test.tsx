@@ -40,6 +40,7 @@ describe("AccessLevels UI Localization", () => {
 
     expect(html).toContain("Lokasi Gedung:");
     expect(html).toContain("Semua Lokasi Fasilitas (1)");
+    expect(html).toContain("Sinkronkan Pintu dari Server HikCentral");
     expect(html).toContain("+ Tambah Hak Akses Pintu");
     expect(html).toContain("Pintu Masuk Lobi Utama");
     expect(html).toContain("Standar");

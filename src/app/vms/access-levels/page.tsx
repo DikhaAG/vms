@@ -12,6 +12,7 @@ export const metadata = {
 export default async function AccessLevelsPage() {
   const facilities = await defaultVmsRepository.listFacilities();
   const accessLevels = await defaultVmsRepository.listAccessLevels();
+  const doors = await defaultVmsRepository.listDoors();
 
   const pageInfo = idDict.pages.accessLevels;
 
@@ -41,6 +42,7 @@ export default async function AccessLevelsPage() {
       <AccessLevelsClient
         facilities={facilities}
         initialAccessLevels={accessLevels}
+        initialDoors={doors}
       />
     </div>
   );

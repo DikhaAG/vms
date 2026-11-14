@@ -4,22 +4,25 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] In `src/app/vms/access-levels/access-levels-client.tsx`:
+- [x] In `src/app/vms/access-levels/access-levels-client.tsx`:
   - Remove manual door input field and "Preset Pilihan Cepat".
   - Add "Sinkronkan Pintu dari Server HikCentral" button with loading/success indicators.
   - Render an interactive checklist of doors loaded from `GET /api/vms/doors`.
-- [ ] In `src/app/vms/pre-registration/pre-registration-form.tsx`:
+- [x] In `src/app/vms/pre-registration/pre-registration-form.tsx`:
   - Remove Section 7 (Mode Eksekusi & Simulasi Integrasi).
   - Remove `mode` and `stubScenario` state and payload fields.
-- [ ] In `src/app/vms/reception/reception-client.tsx`:
+- [x] In `src/app/vms/reception/reception-client.tsx`:
   - Remove `Gateway: STUB/LIVE` toolbar switcher.
-- [ ] In `src/app/vms/active-monitoring/active-monitoring-client.tsx`:
+- [x] In `src/app/vms/active-monitoring/active-monitoring-client.tsx`:
   - Remove `Mode Eksekusi Gateway` top banner.
-- [ ] In `src/app/invite/[token]/invite-form.tsx`:
+- [x] In `src/app/invite/[token]/invite-form.tsx`:
   - Remove simulation/mode selector fields.
-- [ ] Update frontend test suites to reflect pure production UI contracts.
+- [x] Update frontend test suites to reflect pure production UI contracts.
 
 ## Comments
+- Purged all simulation controls and mock scenario dropdowns from /vms/* and /invite/*.
+- Implemented authoritative door synchronization and checklist selection in Access Levels UI.
+- All 77 test suites (617 tests) green.
 
