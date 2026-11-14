@@ -87,14 +87,14 @@ describe("EmergencyAccessModal Component", () => {
       />,
     );
 
-    expect(html).toContain("Grant Time-Bounded Emergency Access");
+    expect(html).toContain("Izin Akses Pintu Darurat Sementara");
     expect(html).toContain("Bruce Wayne");
     expect(html).toContain("Jakarta HQ DC");
     expect(html).toContain("Server Room A");
     expect(html).toContain("Electrical Vault");
     // Should filter out Bali door
     expect(html).not.toContain("Bali Lab");
-    expect(html).toContain("Authorizing Operator ID");
-    expect(html).toContain("Business Justification");
+    expect(html).toContain("ID Petugas Keamanan");
+    expect(html).toContain("Alasan Justifikasi Operasional");
   });
 });

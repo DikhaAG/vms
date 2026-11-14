@@ -1,12 +1,13 @@
-import Link from "next/link";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import { defaultActiveMonitoringService } from "@/lib/vms/active-monitoring-service";
 import { ActiveMonitoringClient } from "./active-monitoring-client";
+import { PageGuideModal } from "@/components/vms/page-guide-modal";
+import { idDict } from "@/lib/vms/i18n/id";
 
 export const metadata = {
-  title: "Active Attendance & Check-out Monitor | VMS",
+  title: "Monitoring Tamu & Pintu Aktif | VMS",
   description:
-    "Real-time monitoring of on-premise guests, overstay grace period alerts, door tap quota enforcement, and hardware terminal check-out.",
+    "Pemantauan real-time kehadiran tamu, peringatan overstay toleransi kepulangan, penegakan jatah tap pintu, dan izin akses darurat sementara.",
 };
 
 export default async function ActiveMonitoringPage() {
@@ -14,33 +15,29 @@ export default async function ActiveMonitoringPage() {
   const initialVisits = await defaultActiveMonitoringService.getActiveVisits();
   const doors = await defaultVmsRepository.listDoors();
 
-  return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <nav className="mb-6">
-        <Link
-          href="/"
-          className="text-xs font-medium text-neutral-600 transition hover:text-neutral-900"
-        >
-          &larr; Back to Home
-        </Link>
-      </nav>
+  const pageInfo = idDict.pages.activeMonitoring;
 
-      <div className="mb-8">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-            Active Attendance & Security Monitor
-          </h1>
-          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-            Ticket 07
-          </span>
+  return (
+    <div className="space-y-6">
+      {/* Page Header with Guide Modal Trigger */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {pageInfo.title}
+            </h1>
+            <span className="rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 dark:border dark:border-blue-800 px-2.5 py-0.5 text-xs font-semibold">
+              Live Monitoring
+            </span>
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-3xl">
+            {pageInfo.subtitle}
+          </p>
         </div>
-        <p className="mt-2 text-sm text-neutral-600 max-w-3xl">
-          Real-time security dashboard tracking checked-in guests currently on-premise.
-          Enforces door tap quotas (via physical access events), calculates facility overstay grace periods,
-          tracks door directionality &amp; implicit room transitions, manages time-bounded emergency access escalations,
-          and enables one-click normal or forced check-out which immediately deauthorizes terminal permissions
-          via HikCentral <code className="text-xs bg-neutral-100 px-1 py-0.5 rounded font-mono">POST /artemis/api/visitor/v1/visitor/out</code>.
-        </p>
+
+        <div>
+          <PageGuideModal pageKey="activeMonitoring" />
+        </div>
       </div>
 
       <ActiveMonitoringClient
@@ -48,6 +45,6 @@ export default async function ActiveMonitoringPage() {
         initialVisits={initialVisits}
         doors={doors}
       />
-    </main>
+    </div>
   );
 }

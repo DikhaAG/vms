@@ -482,11 +482,11 @@ export function ActiveMonitoringClient({
           }`}
         >
           <span className={`text-xs font-medium ${activeTab === "all" ? "text-neutral-300" : "text-neutral-500"}`}>
-            Total On-Premise
+            Total Tamu di Gedung
           </span>
           <span className="mt-1 text-2xl font-bold tracking-tight">{stats.total}</span>
           <span className={`mt-0.5 text-[11px] ${activeTab === "all" ? "text-neutral-400" : "text-neutral-500"}`}>
-            Checked-in guests
+            Tamu aktif di dalam
           </span>
         </button>
 
@@ -499,13 +499,13 @@ export function ActiveMonitoringClient({
           }`}
         >
           <span className={`text-xs font-medium ${activeTab === "normal" ? "text-emerald-100" : "text-emerald-700"}`}>
-            Normal Status
+            Status Normal
           </span>
           <span className="mt-1 text-2xl font-bold tracking-tight text-emerald-800 dark:text-emerald-300">
             {stats.normal}
           </span>
           <span className={`mt-0.5 text-[11px] ${activeTab === "normal" ? "text-emerald-100" : "text-neutral-500"}`}>
-            Within window & quota
+            Sesuai jadwal &amp; kuota
           </span>
         </button>
 
@@ -521,7 +521,7 @@ export function ActiveMonitoringClient({
         >
           <div className="flex items-center justify-between">
             <span className={`text-xs font-medium ${activeTab === "overstay" ? "text-rose-100" : "text-rose-700"}`}>
-              Overstay Alerts
+              Peringatan Overstay
             </span>
             {stats.overstay > 0 && activeTab !== "overstay" && (
               <span className="flex h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
@@ -531,7 +531,7 @@ export function ActiveMonitoringClient({
             {stats.overstay}
           </span>
           <span className={`mt-0.5 text-[11px] ${activeTab === "overstay" ? "text-rose-100" : "text-rose-600"}`}>
-            Past grace period
+            Melewati batas toleransi
           </span>
         </button>
 
@@ -546,13 +546,13 @@ export function ActiveMonitoringClient({
           }`}
         >
           <span className={`text-xs font-medium ${activeTab === "quota" ? "text-amber-100" : "text-amber-800"}`}>
-            Quota Warnings
+            Peringatan Kuota Tap
           </span>
           <span className={`mt-1 text-2xl font-bold tracking-tight ${activeTab === "quota" ? "text-white" : "text-amber-800"}`}>
             {stats.quota}
           </span>
           <span className={`mt-0.5 text-[11px] ${activeTab === "quota" ? "text-amber-100" : "text-amber-700"}`}>
-            Near / reached quota
+            Mendekati / capai batas
           </span>
         </button>
       </div>
@@ -562,7 +562,7 @@ export function ActiveMonitoringClient({
         <div className="flex flex-1 flex-wrap items-center gap-3">
           <div className="min-w-[200px]">
             <label htmlFor="facilityFilter" className="sr-only">
-              Filter by Facility
+              Saring Berdasarkan Gedung
             </label>
             <select
               id="facilityFilter"
@@ -570,7 +570,7 @@ export function ActiveMonitoringClient({
               onChange={(e) => handleFacilityChange(e.target.value)}
               className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-hidden"
             >
-              <option value="all">All Facilities</option>
+              <option value="all">Semua Gedung Fasilitas</option>
               {facilities.map((fac) => (
                 <option key={fac.id} value={fac.id}>
                   {fac.name} ({fac.timezone})
@@ -581,12 +581,12 @@ export function ActiveMonitoringClient({
 
           <div className="flex-1 min-w-[240px]">
             <label htmlFor="visitorSearch" className="sr-only">
-              Search visitors
+              Cari data tamu
             </label>
             <input
               id="visitorSearch"
               type="search"
-              placeholder="Search visitor name, host, or ID..."
+              placeholder="Cari nama tamu, tuan rumah, atau nomor kunjungan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-hidden"
@@ -596,17 +596,22 @@ export function ActiveMonitoringClient({
 
         {/* Tab Badges */}
         <div className="flex items-center gap-1 border-t sm:border-t-0 pt-2 sm:pt-0">
-          {(["all", "normal", "overstay", "quota"] as FilterTab[]).map((tab) => (
+          {[
+            { id: "all", label: "Semua" },
+            { id: "normal", label: "Normal" },
+            { id: "overstay", label: "Overstay" },
+            { id: "quota", label: "Kuota" },
+          ].map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize transition ${
-                activeTab === tab
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as FilterTab)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                activeTab === tab.id
                   ? "bg-neutral-900 text-white"
                   : "text-neutral-600 hover:bg-neutral-100"
               }`}
             >
-              {tab}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -690,18 +695,18 @@ export function ActiveMonitoringClient({
                               data-testid="fast-track-badge"
                               className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-semibold text-cyan-800 border border-cyan-200"
                             >
-                              ⚡ Fast-Track
+                              ⚡ Masuk Otomatis Tanpa Antre
                             </span>
                           )}
                         </h2>
                         {visit.visitorGroupName && (
                           <span className="inline-block rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 border border-indigo-200 mt-0.5">
-                            👥 Group: {visit.visitorGroupName}
+                            👥 Rombongan: {visit.visitorGroupName}
                           </span>
                         )}
                         <p className="text-xs text-neutral-500">
-                          {visit.visitor.phone || visit.visitor.email || "No contact info"}
-                          {visit.visitor.certificateNo && ` • ID: ${visit.visitor.certificateNo}`}
+                          {visit.visitor.phone || visit.visitor.email || "Tanpa data kontak"}
+                          {visit.visitor.certificateNo && ` • No. Identitas: ${visit.visitor.certificateNo}`}
                         </p>
                       </div>
                     </div>
@@ -714,7 +719,7 @@ export function ActiveMonitoringClient({
                         </span>
                       ) : (
                         <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
-                          ✓ On Schedule
+                          ✓ Sesuai Jadwal
                         </span>
                       )}
 
@@ -729,19 +734,19 @@ export function ActiveMonitoringClient({
                   {/* Metadata Grid */}
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs border-y border-neutral-100 py-3">
                     <div>
-                      <span className="text-neutral-400">Facility:</span>{" "}
+                      <span className="text-neutral-400">Gedung:</span>{" "}
                       <span className="font-semibold text-neutral-800">{visit.facility.name}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-400">Host:</span>{" "}
-                      <span className="font-semibold text-neutral-800">{visit.host?.name || "Lobby Walk-in"}</span>
+                      <span className="text-neutral-400">Karyawan Tuan Rumah:</span>{" "}
+                      <span className="font-semibold text-neutral-800">{visit.host?.name || "Tamu Datang Langsung (Walk-in)"}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-400">Checked-in:</span>{" "}
+                      <span className="text-neutral-400">Waktu Masuk:</span>{" "}
                       <span className="font-semibold text-neutral-800">{checkInFormatted}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-400">Scheduled Departure:</span>{" "}
+                      <span className="text-neutral-400">Jadwal Keluar:</span>{" "}
                       <span className={`font-semibold ${visit.isOverstay ? "text-rose-700" : "text-neutral-800"}`}>
                         {scheduledEndFormatted}
                       </span>
@@ -755,12 +760,12 @@ export function ActiveMonitoringClient({
                       className="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg bg-neutral-50 px-3 py-2 text-xs border border-neutral-100"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="text-neutral-500 font-medium">📍 Current Location:</span>
+                        <span className="text-neutral-500 font-medium">📍 Lokasi Terakhir:</span>
                         <span className="font-semibold text-neutral-900">
                           {visit.lastSeenDoor.doorName || visit.lastSeenDoor.doorIndexCode}
                         </span>
                         <span className="text-[11px] text-neutral-400">
-                          ({visit.lastSeenDoor.direction === "in" ? "Entry" : "Exit"} at{" "}
+                          ({visit.lastSeenDoor.direction === "in" ? "Masuk" : "Keluar"} pada{" "}
                           {new Date(visit.lastSeenDoor.tappedAtUtc).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
@@ -772,7 +777,7 @@ export function ActiveMonitoringClient({
                           data-testid="directionality-badge-dual"
                           className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-800 border border-blue-200"
                         >
-                          Dual-Direction
+                          Pintu Dua Arah
                         </span>
                       )}
                       {doorAccessType === "SINGLE_DIRECTION_IN" && (
@@ -780,7 +785,7 @@ export function ActiveMonitoringClient({
                           data-testid="directionality-badge-single"
                           className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 border border-amber-200"
                         >
-                          Single-Direction In
+                          Pintu Masuk Saja
                         </span>
                       )}
                     </div>
@@ -790,7 +795,7 @@ export function ActiveMonitoringClient({
                   {visit.movementBreadcrumbs && visit.movementBreadcrumbs.length > 0 && (
                     <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50/70 p-2.5">
                       <div className="text-[11px] font-semibold text-neutral-500 mb-1.5 flex items-center gap-1">
-                        <span>🧭 Movement Breadcrumbs</span>
+                        <span>🧭 Riwayat Pergerakan Pintu</span>
                       </div>
                       <div
                         className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-800"
@@ -813,7 +818,7 @@ export function ActiveMonitoringClient({
                               >
                                 <span>{crumb.doorName || crumb.doorIndexCode}</span>
                                 <span className={isImplicit ? "text-amber-800 font-bold" : "text-neutral-500"}>
-                                  ({isImplicit ? "Implicit Exit" : crumb.direction === "in" ? "Entry" : "Exit"})
+                                  ({isImplicit ? "Keluar Otomatis" : crumb.direction === "in" ? "Masuk" : "Keluar"})
                                 </span>
                               </span>
                             </span>
@@ -835,8 +840,8 @@ export function ActiveMonitoringClient({
                         const minsRemaining = Math.max(0, Math.ceil(msRemaining / (60 * 1000)));
                         const remainingLabel =
                           minsRemaining >= 60
-                            ? `${Math.floor(minsRemaining / 60)}h ${minsRemaining % 60}m remaining`
-                            : `${minsRemaining}m remaining`;
+                            ? `${Math.floor(minsRemaining / 60)}j ${minsRemaining % 60}m tersisa`
+                            : `${minsRemaining}m tersisa`;
 
                         const expiryFormatted = new Date(grant.expiresAtUtc).toLocaleTimeString([], {
                           hour: "2-digit",
@@ -855,7 +860,7 @@ export function ActiveMonitoringClient({
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-2">
                                 <span className="font-bold text-neutral-900 flex items-center gap-1">
-                                  <span>🚨 Emergency Access:</span>
+                                  <span>🚨 Izin Akses Darurat Sementara:</span>
                                   <span>{grant.doorNames?.join(", ") || grant.doorIndexCodes?.join(", ")}</span>
                                 </span>
                                 {isActive && (
@@ -865,19 +870,19 @@ export function ActiveMonitoringClient({
                                 )}
                                 {isRevoked && (
                                   <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
-                                    Revoked
+                                    Dicabut
                                   </span>
                                 )}
                                 {isExpired && !isRevoked && (
                                   <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
-                                    Expired
+                                    Kedaluwarsa
                                   </span>
                                 )}
                               </div>
                               <p className="text-[11px] text-neutral-600">
-                                <span className="font-medium">Reason:</span> {grant.reason} •{" "}
-                                <span className="font-medium">Expires:</span> {expiryFormatted} •{" "}
-                                <span className="font-medium">By:</span> {grant.grantedByName || grant.grantedByUserId}
+                                <span className="font-medium">Alasan:</span> {grant.reason} •{" "}
+                                <span className="font-medium">Berakhir:</span> {expiryFormatted} •{" "}
+                                <span className="font-medium">Oleh:</span> {grant.grantedByName || grant.grantedByUserId}
                               </p>
                             </div>
 
@@ -888,7 +893,7 @@ export function ActiveMonitoringClient({
                                 disabled={actionLoadingId === grant.id}
                                 className="inline-flex items-center rounded-md border border-rose-300 bg-white px-2.5 py-1 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-50 active:bg-rose-100 disabled:opacity-50"
                               >
-                                {actionLoadingId === grant.id ? "Revoking..." : "Revoke Access"}
+                                {actionLoadingId === grant.id ? "Mencabut..." : "Cabut Izin Akses"}
                               </button>
                             )}
                           </div>
@@ -901,7 +906,7 @@ export function ActiveMonitoringClient({
                   <div className="mt-3.5 space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-semibold text-neutral-700 flex items-center gap-1">
-                        <span>Turnstile Entry Taps:</span>
+                        <span>Jatah Buka Pintu (Kuota Tap):</span>
                       </span>
                       <span className="font-mono text-neutral-800 font-medium">
                         {visit.tapQuotaMode === "limited" ? (
@@ -909,18 +914,18 @@ export function ActiveMonitoringClient({
                             <strong className={visit.tapCount >= visit.maxTaps ? "text-rose-600" : "text-neutral-900"}>
                               {visit.tapCount}
                             </strong>{" "}
-                            / {visit.maxTaps} Taps{" "}
+                            / {visit.maxTaps} Tap{" "}
                             {visit.tapCount >= visit.maxTaps ? (
-                              <span className="text-rose-600 font-bold">(Exhausted)</span>
+                              <span className="text-rose-600 font-bold">(Habis)</span>
                             ) : (
                               <span className="text-neutral-400">
-                                ({visit.maxTaps - visit.tapCount} left)
+                                ({visit.maxTaps - visit.tapCount} tersisa)
                               </span>
                             )}
                           </>
                         ) : (
                           <span className="text-emerald-700 font-semibold">
-                            {visit.tapCount} Taps (Unlimited)
+                            {visit.tapCount} Tap (Bebas / Tanpa Batas)
                           </span>
                         )}
                       </span>
@@ -949,10 +954,10 @@ export function ActiveMonitoringClient({
                     <button
                       onClick={() => handleSimulateTap(visit)}
                       disabled={isLoading}
-                      title="Simulate turnstile badge tap against HikCentral acs/v1/door/events"
+                      title="Simulasi tap pintu putar terhadap HikCentral acs/v1/door/events"
                       className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-xs hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-50"
                     >
-                      <span>🚪 Simulate Door Tap (+1)</span>
+                      <span>🚪 Simulasi Tap Pintu (+1)</span>
                     </button>
 
                     {canGrantEmergency && (
@@ -961,7 +966,7 @@ export function ActiveMonitoringClient({
                         disabled={isLoading}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-2xs hover:bg-amber-100 active:bg-amber-200 disabled:opacity-50"
                       >
-                        <span>🚨 Grant Emergency Access</span>
+                        <span>🚨 Izin Akses Darurat</span>
                       </button>
                     )}
                   </div>
@@ -972,7 +977,7 @@ export function ActiveMonitoringClient({
                       disabled={isLoading}
                       className="inline-flex items-center rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50"
                     >
-                      {isLoading ? "Processing..." : "Check-out"}
+                      {isLoading ? "Memproses..." : "Check-Out Normal"}
                     </button>
 
                     <button
@@ -980,7 +985,7 @@ export function ActiveMonitoringClient({
                       disabled={isLoading}
                       className="inline-flex items-center rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 active:bg-rose-200 disabled:opacity-50"
                     >
-                      Force Check-out
+                      Check-Out Paksa
                     </button>
                   </div>
                 </div>
@@ -996,11 +1001,12 @@ export function ActiveMonitoringClient({
           <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl">
             <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
               <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
-                <span className="text-rose-600">⚠️</span> Force Check-out Visitor
+                <span className="text-rose-600">⚠️</span> Check-Out Paksa Tamu
               </h3>
               <button
                 onClick={() => setForceVisit(null)}
                 className="text-neutral-400 hover:text-neutral-600 font-bold"
+                aria-label="Tutup dialog"
               >
                 ✕
               </button>
@@ -1010,7 +1016,7 @@ export function ActiveMonitoringClient({
               <div className="rounded-lg bg-neutral-50 p-3 text-xs">
                 <p className="font-bold text-neutral-900">{forceVisit.visitor.fullName}</p>
                 <p className="text-neutral-600">
-                  Facility: {forceVisit.facility.name} • Host: {forceVisit.host?.name || "N/A"}
+                  Gedung: {forceVisit.facility.name} • Tuan Rumah: {forceVisit.host?.name || "N/A"}
                 </p>
                 {forceVisit.isOverstay && (
                   <p className="mt-1 font-bold text-rose-700">

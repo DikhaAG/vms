@@ -160,7 +160,7 @@ export function ApprovalsClient({
               htmlFor={facilityFilterId}
               className="block text-xs font-medium text-neutral-600 mb-1"
             >
-              Filter Facility
+              Saring Gedung:
             </label>
             <select
               id={facilityFilterId}
@@ -168,7 +168,7 @@ export function ApprovalsClient({
               onChange={(e) => setSelectedFacilityId(e.target.value)}
               className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-800 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
             >
-              <option value="all">All Facilities ({facilities.length})</option>
+              <option value="all">Semua Gedung Fasilitas ({facilities.length})</option>
               {facilities.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name} ({f.timezone})
@@ -182,7 +182,7 @@ export function ApprovalsClient({
               htmlFor={approverPersonaId}
               className="block text-xs font-medium text-neutral-600 mb-1"
             >
-              Reviewer Role
+              Peran Penyetuju:
             </label>
             <select
               id={approverPersonaId}
@@ -194,20 +194,20 @@ export function ApprovalsClient({
               }
               className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-800 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
             >
-              <option value="Host Approver">Host Supervisor</option>
-              <option value="Security Officer">Security Officer</option>
+              <option value="Host Approver">Pejabat Penyetuju (Tuan Rumah)</option>
+              <option value="Security Officer">Petugas Keamanan (Satpam)</option>
             </select>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-neutral-500">
-          <span>Active Queue:</span>
+          <span>Antrean Aktif:</span>
           <span className="font-semibold text-neutral-900">
-            {filteredPending.length} Pending
+            {filteredPending.length} Menunggu Persetujuan
           </span>
           <span>&bull;</span>
           <span className="font-semibold text-rose-600">
-            {filteredEscalated.length} Escalated
+            {filteredEscalated.length} Eskalasi Daftar Pantauan
           </span>
         </div>
       </div>
@@ -224,7 +224,7 @@ export function ApprovalsClient({
                 : "border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700"
             }`}
           >
-            <span>Pending Approvals</span>
+            <span>Menunggu Persetujuan Normal</span>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                 activeTab === "pending"
@@ -260,7 +260,7 @@ export function ApprovalsClient({
                   d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                 />
               </svg>
-              <span>Security Escalated / Blacklist Review</span>
+              <span>Eskalasi Daftar Pantauan</span>
             </span>
             <span
               className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
@@ -545,7 +545,7 @@ function VisitCard({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <h3 className="text-base font-bold text-neutral-950">
-                {visit.visitorFamilyName} {visit.visitorGivenName}
+                {visit.visitorGivenName} {visit.visitorFamilyName}
               </h3>
               <p className="text-xs text-neutral-500">
                 {certificateLabel}:{" "}
@@ -614,7 +614,7 @@ function VisitCard({
           disabled={isSubmitting}
           className="rounded-lg border border-neutral-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:border-rose-200 transition disabled:opacity-50"
         >
-          {isSubmitting ? "Processing..." : "Reject Visit"}
+          {isSubmitting ? "Memproses..." : "Tolak Kunjungan"}
         </button>
 
         <button
@@ -628,10 +628,10 @@ function VisitCard({
           }`}
         >
           {isSubmitting
-            ? "Authorizing..."
+            ? "Mengesahkan..."
             : isEscalated
-              ? "Override & Authorize"
-              : "Approve Visit"}
+              ? "Abaikan Peringatan & Setujui"
+              : "Setujui Kunjungan"}
         </button>
       </div>
     </div>

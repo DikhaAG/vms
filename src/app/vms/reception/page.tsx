@@ -1,12 +1,13 @@
-import Link from "next/link";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import { defaultCheckInService } from "@/lib/vms/checkin-service";
 import { ReceptionClient } from "./reception-client";
+import { PageGuideModal } from "@/components/vms/page-guide-modal";
+import { idDict } from "@/lib/vms/i18n/id";
 
 export const metadata = {
-  title: "Front-Desk Reception & Fast Check-in | VMS",
+  title: "Meja Resepsionis Lobi | VMS",
   description:
-    "Fast visitor lookup, photo verification, one-click check-in, and walk-in registration for receptionists.",
+    "Pencarian cepat data tamu, verifikasi foto biometrik wajah, check-in satu klik, dan pendaftaran tamu datang langsung (walk-in).",
 };
 
 export default async function ReceptionPage() {
@@ -14,31 +15,29 @@ export default async function ReceptionPage() {
   const allAccessLevels = await defaultVmsRepository.listAccessLevels();
   const initialVisits = await defaultCheckInService.searchArrivingVisitors("");
 
-  return (
-    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <nav className="mb-6">
-        <Link
-          href="/"
-          className="text-xs font-medium text-neutral-600 transition hover:text-neutral-900"
-        >
-          &larr; Back to Home
-        </Link>
-      </nav>
+  const pageInfo = idDict.pages.reception;
 
-      <div className="mb-8">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-            Front-Desk Reception & Fast Check-in
-          </h1>
-          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-            Ticket 06
-          </span>
+  return (
+    <div className="space-y-6">
+      {/* Page Header with Guide Modal Trigger */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {pageInfo.title}
+            </h1>
+            <span className="rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 dark:border dark:border-blue-800 px-2.5 py-0.5 text-xs font-semibold">
+              Lobi Utama
+            </span>
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-3xl">
+            {pageInfo.subtitle}
+          </p>
         </div>
-        <p className="mt-2 text-sm text-neutral-600 max-w-3xl">
-          Dedicated receptionist dashboard for instant visitor lookup by name, phone, identity number,
-          or QR scan. Verify photo credentials, execute one-click physical check-in via HikCentral
-          registerment, register lobby walk-in guests, and monitor live hardware controller synchronization.
-        </p>
+
+        <div>
+          <PageGuideModal pageKey="reception" />
+        </div>
       </div>
 
       <ReceptionClient
@@ -46,6 +45,6 @@ export default async function ReceptionPage() {
         allAccessLevels={allAccessLevels}
         initialVisits={initialVisits}
       />
-    </main>
+    </div>
   );
 }

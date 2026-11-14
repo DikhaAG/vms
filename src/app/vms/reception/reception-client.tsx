@@ -490,7 +490,7 @@ export function ReceptionClient({
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
             </svg>
-            New Walk-in Registration
+            + Daftarkan Tamu Datang Langsung (Walk-in)
           </button>
         </div>
       </div>
@@ -509,7 +509,7 @@ export function ReceptionClient({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search visitor by name, phone, certificate no, QR token, or reservation ID..."
+              placeholder="Cari tamu berdasarkan nama, nomor telepon, nomor identitas, atau kode QR..."
               className="w-full rounded-lg border border-neutral-300 bg-white py-2 pl-9 pr-8 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
               autoComplete="off"
               autoCorrect="off"
@@ -529,7 +529,7 @@ export function ReceptionClient({
           {/* Facility Filter */}
           <div className="flex items-center gap-2">
             <label htmlFor={`${formId}-facility`} className="text-xs font-medium text-neutral-600 whitespace-nowrap">
-              Facility:
+              Gedung:
             </label>
             <select
               id={`${formId}-facility`}
@@ -537,7 +537,7 @@ export function ReceptionClient({
               onChange={(e) => setSelectedFacilityId(e.target.value)}
               className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:border-emerald-600 focus:ring-emerald-600"
             >
-              <option value="all">All Facilities</option>
+              <option value="all">Semua Gedung Fasilitas</option>
               {facilities.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name} ({f.timezone})
@@ -589,7 +589,7 @@ export function ReceptionClient({
                 : "border-transparent text-neutral-500 hover:text-neutral-800"
             }`}
           >
-            Expected Today (Approved){" "}
+            Tamu Diharapkan Hari Ini{" "}
             <span className={`ml-1.5 rounded-full px-2 py-0.5 text-2xs ${
               activeTab === "expected" ? "bg-emerald-100 text-emerald-800" : "bg-neutral-100 text-neutral-600"
             }`}>
@@ -605,7 +605,7 @@ export function ReceptionClient({
                 : "border-transparent text-neutral-500 hover:text-neutral-800"
             }`}
           >
-            Checked In{" "}
+            Sedang di Gedung{" "}
             <span className={`ml-1.5 rounded-full px-2 py-0.5 text-2xs ${
               activeTab === "checked_in" ? "bg-blue-100 text-blue-800" : "bg-neutral-100 text-neutral-600"
             }`}>
@@ -621,7 +621,7 @@ export function ReceptionClient({
                 : "border-transparent text-neutral-500 hover:text-neutral-800"
             }`}
           >
-            All Bookings{" "}
+            Semua Kunjungan{" "}
             <span className="ml-1.5 rounded-full bg-neutral-100 px-2 py-0.5 text-2xs text-neutral-600">
               {countAll}
             </span>
@@ -739,31 +739,31 @@ export function ReceptionClient({
                   {/* Visit Details */}
                   <div className="mt-4 space-y-1.5 text-xs text-neutral-600">
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Host:</span>
+                      <span className="text-neutral-500">Karyawan Tuan Rumah:</span>
                       <span className="font-medium text-neutral-900">
-                        {visit.hostName || "Front-Desk Guest"}
+                        {visit.hostName || "Tamu Meja Depan"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Facility:</span>
+                      <span className="text-neutral-500">Gedung:</span>
                       <span>{visit.facilityName || visit.facilityId}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Purpose:</span>
+                      <span className="text-neutral-500">Keperluan:</span>
                       <span className="font-medium text-neutral-800">
                         {VISIT_REASON_LABELS[visit.visitReasonType]}
                         {visit.visitReasonDetail ? ` (${visit.visitReasonDetail})` : ""}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Scheduled:</span>
+                      <span className="text-neutral-500">Jadwal:</span>
                       <span className="font-mono text-neutral-800">
                         {visit.scheduledStartTimeFacility.split("T")[1]?.substring(0, 5)} - {visit.scheduledEndTimeFacility.split("T")[1]?.substring(0, 5)}
                       </span>
                     </div>
                     {visit.actualCheckInTimeUtc && (
                       <div className="flex items-center justify-between text-blue-700">
-                        <span>Checked In:</span>
+                        <span>Waktu Masuk:</span>
                         <span className="font-mono font-medium">
                           {new Date(visit.actualCheckInTimeUtc).toLocaleTimeString()}
                         </span>
@@ -771,7 +771,7 @@ export function ReceptionClient({
                     )}
                     {visit.hikCentral?.pinCode && (
                       <div className="flex items-center justify-between bg-neutral-100 rounded px-2 py-1">
-                        <span className="text-neutral-600">PIN Code:</span>
+                        <span className="text-neutral-600">Kode PIN:</span>
                         <span className="font-mono font-bold tracking-wider text-neutral-900">
                           {visit.hikCentral.pinCode}
                         </span>
@@ -792,7 +792,7 @@ export function ReceptionClient({
                       }}
                       className="w-full inline-flex min-h-9 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 cursor-pointer"
                     >
-                      Verify & Check In &rarr;
+                      Verifikasi &amp; Proses Masuk &rarr;
                     </button>
                   )}
                   {isCheckedIn && (
@@ -823,7 +823,7 @@ export function ReceptionClient({
                       }}
                       className="w-full inline-flex min-h-9 items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 transition hover:bg-neutral-50 cursor-pointer"
                     >
-                      View Badge & Pass
+                      Lihat Lencana Akses
                     </button>
                   )}
                 </div>

@@ -110,8 +110,8 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).toContain("Fast-Track");
-      expect(html).toContain("⚡ Fast-Track");
+      expect(html).toContain("Masuk Otomatis Tanpa Antre");
+      expect(html).toContain("⚡ Masuk Otomatis Tanpa Antre");
     });
 
     it("does not render Fast-Track badge when isFastTrack is false or undefined", () => {
@@ -128,7 +128,7 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).not.toContain("⚡ Fast-Track");
+      expect(html).not.toContain("⚡ Masuk Otomatis Tanpa Antre");
     });
 
     it("renders Dual-Direction badge when lastSeenDoor is DUAL_DIRECTION", () => {
@@ -152,8 +152,8 @@ describe("ActiveMonitoringClient Component", () => {
       );
 
       expect(html).toContain("Main Entrance SpeedGate");
-      expect(html).toContain("Dual-Direction");
-      expect(html).not.toContain("Single-Direction In");
+      expect(html).toContain("Pintu Dua Arah");
+      expect(html).not.toContain("Pintu Masuk Saja");
     });
 
     it("renders Single-Direction In badge when lastSeenDoor is SINGLE_DIRECTION_IN", () => {
@@ -177,8 +177,8 @@ describe("ActiveMonitoringClient Component", () => {
       );
 
       expect(html).toContain("DC Server Room 01");
-      expect(html).toContain("Single-Direction In");
-      expect(html).not.toContain("Dual-Direction");
+      expect(html).toContain("Pintu Masuk Saja");
+      expect(html).not.toContain("Pintu Dua Arah");
     });
 
     it("resolves door directionality from doors prop when lastSeenDoor accessType is omitted", () => {
@@ -201,7 +201,7 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).toContain("Single-Direction In");
+      expect(html).toContain("Pintu Masuk Saja");
     });
   });
 
@@ -243,11 +243,11 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).toContain("Movement Breadcrumbs");
+      expect(html).toContain("Riwayat Pergerakan Pintu");
       expect(html).toContain("Lobby Turnstile");
-      expect(html).toContain("(Entry)");
+      expect(html).toContain("(Masuk)");
       expect(html).toContain("Meeting Room 302");
-      expect(html).toContain("(Implicit Exit)");
+      expect(html).toContain("(Keluar Otomatis)");
       expect(html).toContain("Server Room 01");
       expect(html).toContain("→");
     });
@@ -282,12 +282,12 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).toContain("Emergency Access");
+      expect(html).toContain("Izin Akses Darurat Sementara");
       expect(html).toContain("DC Server Room 01");
       expect(html).toContain("Critical database cluster cooling maintenance");
       expect(html).toContain("Officer Alex");
-      expect(html).toContain("Revoke Access");
-      expect(html).toMatch(/remaining/);
+      expect(html).toContain("Cabut Izin Akses");
+      expect(html).toMatch(/tersisa/);
     });
 
     it("renders Revoked badge and hides Revoke Access button for revoked grants", () => {
@@ -318,8 +318,8 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).toContain("Revoked");
-      expect(html).not.toContain("Revoke Access");
+      expect(html).toContain("Dicabut");
+      expect(html).not.toContain("Cabut Izin Akses");
     });
   });
 
@@ -338,7 +338,7 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).toContain("Grant Emergency Access");
+      expect(html).toContain("Izin Akses Darurat");
     });
 
     it("renders Grant Emergency Access button for OVERSTAY visit", () => {
@@ -357,7 +357,7 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).toContain("Grant Emergency Access");
+      expect(html).toContain("Izin Akses Darurat");
     });
 
     it("does not render Grant Emergency Access button for CHECKED_OUT visit", () => {
@@ -375,7 +375,7 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).not.toContain("Grant Emergency Access");
+      expect(html).not.toContain("Izin Akses Darurat");
     });
   });
 
@@ -389,7 +389,7 @@ describe("ActiveMonitoringClient Component", () => {
         />,
       );
 
-      expect(html).toContain("Total On-Premise");
+      expect(html).toContain("Total Tamu di Gedung");
       expect(html).toContain("Budi Santoso");
     });
 
