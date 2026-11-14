@@ -64,3 +64,4 @@ describe("Visitors UI Localization", () => {
     expect(html).toContain("aria-haspopup=\"dialog\"");
   });
 });
+

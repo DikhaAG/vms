@@ -4,17 +4,17 @@
 
 **Blocked by:** 03: Core Operations Localization & Page Guides, 04: Invitation, Security & Public Self-Registration Localization
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] End-to-end test suite (`src/test/e2e-ui-indonesian-shell.test.ts`) verifies full user journey:
+- [x] End-to-end test suite (`src/test/e2e-ui-indonesian-shell.test.tsx`) verifies full user journey:
   - Navigating through all sidebar links and verifying correct active route styling.
   - Toggling mobile hamburger drawer on viewport < 1024px and clicking navigation links.
   - Opening and dismissing `PageGuideModal` across each operational page.
   - Submitting self-registration on `/invite/[token]` with localized success state.
-- [ ] Accessibility audit:
+- [x] Accessibility audit:
   - All interactive elements have descriptive Indonesian `aria-label`s or associated labels (`htmlFor`).
   - Modal dialogs trap focus and close on Escape key or backdrop click.
   - Status chips meet WCAG AA contrast standards.
-- [ ] Confirms full regression suite passes cleanly (`pnpm check` exits 0 with 100% tests passing).
-- [ ] Next.js 16 production build compiles with Turbopack (`pnpm build`) without errors or bundle warnings.
+- [x] Confirms full regression suite passes cleanly (`pnpm check` exits 0 with 100% tests passing).
+- [x] Next.js 16 production build compiles with Turbopack (`pnpm build`) without errors or bundle warnings.
 

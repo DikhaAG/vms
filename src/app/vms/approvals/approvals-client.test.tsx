@@ -68,3 +68,4 @@ describe("ApprovalsClient Component Localization", () => {
     expect(html).toContain("Tolak Kunjungan");
   });
 });
+

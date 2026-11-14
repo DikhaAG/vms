@@ -66,3 +66,4 @@ describe("Sidebar Component", () => {
     expect(html).not.toContain('aria-label="Menu Navigasi Mobile"');
   });
 });
+

@@ -115,3 +115,4 @@ describe("ReceptionClient Component Localization", () => {
     expect(html).toContain("Verifikasi &amp; Proses Masuk");
   });
 });
+
