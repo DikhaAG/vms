@@ -792,6 +792,24 @@ export class InMemoryVmsRepository implements IVmsRepository {
     const direction = tapEvent.direction ?? "in";
     const inAndOutType = tapEvent.inAndOutType ?? (direction === "in" ? 1 : 2);
 
+    // Idempotency: if duplicate tap with same ID or identical timestamp+door+direction was already recorded
+    const existingTap = this.doorTapEvents.find(
+      (e) =>
+        e.visitId === tapEvent.visitId &&
+        ((tapEvent.id && e.id === tapEvent.id) ||
+          (tapEvent.tappedAtUtc &&
+            e.tappedAtUtc === tapEvent.tappedAtUtc &&
+            e.doorIndexCode === tapEvent.doorIndexCode &&
+            e.direction === direction)),
+    );
+    if (existingTap) {
+      return {
+        event: structuredClone(existingTap),
+        visit: structuredClone(existing),
+        tapCount: existing.tapCount ?? 0,
+      };
+    }
+
     // Auto-enrich door metadata if available
     const door =
       this.doors.get(tapEvent.doorIndexCode) ||
@@ -1171,6 +1189,19 @@ export class InMemoryVmsRepository implements IVmsRepository {
     const existing = this.visits.get(params.visitId);
     if (!existing) {
       throw new Error(`Visit not found: ${params.visitId}`);
+    }
+
+    // Idempotency: if visit is already checked in, do not re-check in or overwrite actualCheckInTimeUtc
+    if (existing.status === "CHECKED_IN" || existing.status === "OVERSTAY") {
+      const existingTaps = this.doorTapEvents.filter((e) => e.visitId === params.visitId);
+      const match = params.tapEvent.id
+        ? existingTaps.find((e) => e.id === params.tapEvent.id)
+        : existingTaps[0];
+      return {
+        visit: structuredClone(existing),
+        event: match ? structuredClone(match) : structuredClone(params.tapEvent),
+        notification: params.hostNotification ? structuredClone(params.hostNotification) : undefined,
+      };
     }
 
     const door =

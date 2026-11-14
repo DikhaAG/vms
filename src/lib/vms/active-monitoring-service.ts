@@ -629,10 +629,7 @@ export class ActiveMonitoringService {
       status: "ACTIVE",
     };
 
-    // Save grant in repository
-    await this.repository.saveEmergencyGrant(grant);
-
-    // Synchronize privileges to HikCentral physical controllers
+    // Synchronize privileges to HikCentral physical controllers first
     const adapterOptions: EmergencyAdapterOptions = {
       ...options,
       mode: input.mode ?? options.mode ?? "live",
@@ -650,6 +647,10 @@ export class ActiveMonitoringService {
       },
       adapterOptions,
     );
+
+    // Save grant in repository only AFTER successful upstream hardware sync
+    // to guarantee state is not corrupted if upstream controller synchronization fails
+    await this.repository.saveEmergencyGrant(grant);
 
     const updatedVisit = await this.repository.getVisit(visitId);
     return {

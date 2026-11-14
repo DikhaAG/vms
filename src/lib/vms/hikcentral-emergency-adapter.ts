@@ -48,6 +48,17 @@ function checkStubErrors(scenario?: StubScenario) {
       },
     );
   }
+  if (scenario === "sync-failed") {
+    throw new HikCentralError(
+      "HikCentral API error 0x00072010: Privilege group person synchronization failed.",
+      {
+        kind: "api",
+        status: 200,
+        code: "0x00072010",
+        hikMsg: "Privilege group person synchronization failed.",
+      },
+    );
+  }
 }
 
 function resolveClient(options: EmergencyAdapterOptions): HikCentralClient {

@@ -4,10 +4,10 @@
 
 **Blocked by:** 04: Active Monitoring & Emergency Access UI Integration
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] End-to-end tracer bullet test exercises complete flow: `APPROVED` visit → first perimeter turnstile tap → auto check-in transition → room transition tap → emergency access grant → emergency door tap → visit check-out de-authorization.
-- [ ] Verifies graceful fallback and clear structured error responses when HikCentral OpenAPI encounters network timeout or authentication failures during emergency grant synchronization.
-- [ ] Confirms that full regression test suite passes cleanly (`pnpm check` exits 0 with all test files passing).
-- [ ] Next.js 16 production build compiles with Turbopack (`pnpm build`) without errors or bundle warnings.
+- [x] End-to-end tracer bullet test exercises complete flow: `APPROVED` visit → first perimeter turnstile tap → auto check-in transition → room transition tap → emergency access grant → emergency door tap → visit check-out de-authorization.
+- [x] Verifies graceful fallback and clear structured error responses when HikCentral OpenAPI encounters network timeout or authentication failures during emergency grant synchronization.
+- [x] Confirms that full regression test suite passes cleanly (`pnpm check` exits 0 with all test files passing).
+- [x] Next.js 16 production build compiles with Turbopack (`pnpm build`) without errors or bundle warnings.
 
