@@ -70,6 +70,21 @@ describe("POST /api/vms/sync/doors", () => {
     expect(data.error.kind).toBe("validation");
   });
 
+  it("returns 400 when body is malformed even without application/json header", async () => {
+    const request = new Request("http://localhost/api/vms/sync/doors", {
+      method: "POST",
+      body: "malformed-json-payload",
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.ok).toBe(false);
+    expect(data.error.kind).toBe("validation");
+    expect(data.error.message).toContain("must be valid JSON");
+  });
+
   it("returns 400 when body is a JSON array instead of an object", async () => {
     const request = new Request("http://localhost/api/vms/sync/doors", {
       method: "POST",

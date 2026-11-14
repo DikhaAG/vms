@@ -66,10 +66,15 @@ export function isPerimeterDoor(doorName?: string): boolean {
 }
 
 /**
+ * HikCentral door reader state: -1 indicates no exit reader / push-to-exit only.
+ */
+export const HIK_DOOR_OUT_STATE_NONE = -1;
+
+/**
  * Deduces single-direction vs dual-direction reader capabilities from HikCentral doorOutState.
  */
 export function deduceDoorAccessType(doorOutState?: number): DoorAccessType {
-  if (doorOutState === -1) {
+  if (doorOutState === HIK_DOOR_OUT_STATE_NONE) {
     return "SINGLE_DIRECTION_IN";
   }
   return "DUAL_DIRECTION";

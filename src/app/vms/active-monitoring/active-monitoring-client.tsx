@@ -552,10 +552,12 @@ export function ActiveMonitoringClient({
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 text-xl font-bold">
             0
           </div>
-          <h3 className="mt-3 text-sm font-semibold text-neutral-900">Tidak Ada Tamu Aktif Sesuai Saringan</h3>
+          <h3 className="mt-3 text-sm font-semibold text-neutral-900">
+            {visits.length === 0 ? "Tidak Ada Tamu Aktif di Dalam Gedung" : "Tidak Ada Tamu Aktif Sesuai Saringan"}
+          </h3>
           <p className="mt-1 text-xs text-neutral-500">
             {visits.length === 0
-              ? "Saat ini tidak ada tamu aktif yang berada di dalam area gedung."
+              ? "Seluruh tamu telah selesai berkunjung atau belum melakukan check-in."
               : "Coba sesuaikan kata kunci pencarian, pemilihan fasilitas gedung, atau tab penyaring."}
           </p>
         </div>
@@ -1013,6 +1015,7 @@ export function ActiveMonitoringClient({
       {/* Emergency Access Escalation Modal */}
       {emergencyVisit && (
         <EmergencyAccessModal
+          key={`${emergencyVisit.visitId}-${emergencyVisit.emergencyGrants?.length ?? 0}`}
           visit={emergencyVisit}
           doors={doorsList}
           onClose={() => setEmergencyVisit(null)}

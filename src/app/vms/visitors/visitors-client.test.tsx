@@ -56,9 +56,9 @@ describe("Visitors UI Localization", () => {
 
   it("renders polite empty state when initialProfiles is empty", () => {
     const html = renderToStaticMarkup(<VisitorsClient initialProfiles={[]} />);
-    expect(html).toContain("Belum ada data tamu terdaftar.");
+    expect(html).toContain("Buku Tamu Masih Kosong");
     expect(html).toContain(
-      "Tamu yang mendaftar atau berkunjung akan otomatis tercatat dalam basis data ini.",
+      "Data profil dan riwayat kunjungan tamu akan otomatis tercatat di sini setelah pendaftaran diproses.",
     );
   });
 

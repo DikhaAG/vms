@@ -294,11 +294,11 @@ export function ApprovalsClient({
           <>
             {filteredPending.length === 0 ? (
               <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 p-12 text-center">
-                <p className="text-sm font-medium text-neutral-900">
-                  Tidak Ada Kunjungan Menunggu Persetujuan
+                <p className="text-sm font-semibold text-neutral-900">
+                  Tidak Ada Permohonan Kunjungan Tertunda
                 </p>
-                <p className="mt-1 text-xs text-neutral-500">
-                  Seluruh jadwal kunjungan untuk fasilitas ini telah selesai diproses.
+                <p className="mt-1 text-xs text-neutral-500 max-w-md mx-auto">
+                  Seluruh permohonan kunjungan telah disetujui atau ditolak.
                 </p>
               </div>
             ) : (

@@ -6,9 +6,10 @@ export const dynamic = "force-dynamic";
 export async function POST(request: Request): Promise<NextResponse> {
   let body: Record<string, unknown> = {};
 
-  if (request.headers.get("content-type")?.includes("application/json")) {
+  const text = await request.text();
+  if (text.trim().length > 0) {
     try {
-      const parsed = await request.json();
+      const parsed = JSON.parse(text);
       if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
         return NextResponse.json(
           {

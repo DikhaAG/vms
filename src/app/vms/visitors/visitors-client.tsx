@@ -186,12 +186,14 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center">
                     <p className="text-sm font-semibold text-neutral-800 dark:text-slate-200">
-                      {searchQuery ? `Tidak ada profil tamu yang cocok dengan "${searchQuery}".` : "Belum ada data tamu terdaftar."}
+                      {searchQuery
+                        ? `Tidak ada profil tamu yang cocok dengan "${searchQuery}".`
+                        : "Buku Tamu Masih Kosong"}
                     </p>
                     <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
                       {searchQuery
                         ? "Periksa ejaan kata kunci atau hapus pencarian untuk menampilkan seluruh tamu."
-                        : "Tamu yang mendaftar atau berkunjung akan otomatis tercatat dalam basis data ini."}
+                        : "Data profil dan riwayat kunjungan tamu akan otomatis tercatat di sini setelah pendaftaran diproses."}
                     </p>
                     {searchQuery && (
                       <button

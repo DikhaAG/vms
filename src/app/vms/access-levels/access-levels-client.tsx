@@ -304,12 +304,15 @@ export function AccessLevelsClient({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filteredLevels.length === 0 ? (
           <div className="col-span-full rounded-xl border border-dashed border-neutral-300 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-900/40 p-10 text-center">
-            <p className="text-sm font-medium text-neutral-800 dark:text-slate-200">
-              Tidak ada kelompok hak akses yang ditemukan.
+            <p className="text-sm font-semibold text-neutral-800 dark:text-slate-200">
+              {availableDoors.length === 0
+                ? "Belum Ada Pintu Fisik yang Terdaftar"
+                : "Tidak ada kelompok hak akses yang ditemukan"}
             </p>
-            <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
-              Buat kelompok hak akses untuk menggabungkan izin pintu dan template
-              jadwal waktu kunjungan.
+            <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400 max-w-md mx-auto">
+              {availableDoors.length === 0
+                ? "Klik tombol 'Sinkronkan Pintu dari Server HikCentral' untuk menarik data pintu dari gateway gedung."
+                : "Buat kelompok hak akses untuk menggabungkan izin pintu dan template jadwal waktu kunjungan."}
             </p>
             <button
               type="button"
