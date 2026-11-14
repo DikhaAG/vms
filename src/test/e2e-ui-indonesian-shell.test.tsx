@@ -108,6 +108,7 @@ describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
           selectedFacilityId="fac-jakarta"
           onSelectFacility={vi.fn()}
           onOpenMobileMenu={vi.fn()}
+          systemHealthy={true}
         />,
       );
 

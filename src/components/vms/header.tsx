@@ -41,7 +41,7 @@ export function Header({
   onSelectFacility,
   currentPath: propPath,
   onOpenMobileMenu,
-  systemHealthy = true,
+  systemHealthy,
   operatorRole = idDict.header.operatorRole,
 }: HeaderProps) {
   const activePath = useSafePathname(propPath);
@@ -157,8 +157,14 @@ export function Header({
         {/* HikCentral Gateway Health Badge */}
         <div className="hidden md:flex items-center">
           <HikCentralStatusBadge
-            initialStatus={systemHealthy ? "online" : "offline"}
-            autoCheck={false}
+            initialStatus={
+              systemHealthy !== undefined
+                ? systemHealthy
+                  ? "online"
+                  : "offline"
+                : "checking"
+            }
+            autoCheck={true}
           />
         </div>
 

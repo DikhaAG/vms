@@ -73,10 +73,36 @@ describe("Header Component", () => {
         facilities={mockFacilities}
         selectedFacilityId="fac-jakarta"
         currentPath="/vms/reception"
+        systemHealthy={true}
       />
     );
 
     expect(html).toContain(idDict.header.systemConnected);
+  });
+
+  it("renders offline hardware status indicator when systemHealthy is false", () => {
+    const html = renderToStaticMarkup(
+      <Header
+        facilities={mockFacilities}
+        selectedFacilityId="fac-jakarta"
+        currentPath="/vms/reception"
+        systemHealthy={false}
+      />
+    );
+
+    expect(html).toContain(idDict.header.systemDisconnected);
+  });
+
+  it("renders checking gateway indicator when systemHealthy is undefined", () => {
+    const html = renderToStaticMarkup(
+      <Header
+        facilities={mockFacilities}
+        selectedFacilityId="fac-jakarta"
+        currentPath="/vms/reception"
+      />
+    );
+
+    expect(html).toContain("Memeriksa Gateway...");
   });
 
   it("renders active operator role chip and avatar", () => {
