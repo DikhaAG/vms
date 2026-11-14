@@ -4,6 +4,9 @@ import {
   formatStatusBadge,
   formatErrorMessage,
   PAGE_KEYS,
+  isPageKey,
+  NAV_ICON_KEYS,
+  isNavIconKey,
 } from "./id";
 
 describe("Indonesian Localization Dictionary (idDict)", () => {
@@ -117,6 +120,25 @@ describe("Indonesian Localization Dictionary (idDict)", () => {
           expect(faq.answer).toBeTruthy();
         });
       }
+    });
+  });
+
+  describe("runtime type guards (CODING_STANDARDS conformance)", () => {
+    it("isPageKey validates genuine page keys and rejects invalid strings", () => {
+      PAGE_KEYS.forEach((key) => {
+        expect(isPageKey(key)).toBe(true);
+      });
+      expect(isPageKey("invalidKey")).toBe(false);
+      expect(isPageKey(123)).toBe(false);
+      expect(isPageKey(null)).toBe(false);
+    });
+
+    it("isNavIconKey validates supported navigation icon keys", () => {
+      NAV_ICON_KEYS.forEach((key) => {
+        expect(isNavIconKey(key)).toBe(true);
+      });
+      expect(isNavIconKey("random-icon")).toBe(false);
+      expect(isNavIconKey(null)).toBe(false);
     });
   });
 });

@@ -30,6 +30,26 @@ export const PAGE_KEYS = [
 
 export type PageKey = (typeof PAGE_KEYS)[number];
 
+export function isPageKey(val: unknown): val is PageKey {
+  return typeof val === "string" && (PAGE_KEYS as readonly string[]).includes(val);
+}
+
+export const NAV_ICON_KEYS = [
+  "desk",
+  "shield-check",
+  "clipboard-check",
+  "user-plus",
+  "users",
+  "key",
+  "id-card",
+] as const;
+
+export type NavIconKey = (typeof NAV_ICON_KEYS)[number];
+
+export function isNavIconKey(val: unknown): val is NavIconKey {
+  return typeof val === "string" && (NAV_ICON_KEYS as readonly string[]).includes(val);
+}
+
 export interface PageGuideStep {
   step: number;
   title: string;
@@ -61,7 +81,7 @@ export interface NavigationItem {
   title: string;
   description: string;
   href: string;
-  icon: string;
+  icon: NavIconKey;
   badge?: string;
 }
 

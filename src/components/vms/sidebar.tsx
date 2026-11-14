@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { idDict, type NavigationItem } from "@/lib/vms/i18n/id";
+import { idDict, type NavigationItem, type NavIconKey } from "@/lib/vms/i18n/id";
+import { useSafePathname } from "./use-safe-pathname";
 
 export interface SidebarProps {
   currentPath?: string;
@@ -13,7 +13,7 @@ export interface SidebarProps {
   onCloseMobile?: () => void;
 }
 
-function renderNavIcon(icon: string) {
+function renderNavIcon(icon: NavIconKey) {
   switch (icon) {
     case "desk":
       return (
@@ -73,18 +73,48 @@ export function Sidebar({
   mobileOpen = false,
   onCloseMobile,
 }: SidebarProps) {
-  let hookPath = "";
-  try {
-    // In Next.js client environment
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    hookPath = usePathname() || "";
-  } catch {
-    // In test environment or static markup
-    hookPath = "";
-  }
-
-  const activePath = propPath || hookPath || "";
+  const activePath = useSafePathname(propPath);
   const groups = Object.entries(idDict.navigation.groups);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Keyboard navigation & focus trapping for mobile drawer
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseMobile?.();
+        return;
+      }
+
+      if (event.key === "Tab") {
+        if (!drawerRef.current) return;
+        const focusables = drawerRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+
+        if (event.shiftKey) {
+          if (document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen, onCloseMobile]);
 
   const renderNavLinks = (isDrawer = false) => (
     <div className="space-y-6">
@@ -206,7 +236,10 @@ export function Sidebar({
           />
 
           {/* Drawer Sheet */}
-          <div className="relative flex flex-col w-72 max-w-[80vw] bg-white dark:bg-slate-900 shadow-2xl border-r border-slate-200 dark:border-slate-800 z-10 animate-in slide-in-from-left duration-200">
+          <div
+            ref={drawerRef}
+            className="relative flex flex-col w-72 max-w-[80vw] bg-white dark:bg-slate-900 shadow-2xl border-r border-slate-200 dark:border-slate-800 z-10 animate-in slide-in-from-left duration-200"
+          >
             {/* Drawer Header */}
             <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-800">
               <Link href="/vms/reception" onClick={onCloseMobile} className="flex items-center gap-2.5">

@@ -1,7 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AppShell } from "./app-shell";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/vms/reception",
+}));
 
 describe("AppShell Component", () => {
   it("renders sidebar, header, and children within a responsive shell", () => {

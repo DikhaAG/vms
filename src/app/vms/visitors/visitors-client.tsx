@@ -306,10 +306,14 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
             </p>
 
             <div>
-              <label className="block text-xs font-semibold text-neutral-700 dark:text-slate-300">
+              <label
+                htmlFor="complianceDeleteReason"
+                className="block text-xs font-semibold text-neutral-700 dark:text-slate-300"
+              >
                 Alasan Kepatuhan / Permintaan Penghapusan Data
               </label>
               <textarea
+                id="complianceDeleteReason"
                 rows={3}
                 value={deleteReason}
                 onChange={(e) => setDeleteReason(e.target.value)}

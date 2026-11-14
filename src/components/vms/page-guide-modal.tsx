@@ -27,7 +27,7 @@ export function PageGuideModal({
   const handleOpen = () => setIsOpen(true);
   const handleClose = useCallback(() => setIsOpen(false), []);
 
-  // Keyboard navigation: Escape key closes modal
+  // Keyboard navigation: Escape key closes modal & Tab focus trap
   useEffect(() => {
     if (!isOpen) return;
 
@@ -35,6 +35,30 @@ export function PageGuideModal({
       if (event.key === "Escape") {
         event.preventDefault();
         handleClose();
+        return;
+      }
+
+      if (event.key === "Tab") {
+        if (!modalRef.current) return;
+        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusableElements.length === 0) return;
+
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (event.shiftKey) {
+          if (document.activeElement === firstElement) {
+            event.preventDefault();
+            lastElement.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            event.preventDefault();
+            firstElement.focus();
+          }
+        }
       }
     };
 

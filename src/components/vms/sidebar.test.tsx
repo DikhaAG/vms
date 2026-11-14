@@ -1,8 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Sidebar } from "./sidebar";
 import { idDict } from "@/lib/vms/i18n/id";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/vms/reception",
+}));
 
 describe("Sidebar Component", () => {
   it("renders desktop sidebar with branding and all 3 navigation groups", () => {

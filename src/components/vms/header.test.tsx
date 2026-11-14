@@ -1,9 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Header } from "./header";
 import { idDict } from "@/lib/vms/i18n/id";
 import type { Facility } from "@/lib/vms/vms-contract";
+
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/vms/reception",
+}));
 
 describe("Header Component", () => {
   const mockFacilities: Facility[] = [
@@ -97,6 +101,7 @@ describe("Header Component", () => {
     );
 
     expect(html).toContain("Monitoring Tamu &amp; Pintu");
+    expect(html).toContain("Operasional Utama");
   });
 });
 

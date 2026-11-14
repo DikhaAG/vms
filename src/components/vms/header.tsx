@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { idDict } from "@/lib/vms/i18n/id";
 import type { Facility } from "@/lib/vms/vms-contract";
+import { useSafePathname } from "./use-safe-pathname";
 
 export interface HeaderProps {
   facilities?: Facility[];
@@ -23,15 +23,15 @@ function getTimezoneAbbreviation(tz: string): string {
   return tz;
 }
 
-function getBreadcrumbTitle(path: string): string {
-  if (path.includes("/reception")) return "Meja Resepsionis";
-  if (path.includes("/active-monitoring")) return "Monitoring Tamu & Pintu";
-  if (path.includes("/approvals")) return "Persetujuan Kunjungan";
-  if (path.includes("/pre-registration")) return "Buat Undangan Tamu";
-  if (path.includes("/group-registration")) return "Pendaftaran Rombongan";
-  if (path.includes("/access-levels")) return "Hak Akses Pintu";
-  if (path.includes("/visitors")) return "Buku Tamu & Biometrik";
-  return "Beranda Operasional";
+function getBreadcrumbHierarchy(path: string): { group?: string; title: string } {
+  if (path.includes("/reception")) return { group: "Operasional Utama", title: "Meja Resepsionis" };
+  if (path.includes("/active-monitoring")) return { group: "Operasional Utama", title: "Monitoring Tamu & Pintu" };
+  if (path.includes("/approvals")) return { group: "Operasional Utama", title: "Persetujuan Kunjungan" };
+  if (path.includes("/pre-registration")) return { group: "Pendaftaran Undangan", title: "Buat Undangan Tamu" };
+  if (path.includes("/group-registration")) return { group: "Pendaftaran Undangan", title: "Pendaftaran Rombongan" };
+  if (path.includes("/access-levels")) return { group: "Master Keamanan", title: "Hak Akses Pintu" };
+  if (path.includes("/visitors")) return { group: "Master Keamanan", title: "Buku Tamu & Biometrik" };
+  return { title: "Beranda Operasional" };
 }
 
 export function Header({
@@ -43,22 +43,26 @@ export function Header({
   systemHealthy = true,
   operatorRole = idDict.header.operatorRole,
 }: HeaderProps) {
-  let hookPath = "";
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    hookPath = usePathname() || "";
-  } catch {
-    hookPath = "";
-  }
-
-  const activePath = propPath || hookPath || "";
+  const activePath = useSafePathname(propPath);
   const selectedFacility =
     facilities.find((f) => f.id === selectedFacilityId) || facilities[0];
 
   const tz = selectedFacility?.timezone || "Asia/Jakarta";
   const tzAbbr = getTimezoneAbbreviation(tz);
 
-  const [currentTime, setCurrentTime] = useState<string>("");
+  const [currentTime, setCurrentTime] = useState<string>(() => {
+    try {
+      return new Intl.DateTimeFormat("id-ID", {
+        timeZone: tz,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).format(new Date());
+    } catch {
+      return "";
+    }
+  });
 
   useEffect(() => {
     const updateTime = () => {
@@ -82,7 +86,7 @@ export function Header({
     return () => clearInterval(interval);
   }, [tz]);
 
-  const breadcrumb = getBreadcrumbTitle(activePath);
+  const breadcrumb = getBreadcrumbHierarchy(activePath);
 
   return (
     <header className="sticky top-0 z-20 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6">
@@ -103,9 +107,15 @@ export function Header({
           <Link href="/vms/reception" className="hover:text-slate-900 dark:hover:text-white transition-colors">
             VMS
           </Link>
+          {breadcrumb.group && (
+            <>
+              <span className="mx-2 text-slate-300 dark:text-slate-600">/</span>
+              <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">{breadcrumb.group}</span>
+            </>
+          )}
           <span className="mx-2 text-slate-300 dark:text-slate-600">/</span>
           <span className="font-semibold text-slate-900 dark:text-white">
-            {breadcrumb}
+            {breadcrumb.title}
           </span>
         </nav>
       </div>
@@ -142,7 +152,7 @@ export function Header({
           {/* Timezone Clock */}
           <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
             <span className="font-mono tabular-nums text-slate-900 dark:text-slate-100 font-medium">
-              {currentTime || "10:00:00"}
+              {currentTime || "--:--:--"}
             </span>
             <span className="px-1.5 py-0.2 rounded-md bg-slate-200/70 dark:bg-slate-700 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
               {tzAbbr}
