@@ -96,6 +96,14 @@ _Avoid_: Invisible exit, Ghost exit, Auto-departure, Zone hop
 A time-bounded, justification-backed temporary permission granted to an active Visit for specific physical doors outside their default Access Level, with automatic hardware synchronization and revocation upon expiration or check-out.
 _Avoid_: Ad-hoc access, Temporary privilege, Over-ride, Elevation pass
 
+**Hardware Execution Notice**:
+An explicit UI confirmation or status notification triggered when an operator action dispatches live commands directly to physical HikCentral gate controllers.
+_Avoid_: Mock prompt, Toast popup, Dummy feedback
+
+**Gateway Synchronization State**:
+The verifiable condition indicating whether a Visit, credential, or door state has been successfully committed to the active HikCentral Artemis controller.
+_Avoid_: Sync status, Cloud state, Connection flag
+
 ## Glosarium Bahasa Indonesia (Istilah Ramah Awam)
 
 | Istilah Domain Asli | Istilah Bahasa Indonesia Awam | Penjelasan Ringkas untuk Pengguna |
@@ -119,6 +127,8 @@ _Avoid_: Ad-hoc access, Temporary privilege, Over-ride, Elevation pass
 | **Implicit Room Transition** | **Perpindahan Ruangan Otomatis** | Sistem mendeteksi tamu telah keluar dari ruangan lama ketika men-tap di ruangan baru. |
 | **Emergency Access Grant** | **Izin Akses Darurat Sementara** | Izin tambahan waktu terbatas (1-4 jam) untuk memasuki ruangan khusus yang awalnya tidak diizinkan. |
 | **Monitoring List** | **Daftar Pantauan Keamanan** | Daftar orang yang dilarang masuk atau membutuhkan pemeriksaan keamanan ketat. |
+| **Hardware Execution Notice** | **Pemberitahuan Eksekusi Hardware** | Konfirmasi atau notifikasi visual bahwa perintah telah diteruskan langsung ke mesin pintu/turnstile fisik gedung. |
+| **Gateway Synchronization State** | **Status Sinkronisasi Gateway** | Status kepastian apakah data tiket, foto, atau hak akses sudah aktif di mesin HikCentral. |
 
 
 

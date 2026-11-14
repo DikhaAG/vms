@@ -1274,13 +1274,23 @@ export class InMemoryVmsRepository implements IVmsRepository {
   }
 }
 
-// Global singleton instance for in-memory persistence across API routes in a dev/demo session
+import { PostgresVmsRepository } from "./postgres-repository";
+export { PostgresVmsRepository } from "./postgres-repository";
+
+// Global singleton instance for repository persistence across API routes
 const globalForVms = globalThis as unknown as {
-  vmsRepository?: InMemoryVmsRepository;
+  vmsRepository?: IVmsRepository;
 };
 
-export const defaultVmsRepository =
-  globalForVms.vmsRepository ?? new InMemoryVmsRepository();
+export function createVmsRepository(): IVmsRepository {
+  if (process.env.DATABASE_URL) {
+    return new PostgresVmsRepository();
+  }
+  return new InMemoryVmsRepository();
+}
+
+export const defaultVmsRepository: IVmsRepository =
+  globalForVms.vmsRepository ?? createVmsRepository();
 
 if (process.env.NODE_ENV !== "production") {
   globalForVms.vmsRepository = defaultVmsRepository;
