@@ -18,3 +18,4 @@ We will adopt a centralized Indonesian localization dictionary, an Impeccable Op
 - Navigasi harian tertata rapi dalam 3 kelompok alur kerja: Operasional Utama (Meja Resepsionis, Monitoring Tamu & Pintu, Persetujuan Kunjungan), Pendaftaran Undangan (Janji Temu Pribadi, Rombongan), dan Master Keamanan (Hak Akses Pintu, Buku Tamu).
 - Petugas baru atau pengguna awam dapat langsung memahami tujuan halaman, peran pengguna, langkah 1-2-3, arti warna status, dan solusi masalah umum melalui tombol modal panduan di setiap halaman.
 - Halaman publik tamu mandiri (`/invite/[token]`) tetap terisolasi tanpa sidebar staf gedung, optimal untuk perangkat smartphone tamu dari luar.
+

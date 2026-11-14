@@ -20,3 +20,4 @@ Task graph for Indonesian Localization, Impeccable App Shell, and Guided Onboard
 
 ## Frontier
 - `01-indonesian-dictionary-and-page-guide-modal.md` is currently unblocked and ready for immediate implementation.
+

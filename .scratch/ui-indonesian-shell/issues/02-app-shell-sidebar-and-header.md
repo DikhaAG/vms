@@ -19,3 +19,4 @@
   - Active operator profile avatar and role chip (`👤 Petugas Resepsionis Lobi`).
 - [ ] Breadcrumbs bar renders active route hierarchy in plain Indonesian.
 - [ ] Component tests verify desktop rendering, active link detection, mobile drawer open/close behavior, and keyboard navigation.
+

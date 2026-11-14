@@ -17,3 +17,4 @@
   - Status chips meet WCAG AA contrast standards.
 - [ ] Confirms full regression suite passes cleanly (`pnpm check` exits 0 with 100% tests passing).
 - [ ] Next.js 16 production build compiles with Turbopack (`pnpm build`) without errors or bundle warnings.
+

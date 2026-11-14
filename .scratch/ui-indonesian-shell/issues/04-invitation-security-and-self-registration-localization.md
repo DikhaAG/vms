@@ -23,3 +23,4 @@
   - Polite Indonesian instructions guiding the guest to fill identity details and take an unobstructed selfie photo (good lighting, no masks/sunglasses).
   - Displays clear digital QR access pass and turnstile entry instructions upon successful registration.
 - [ ] Unit and component tests verify form submissions, public invite validation, and localized render output.
+
