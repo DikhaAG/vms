@@ -37,4 +37,11 @@ describe("HikCentralStatusBadge Component", () => {
 
     expect(html).toContain("Konfigurasi Belum Lengkap");
   });
+
+  it("defaults to checking status without optimistic online assumptions", () => {
+    const html = renderToStaticMarkup(<HikCentralStatusBadge autoCheck={false} />);
+
+    expect(html).toContain("Memeriksa Gateway...");
+    expect(html).not.toContain("Sistem Pintu Terhubung");
+  });
 });

@@ -103,6 +103,8 @@ describe("Header Component", () => {
     );
 
     expect(html).toContain("Memeriksa Gateway...");
+    expect(html).not.toContain(idDict.header.systemConnected);
+    expect(html).not.toContain("Sistem Pintu Terhubung");
   });
 
   it("renders active operator role chip and avatar", () => {
