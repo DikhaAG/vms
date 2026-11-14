@@ -28,7 +28,6 @@ import type {
 } from "@/lib/vms/checkin-contract";
 import { VERIFICATION_METHODS } from "@/lib/vms/checkin-contract";
 import {
-  createSampleFaceJpegDataUri,
   formatFacePhotoSize,
   isFacePhotoSizeValid,
   processBrowserImageFile,
@@ -303,13 +302,6 @@ export function ReceptionClient({
     } finally {
       setIsNormalizing(false);
     }
-  }, []);
-
-  const handleLoadSamplePhoto = useCallback(() => {
-    const sample = createSampleFaceJpegDataUri(24 * 1024);
-    setWalkInFacePhoto(sample);
-    setWalkInFaceByteSize(24 * 1024);
-    setFaceError(null);
   }, []);
 
   const handleClearPhoto = useCallback(() => {
@@ -1228,35 +1220,41 @@ export function ReceptionClient({
                 <label className="block text-xs font-semibold text-neutral-900 mb-1.5">
                   Hak Akses Pintu Fisik (Khusus Gedung Terpilih):
                 </label>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {availableAccessLevels.map((al) => (
-                    <label
-                      key={al.id}
-                      className={`flex items-start gap-2 rounded-lg border p-2 text-xs cursor-pointer ${
-                        walkInAccessLevelIds.includes(al.id)
-                          ? "border-emerald-600 bg-emerald-50 text-emerald-900"
-                          : "border-neutral-200 text-neutral-700"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={walkInAccessLevelIds.includes(al.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setWalkInAccessLevelIds([...walkInAccessLevelIds, al.id]);
-                          } else {
-                            setWalkInAccessLevelIds(walkInAccessLevelIds.filter((id) => id !== al.id));
-                          }
-                        }}
-                        className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
-                      />
-                      <div>
-                        <div className="font-medium">{al.name}</div>
-                        {al.description && <div className="text-3xs text-neutral-500">{al.description}</div>}
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                {availableAccessLevels.length === 0 ? (
+                  <p className="text-xs text-neutral-500 italic">
+                    Belum ada kelompok hak akses yang terdaftar untuk fasilitas ini.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {availableAccessLevels.map((al) => (
+                      <label
+                        key={al.id}
+                        className={`flex items-start gap-2 rounded-lg border p-2 text-xs cursor-pointer ${
+                          walkInAccessLevelIds.includes(al.id)
+                            ? "border-emerald-600 bg-emerald-50 text-emerald-900"
+                            : "border-neutral-200 text-neutral-700"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={walkInAccessLevelIds.includes(al.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setWalkInAccessLevelIds([...walkInAccessLevelIds, al.id]);
+                            } else {
+                              setWalkInAccessLevelIds(walkInAccessLevelIds.filter((id) => id !== al.id));
+                            }
+                          }}
+                          className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                        />
+                        <div>
+                          <div className="font-medium">{al.name}</div>
+                          {al.description && <div className="text-3xs text-neutral-500">{al.description}</div>}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Tap Quota Configuration */}
@@ -1378,13 +1376,6 @@ export function ReceptionClient({
                       <span>Unggah Berkas Foto</span>
                       <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                     </label>
-                    <button
-                      type="button"
-                      onClick={handleLoadSamplePhoto}
-                      className="rounded-lg border border-neutral-200 bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-600 hover:bg-neutral-200 cursor-pointer"
-                    >
-                      Muat Contoh Foto
-                    </button>
                   </div>
                 )}
                 {cameraError && <p className="mt-2 text-xs text-red-600">{cameraError}</p>}

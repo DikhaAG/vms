@@ -24,7 +24,6 @@ import {
   type VisitReasonType,
 } from "@/lib/vms/vms-contract";
 import {
-  createSampleFaceJpegDataUri,
   formatFacePhotoSize,
   isFacePhotoSizeValid,
   processBrowserImageFile,
@@ -313,13 +312,6 @@ export function PreRegistrationForm({
       .finally(() => {
         setIsNormalizing(false);
       });
-  }
-
-  function handleLoadSamplePhoto() {
-    setFaceError(null);
-    const sampleDataUri = createSampleFaceJpegDataUri(25088); // 24.5 KB
-    setFacePhoto(sampleDataUri);
-    setFaceByteSize(25088);
   }
 
   function handleRemovePhoto() {
@@ -804,14 +796,6 @@ export function PreRegistrationForm({
               className="inline-flex items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-neutral-800 dark:text-slate-200 transition hover:bg-neutral-50 dark:hover:bg-slate-700 shadow-2xs"
             >
               {isCameraActive ? "Tutup Kamera" : "Ambil Foto via Kamera"}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleLoadSamplePhoto}
-              className="inline-flex items-center justify-center rounded-lg border border-neutral-200 dark:border-slate-700 bg-neutral-100 dark:bg-slate-800 px-3 py-2 text-xs font-medium text-neutral-700 dark:text-slate-300 transition hover:bg-neutral-200"
-            >
-              Muat Contoh Standar (24.5 KB)
             </button>
 
             {facePhoto ? (

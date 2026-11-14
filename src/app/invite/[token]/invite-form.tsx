@@ -16,7 +16,6 @@ import {
   type VisitReasonType,
 } from "@/lib/vms/vms-contract";
 import {
-  createSampleFaceJpegDataUri,
   formatFacePhotoSize,
   isFacePhotoSizeValid,
   processBrowserImageFile,
@@ -177,13 +176,6 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
     },
     [],
   );
-
-  const handleLoadSamplePhoto = useCallback(() => {
-    setFaceError(null);
-    const sample = createSampleFaceJpegDataUri(25088); // 24.5 KB compliant
-    setFacePhoto(sample);
-    setFaceByteSize(25088);
-  }, []);
 
   const handleClearPhoto = useCallback(() => {
     setFacePhoto("");
@@ -732,21 +724,13 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                   />
                 </label>
 
-                {facePhoto ? (
+                {facePhoto && (
                   <button
                     type="button"
                     onClick={handleClearPhoto}
                     className="inline-flex min-h-10 items-center justify-center rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition hover:bg-red-100"
                   >
                     Hapus Foto
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleLoadSamplePhoto}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800 px-2.5 py-1.5 text-xs text-neutral-600 dark:text-slate-300 hover:bg-neutral-100 dark:hover:bg-slate-700"
-                  >
-                    Gunakan Contoh
                   </button>
                 )}
               </div>

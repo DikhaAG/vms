@@ -195,66 +195,6 @@ export function ActiveMonitoringClient({
     return { total, overstay, quota, normal };
   }, [visits]);
 
-  // Handle Simulate Door Tap
-  const handleSimulateTap = async (visit: ActiveVisitSummary) => {
-    setActionLoadingId(visit.visitId);
-    setNotification(null);
-
-    try {
-      const res = await fetch(`/api/vms/active-visits/${visit.visitId}/tap`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          doorIndexCode: "door-turnstile-main",
-          doorName: "Main Entrance SpeedGate",
-          direction: "in",
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error?.message || data.errors?._global || "Failed to record door tap.");
-      }
-
-      if (data.autoCheckedOut) {
-        const receipt = (visit.visitId || "").slice(0, 8).toUpperCase();
-        setNotification({
-          type: "warning",
-          message: `Batas Tap Terlampaui (${data.tapCount}/${data.maxTaps})! Hak akses fisik ${visit.visitor.fullName} telah dicabut secara otomatis di semua kontroler. Bukti Mesin: #${receipt}.`,
-        });
-        // Remove visit from active on-premise list
-        setVisits((prev) => prev.filter((v) => v.visitId !== visit.visitId));
-      } else {
-        const remainingText =
-          data.remainingTaps !== undefined ? ` (${data.remainingTaps} sisa)` : "";
-        const tapId = (data.tapEvent?.id || "OK").slice(0, 8);
-        setNotification({
-          type: "success",
-          message: `Tap pintu fisik berhasil diverifikasi untuk ${visit.visitor.fullName}. Total tap: ${data.tapCount}${remainingText}. Bukti Gateway: #${tapId}.`,
-        });
-        // Update local visit tap count
-        setVisits((prev) =>
-          prev.map((v) =>
-            v.visitId === visit.visitId
-              ? {
-                  ...v,
-                  tapCount: data.tapCount,
-                  isQuotaExceeded: data.isQuotaExceeded,
-                }
-              : v,
-          ),
-        );
-      }
-    } catch (err) {
-      setNotification({
-        type: "error",
-        message: err instanceof Error ? err.message : "Failed to record door tap.",
-      });
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
   // Handle Normal Check-out
   const handleNormalCheckOut = async (visit: ActiveVisitSummary) => {
     if (!confirm(`Apakah Anda yakin ingin menyelesaikan kunjungan (check-out) untuk ${visit.visitor.fullName}? Hak akses pintu turnstile akan segera dicabut.`)) {
@@ -940,15 +880,6 @@ export function ActiveMonitoringClient({
                 {/* Action Buttons */}
                 <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-3.5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      onClick={() => handleSimulateTap(visit)}
-                      disabled={isLoading}
-                      title="Simulasi tap pintu putar terhadap HikCentral acs/v1/door/events"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-xs hover:bg-neutral-50 active:bg-neutral-100 disabled:opacity-50"
-                    >
-                      <span>Simulasi Tap Pintu (+1)</span>
-                    </button>
-
                     {canGrantEmergency && (
                       <button
                         onClick={() => openEmergencyAccessModal(visit)}
