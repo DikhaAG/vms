@@ -13,6 +13,8 @@ Judgement-call conventions enforced by `/code-review` alongside ESLint and TypeS
 
 - **Validate `data` at runtime even when `code === "0"`:** HikCentral responses occasionally omit or alter `data` fields. Narrow `response.data` with an explicit type guard before returning `ok: true` or rendering success state in the UI.
 - **Validate boundary payloads before calling use-cases:** Parse JSON inside `try/catch` in Route Handlers, check field types explicitly, and map validation vs config vs upstream/network errors to clear HTTP status codes (`400` / `500` / `502`).
+- **Iterate over batch/multi-resource parameters in hardware adapters:** When an adapter receives a collection of physical resources (e.g. `doorIndexCodes: string[]`, `cameraIndexCodes`), iterate or batch across all items so all target hardware controllers receive grants. Never silently truncate to `[0]`.
+- **Distinguish optional bodies from malformed bodies in Route Handlers:** In endpoints where a request body is optional (e.g. `DELETE`), inspect content length or text before calling `request.json()`. If a non-empty body contains invalid JSON syntax or fails schema validation, return HTTP `400 Bad Request` immediately rather than silently swallowing into an empty default object.
 
 ## Domain Model & Upstream Anti-Corruption Layer
 
@@ -23,5 +25,6 @@ Judgement-call conventions enforced by `/code-review` alongside ESLint and TypeS
 ## UI & React Composition
 
 - **Extract repeated form/control chrome:** When two or more fieldsets or panels share identical interactive markup (such as radio-card groups), extract one parameterized helper component rather than duplicating JSX loops.
+- **Extract complex modal dialogs:** Interactive modals with dedicated state, form validation, and API submissions should be extracted into co-located component files (e.g. `emergency-access-modal.tsx`) rather than inlined in the parent dashboard view.
 - **Keep identifiers crisp in forms:** Disable prose autocorrection (`autoCorrect="off"`, `autoCapitalize="none"`, `spellCheck={false}`) on technical ID inputs, associate every `<label>` via `htmlFor`/`id`, and validate on blur/submit while keeping submit enabled until an active request is in flight.
 
