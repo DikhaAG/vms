@@ -4,23 +4,22 @@
 
 **Blocked by:** 02: App Shell, Responsive Sidebar & Global Header
 
-**Status:** ready-for-agent
+**Status:** completed
 
-- [ ] Pendaftaran Tamu Terjadwal (`/vms/pre-registration`):
+- [x] Pendaftaran Tamu Terjadwal (`/vms/pre-registration`):
   - Form fields, host selector, appointment scheduling, and selfie upload guides translated to Indonesian.
   - Page header embeds `PageGuideModal` with `pageKey: "preRegistration"`.
-- [ ] Pendaftaran Rombongan (`/vms/group-registration`):
+- [x] Pendaftaran Rombongan (`/vms/group-registration`):
   - Group details, member batch roster, and shared access level configuration localized.
   - Page header embeds `PageGuideModal` with `pageKey: "groupRegistration"`.
-- [ ] Hak Akses Pintu (`/vms/access-levels`):
+- [x] Hak Akses Pintu (`/vms/access-levels`):
   - Door bundles, floor selectors, time schedules, and physical tap quotas localized.
   - Page header embeds `PageGuideModal` with `pageKey: "accessLevels"`.
-- [ ] Buku Tamu & Biometrik (`/vms/visitors`):
+- [x] Buku Tamu & Biometrik (`/vms/visitors`):
   - Visitor directory, certificate lookup, biometric retention policy tags, and soft-delete confirmation localized.
   - Page header embeds `PageGuideModal` with `pageKey: "visitors"`.
-- [ ] Public Guest Self-Registration Portal (`/invite/[token]`):
+- [x] Public Guest Self-Registration Portal (`/invite/[token]`):
   - Clean, dedicated mobile-first layout without operator sidebar or header chrome.
   - Polite Indonesian instructions guiding the guest to fill identity details and take an unobstructed selfie photo (good lighting, no masks/sunglasses).
   - Displays clear digital QR access pass and turnstile entry instructions upon successful registration.
-- [ ] Unit and component tests verify form submissions, public invite validation, and localized render output.
-
+- [x] Unit and component tests verify form submissions, public invite validation, and localized render output.

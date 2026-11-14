@@ -6,7 +6,16 @@
  * Adheres strictly to GLOSSARY.md, ADR 0001, ADR 0002, and ADR 0005.
  */
 
-import type { VisitStatus } from "../vms-contract";
+import type {
+  CertificateType,
+  CredentialSyncStatus,
+  VisitReasonType,
+  VisitStatus,
+} from "../vms-contract";
+import type {
+  TapQuotaMode,
+  TimeScheduleTemplateId,
+} from "../access-level-contract";
 
 export const PAGE_KEYS = [
   "reception",
@@ -194,6 +203,45 @@ export const idDict = {
     confirmAction: "Konfirmasi Tindakan",
     guideButtonLabel: "Panduan Halaman Ini",
   },
+
+  certificateTypes: {
+    111: "KTP (Kartu Tanda Penduduk)",
+    414: "Paspor",
+    335: "SIM (Surat Izin Mengemudi)",
+    222: "Izin Masuk / Exit-Entry Permit",
+  } as Record<CertificateType, string>,
+
+  visitReasons: {
+    0: "Urusan Bisnis",
+    1: "Pelatihan / Training",
+    2: "Kunjungan Umum",
+    3: "Rapat / Meeting",
+    4: "Keperluan Lainnya",
+  } as Record<VisitReasonType, string>,
+
+  timeSchedules: {
+    1: "Akses 24 Jam Penuh (24/7)",
+    2: "Jam Kerja Normal (Senin–Jumat 08:00–18:00)",
+    3: "Akses Khusus Akhir Pekan (Sabtu–Minggu)",
+  } as Record<TimeScheduleTemplateId, string>,
+
+  tapQuotaModes: {
+    unlimited: {
+      label: "Bebas Masuk Tanpa Batas (0)",
+      description: "Tamu dapat menempelkan kartu/QR di pintu putar dan pintu akses berkali-kali selama masa berlaku jadwal kunjungan.",
+    },
+    limited: {
+      label: "Batas Jumlah Masuk Tertentu",
+      description: "Batasi frekuensi buka pintu / putaran pintu putar (misal 1 kali masuk atau 2 kali masuk).",
+    },
+  } as Record<TapQuotaMode, { label: string; description: string }>,
+
+  syncStatuses: {
+    Applied: "Tersinkronisasi ke Terminal",
+    Syncing: "Sedang Menyinkronkan...",
+    Failed: "Gagal Sinkronisasi",
+    Unknown: "Status Belum Diketahui",
+  } as Record<CredentialSyncStatus, string>,
 
   statusBadges: {
     PENDING_APPROVAL: {

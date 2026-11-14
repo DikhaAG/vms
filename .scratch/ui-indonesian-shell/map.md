@@ -15,8 +15,8 @@ Task graph for Indonesian Localization, Impeccable App Shell, and Guided Onboard
 | 01 | [01-indonesian-dictionary-and-page-guide-modal.md](file:///Users/a69/Desktop/DESKTOP/TAM/vms/.scratch/ui-indonesian-shell/issues/01-indonesian-dictionary-and-page-guide-modal.md) | completed | None | Done |
 | 02 | [02-app-shell-sidebar-and-header.md](file:///Users/a69/Desktop/DESKTOP/TAM/vms/.scratch/ui-indonesian-shell/issues/02-app-shell-sidebar-and-header.md) | completed | 01 | Done |
 | 03 | [03-core-operations-localization-and-guides.md](file:///Users/a69/Desktop/DESKTOP/TAM/vms/.scratch/ui-indonesian-shell/issues/03-core-operations-localization-and-guides.md) | completed | 02 | Done |
-| 04 | [04-invitation-security-and-self-registration-localization.md](file:///Users/a69/Desktop/DESKTOP/TAM/vms/.scratch/ui-indonesian-shell/issues/04-invitation-security-and-self-registration-localization.md) | ready-for-agent | 02 | **READY** |
-| 05 | [05-e2e-ui-accessibility-and-visual-audit.md](file:///Users/a69/Desktop/DESKTOP/TAM/vms/.scratch/ui-indonesian-shell/issues/05-e2e-ui-accessibility-and-visual-audit.md) | ready-for-agent | 03, 04 | Waiting on 04 |
+| 04 | [04-invitation-security-and-self-registration-localization.md](file:///Users/a69/Desktop/DESKTOP/TAM/vms/.scratch/ui-indonesian-shell/issues/04-invitation-security-and-self-registration-localization.md) | completed | 02 | Done |
+| 05 | [05-e2e-ui-accessibility-and-visual-audit.md](file:///Users/a69/Desktop/DESKTOP/TAM/vms/.scratch/ui-indonesian-shell/issues/05-e2e-ui-accessibility-and-visual-audit.md) | ready-for-agent | 03, 04 | **READY** |
 
 ## Frontier
-- `04-invitation-security-and-self-registration-localization.md` is currently unblocked and ready for immediate implementation.
+- `05-e2e-ui-accessibility-and-visual-audit.md` is currently unblocked and ready for immediate implementation.

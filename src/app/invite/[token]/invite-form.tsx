@@ -17,6 +17,7 @@ import {
   type CertificateType,
   type PreRegistrationMode,
   type StubScenario,
+  type VisitReasonType,
 } from "@/lib/vms/vms-contract";
 import {
   createSampleFaceJpegDataUri,
@@ -29,6 +30,7 @@ import type {
   PublicInvitationMetadata,
   SelfRegistrationResult,
 } from "@/lib/vms/invitation-contract";
+import { idDict } from "@/lib/vms/i18n/id";
 
 interface InviteFormProps {
   token: string;
@@ -92,7 +94,7 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
     setFaceError(null);
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setFaceError("Camera access is not supported on this browser.");
+        setFaceError("Akses kamera tidak didukung oleh peramban ini.");
         return;
       }
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -112,8 +114,8 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
     } catch (err) {
       setFaceError(
         err instanceof Error
-          ? `Camera access error: ${err.message}`
-          : "Unable to access camera. Please check browser permissions.",
+          ? `Gagal mengakses kamera: ${err.message}`
+          : "Tidak dapat mengakses kamera. Silakan periksa izin kamera pada peramban.",
       );
       setIsCameraActive(false);
     }
@@ -129,42 +131,29 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
 
   const handleCaptureSelfie = useCallback(async () => {
     if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 640;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const rawDataUri = canvas.toDataURL("image/jpeg", 0.9);
+
+    handleStopCamera();
+    setIsNormalizing(true);
+    setFaceError(null);
+
     try {
-      setIsNormalizing(true);
-      setFaceError(null);
-
-      const video = videoRef.current;
-      const canvas = document.createElement("canvas");
-      const size = Math.min(video.videoWidth || 640, video.videoHeight || 640);
-      canvas.width = size;
-      canvas.height = size;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Unable to create canvas 2D rendering context.");
-      }
-
-      const startX = ((video.videoWidth || size) - size) / 2;
-      const startY = ((video.videoHeight || size) - size) / 2;
-      ctx.drawImage(video, startX, startY, size, size, 0, 0, size, size);
-
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, "image/jpeg", 0.85);
-      });
-
-      if (!blob) {
-        throw new Error("Failed to capture image from camera.");
-      }
-
-      const file = new File([blob], "selfie.jpg", { type: "image/jpeg" });
-      const normalized = await processBrowserImageFile(file);
-
+      const normalized = await processBrowserImageFile(rawDataUri);
       setFacePhoto(normalized.dataUri);
       setFaceByteSize(normalized.byteSize);
-      handleStopCamera();
     } catch (err) {
       setFaceError(
-        err instanceof Error ? err.message : "Selfie capture failed.",
+        err instanceof Error
+          ? err.message
+          : "Gagal memproses foto selfie kamera.",
       );
     } finally {
       setIsNormalizing(false);
@@ -178,6 +167,7 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
 
       setIsNormalizing(true);
       setFaceError(null);
+
       try {
         const normalized = await processBrowserImageFile(file);
         setFacePhoto(normalized.dataUri);
@@ -186,20 +176,21 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
         setFaceError(
           err instanceof Error
             ? err.message
-            : "Failed to process uploaded photo.",
+            : "Gagal memproses berkas foto yang diunggah.",
         );
       } finally {
         setIsNormalizing(false);
+        e.target.value = "";
       }
     },
     [],
   );
 
   const handleLoadSamplePhoto = useCallback(() => {
-    const sampleDataUri = createSampleFaceJpegDataUri(24 * 1024);
-    setFacePhoto(sampleDataUri);
-    setFaceByteSize(24 * 1024);
     setFaceError(null);
+    const sample = createSampleFaceJpegDataUri(25088); // 24.5 KB compliant
+    setFacePhoto(sample);
+    setFaceByteSize(25088);
   }, []);
 
   const handleClearPhoto = useCallback(() => {
@@ -208,24 +199,18 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
     setFaceError(null);
   }, []);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setGlobalError(null);
     setFieldErrors({});
 
-    // Client-side quick check
+    // Client-side validations
     const errors: Record<string, string> = {};
     if (!visitorGivenName.trim()) {
-      errors.visitorGivenName = "First / Given name is required.";
+      errors.visitorGivenName = "Nama Depan wajib diisi.";
     }
     if (!visitorFamilyName.trim()) {
-      errors.visitorFamilyName = "Last / Family name is required.";
-    }
-    if (certificateNo.trim() && !certificateType) {
-      errors.certificateType = "Certificate type is required.";
-    }
-    if (facePhoto && !isFacePhotoSizeValid(faceByteSize)) {
-      errors.facePhoto = "Face photo must be between 10 KB and 100 KB.";
+      errors.visitorFamilyName = "Nama Belakang / Marga wajib diisi.";
     }
 
     if (Object.keys(errors).length > 0) {
@@ -234,34 +219,34 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
     }
 
     setIsSubmitting(true);
+
     try {
       const payload = {
         visitorGivenName: visitorGivenName.trim(),
         visitorFamilyName: visitorFamilyName.trim(),
         visitorPhone: visitorPhone.trim() || undefined,
         visitorEmail: visitorEmail.trim() || undefined,
-        certificateType: certificateType ? Number(certificateType) : undefined,
+        certificateType: certificateType || undefined,
         certificateNo: certificateNo.trim() || undefined,
         facePhoto: facePhoto || undefined,
         mode,
         stubScenario,
       };
 
-      const res = await fetch(`/api/vms/invite/${token}`, {
+      const res = await fetch(`/api/vms/invite/${token}/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      const data = (await res.json()) as SelfRegistrationResult;
-
+      const data = await res.json();
       if (!res.ok || !data.ok) {
         if (data.error?.fieldErrors) {
           setFieldErrors(data.error.fieldErrors);
         }
         setGlobalError(
           data.error?.message ??
-            `Registration failed (${res.status}). Please try again.`,
+            `Pendaftaran mandiri gagal diproses (${res.status}). Silakan coba lagi.`,
         );
         return;
       }
@@ -271,7 +256,7 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
       setGlobalError(
         err instanceof Error
           ? err.message
-          : "Network error occurred during registration.",
+          : "Terjadi gangguan jaringan saat memproses pendaftaran.",
       );
     } finally {
       setIsSubmitting(false);
@@ -283,12 +268,12 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
     const v = registrationResult.visit;
     const passCode = registrationResult.qrPass?.appointCode ?? "N/A";
     const text = [
-      `VMS Digital Pass: ${passCode}`,
-      `Visitor: ${v.visitorGivenName} ${v.visitorFamilyName}`,
-      `Facility: ${initialData.facility.name}`,
-      `Address: ${initialData.facility.address ?? ""}`,
-      `Date & Time: ${initialData.scheduledStartTimeFacility} to ${initialData.scheduledEndTimeFacility} (${initialData.facility.timezone})`,
-      `Host: ${initialData.host?.name ?? "Host"}`,
+      `Tiket Digital VMS: ${passCode}`,
+      `Nama Tamu: ${v.visitorGivenName} ${v.visitorFamilyName}`,
+      `Gedung: ${initialData.facility.name}`,
+      `Alamat: ${initialData.facility.address ?? ""}`,
+      `Jadwal Kunjungan: ${initialData.scheduledStartTimeFacility} s/d ${initialData.scheduledEndTimeFacility} (${initialData.facility.timezone})`,
+      `Tuan Rumah: ${initialData.host?.name ?? "Tuan Rumah"}`,
     ].join("\n");
 
     navigator.clipboard?.writeText(text);
@@ -303,26 +288,25 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
 
     return (
       <section className="space-y-6">
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-6 text-center shadow-xs">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-700">
+        <div className="rounded-2xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/30 p-6 text-center shadow-xs">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
             ✓
           </div>
-          <h2 className="mt-3 text-xl font-bold tracking-tight text-neutral-950 sm:text-2xl">
-            Registration Complete!
+          <h2 className="mt-3 text-xl font-bold tracking-tight text-neutral-950 dark:text-white sm:text-2xl">
+            Pendaftaran Berhasil Lengkap!
           </h2>
-          <p className="mt-1 text-sm text-neutral-600">
-            Your appointment has been registered and scheduled with the
-            facility access control system.
+          <p className="mt-1 text-sm text-neutral-600 dark:text-slate-400">
+            Jadwal kunjungan Anda telah terdaftar dan disinkronkan ke sistem kontrol pintu gerbang fasilitas.
           </p>
         </div>
 
         {/* Digital QR Pass Card */}
-        <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
           <div className="bg-gradient-to-r from-neutral-900 to-neutral-800 px-6 py-5 text-white">
             <div className="flex items-center justify-between">
               <div>
                 <span className="text-xs font-semibold tracking-wider uppercase text-neutral-400">
-                  Digital Visitor Pass
+                  Tiket Akses Digital Tamu
                 </span>
                 <h3 className="text-lg font-bold">
                   {initialData.facility.name}
@@ -341,55 +325,57 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
               <div className="flex flex-col items-center sm:items-start">
                 {/* QR Code */}
                 {qrPass?.qrCodeImage ? (
-                  <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3 shadow-inner">
+                  <div className="rounded-xl border border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800 p-3 shadow-inner">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={toPngDataUri(qrPass.qrCodeImage)}
-                      alt="Digital Visitor QR Pass"
+                      alt="Tiket QR Tamu Digital"
                       width={160}
                       height={160}
                       className="h-40 w-40 object-contain"
                     />
                   </div>
                 ) : (
-                  <div className="flex h-40 w-40 items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-neutral-50 p-4 text-center text-xs text-neutral-500">
-                    Facial Recognition Credential Activated
+                  <div className="flex h-40 w-40 items-center justify-center rounded-xl border border-dashed border-neutral-300 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800 p-4 text-center text-xs text-neutral-500 dark:text-slate-400">
+                    Kredensial Pengenalan Wajah Telah Aktif
                   </div>
                 )}
-                <span className="mt-2 text-xs font-medium text-neutral-500">
-                  Scan at turnstiles or gate terminals
+                <span className="mt-2 text-xs font-medium text-neutral-500 dark:text-slate-400">
+                  Pindai pada pintu putar atau terminal pintu lobi
                 </span>
               </div>
 
               {/* Visitor & Visit Info */}
               <div className="flex-1 space-y-4 text-sm">
                 <div>
-                  <span className="text-xs text-neutral-500">Visitor Name</span>
-                  <p className="font-semibold text-neutral-900">
+                  <span className="text-xs text-neutral-500 dark:text-slate-400">Nama Tamu</span>
+                  <p className="font-semibold text-neutral-900 dark:text-white">
                     {v.visitorGivenName} {v.visitorFamilyName}
                   </p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <span className="text-xs text-neutral-500">Host</span>
-                    <p className="font-medium text-neutral-800">
-                      {initialData.host?.name ?? "Host Sponsor"}
+                    <span className="text-xs text-neutral-500 dark:text-slate-400">Tuan Rumah</span>
+                    <p className="font-medium text-neutral-800 dark:text-slate-200">
+                      {initialData.host?.name ?? "Tuan Rumah Internal"}
                     </p>
                   </div>
                   <div>
-                    <span className="text-xs text-neutral-500">Purpose</span>
-                    <p className="font-medium text-neutral-800">
-                      {initialData.visitReasonLabel}
+                    <span className="text-xs text-neutral-500 dark:text-slate-400">Keperluan</span>
+                    <p className="font-medium text-neutral-800 dark:text-slate-200">
+                      {(initialData.visitReasonType !== undefined
+                        ? idDict.visitReasons[initialData.visitReasonType as VisitReasonType]
+                        : null) ?? initialData.visitReasonLabel}
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <span className="text-xs text-neutral-500">
-                    Scheduled Window ({initialData.facility.timezone})
+                  <span className="text-xs text-neutral-500 dark:text-slate-400">
+                    Jadwal Kunjungan ({initialData.facility.timezone})
                   </span>
-                  <p className="font-mono text-xs font-semibold text-neutral-900">
+                  <p className="font-mono text-xs font-semibold text-neutral-900 dark:text-white">
                     {initialData.scheduledStartTimeFacility.replace("T", " ")} —{" "}
                     {initialData.scheduledEndTimeFacility.replace("T", " ")}
                   </p>
@@ -397,8 +383,8 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
 
                 {initialData.facility.address && (
                   <div>
-                    <span className="text-xs text-neutral-500">Address</span>
-                    <p className="text-xs text-neutral-700">
+                    <span className="text-xs text-neutral-500 dark:text-slate-400">Alamat Gedung</span>
+                    <p className="text-xs text-neutral-700 dark:text-slate-300">
                       {initialData.facility.address}
                     </p>
                   </div>
@@ -407,47 +393,44 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
             </div>
 
             {/* Actions */}
-            <div className="mt-6 flex flex-wrap gap-3 border-t border-neutral-100 pt-6">
+            <div className="mt-6 flex flex-wrap gap-3 border-t border-neutral-100 dark:border-slate-800 pt-6">
               <button
                 type="button"
                 onClick={handleCopyPassDetails}
-                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-800 shadow-xs transition hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+                className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-neutral-800 dark:text-slate-200 shadow-xs transition hover:bg-neutral-50 dark:hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
               >
-                {copiedPass ? "✓ Details Copied!" : "Copy Pass Summary"}
+                {copiedPass ? "✓ Rincian Berhasil Disalin!" : "Salin Ringkasan Tiket"}
               </button>
 
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
+                className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 dark:bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-neutral-800 dark:hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
               >
-                Print / Save Pass
+                Cetak / Simpan Tiket
               </button>
             </div>
           </div>
         </div>
 
         {/* Visiting Guidelines */}
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-5 text-sm text-neutral-700">
-          <h4 className="font-semibold text-neutral-900">
-            Visiting Guidelines & Instructions
+        <div className="rounded-xl border border-neutral-200 dark:border-slate-800 bg-neutral-50 dark:bg-slate-850 p-5 text-sm text-neutral-700 dark:text-slate-300">
+          <h4 className="font-semibold text-neutral-900 dark:text-white">
+            Panduan & Petunjuk Kedatangan Tamu
           </h4>
-          <ul className="mt-2 list-inside list-disc space-y-1.5 text-xs text-neutral-600">
+          <ul className="mt-2 list-inside list-disc space-y-1.5 text-xs text-neutral-600 dark:text-slate-400">
             <li>
-              Please arrive 10–15 minutes before your scheduled appointment
-              time.
+              Harap tiba 10–15 menit sebelum waktu janji temu yang dijadwalkan.
             </li>
             <li>
-              Present your QR code pass or step in front of the facial
-              recognition terminal at the lobby turnstiles.
+              Tunjukkan kode QR tiket Anda atau hadapkan wajah ke terminal pintu putar di lobi gedung.
             </li>
             <li>
-              Ensure you carry a valid photo ID (KTP/Passport) matching your
-              registration details for physical security verification.
+              Pastikan Anda membawa kartu identitas asli (KTP/Paspor) yang sesuai untuk verifikasi fisik petugas keamanan jika diperlukan.
             </li>
             <li>
-              If you need assistance or rescheduling, contact your host (
-              {initialData.host?.name ?? "Host"}).
+              Jika membutuhkan bantuan atau perubahan jadwal, silakan hubungi tuan rumah Anda (
+              {initialData.host?.name ?? "Tuan Rumah"}).
             </li>
           </ul>
         </div>
@@ -456,31 +439,34 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} noValidate className="space-y-6">
       {globalError && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"
+          className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-4 text-sm text-red-800 dark:text-red-300"
         >
-          <p className="font-medium">Registration Error</p>
+          <p className="font-semibold">Pendaftaran Gagal Diproses</p>
           <p className="mt-1 text-xs">{globalError}</p>
         </div>
       )}
 
       {/* Visitor Identity Details */}
-      <fieldset className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
-        <legend className="px-2 text-sm font-semibold text-neutral-900">
-          Your Personal Details
+      <fieldset className="rounded-xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
+        <legend className="px-2 text-sm font-semibold text-neutral-900 dark:text-white">
+          Data Diri Tamu
         </legend>
+        <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
+          Pastikan nama dan nomor kontak Anda sesuai untuk mempermudah verifikasi kedatangan di lobi gedung.
+        </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           {/* Given Name */}
           <div>
             <label
               htmlFor={`${formId}-given-name`}
-              className="block text-xs font-medium text-neutral-700"
+              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
             >
-              First / Given Name <span className="text-red-500">*</span>
+              Nama Depan <span className="text-red-500">*</span>
             </label>
             <input
               id={`${formId}-given-name`}
@@ -488,8 +474,8 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
               required
               value={visitorGivenName}
               onChange={(e) => setVisitorGivenName(e.target.value)}
-              placeholder="e.g. Rian"
-              className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
+              placeholder="cth. Rian"
+              className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
             />
             {fieldErrors.visitorGivenName && (
               <p className="mt-1 text-xs text-red-600">
@@ -502,9 +488,9 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
           <div>
             <label
               htmlFor={`${formId}-family-name`}
-              className="block text-xs font-medium text-neutral-700"
+              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
             >
-              Last / Family Name <span className="text-red-500">*</span>
+              Nama Belakang / Marga <span className="text-red-500">*</span>
             </label>
             <input
               id={`${formId}-family-name`}
@@ -512,8 +498,8 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
               required
               value={visitorFamilyName}
               onChange={(e) => setVisitorFamilyName(e.target.value)}
-              placeholder="e.g. Pratama"
-              className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
+              placeholder="cth. Pratama"
+              className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
             />
             {fieldErrors.visitorFamilyName && (
               <p className="mt-1 text-xs text-red-600">
@@ -526,9 +512,9 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
           <div>
             <label
               htmlFor={`${formId}-phone`}
-              className="block text-xs font-medium text-neutral-700"
+              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
             >
-              Mobile Phone
+              Nomor Telepon / WhatsApp
             </label>
             <input
               id={`${formId}-phone`}
@@ -538,8 +524,8 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
               spellCheck={false}
               value={visitorPhone}
               onChange={(e) => setVisitorPhone(e.target.value)}
-              placeholder="e.g. +628123456789"
-              className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
+              placeholder="cth. +628123456789"
+              className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
             />
             {fieldErrors.visitorPhone && (
               <p className="mt-1 text-xs text-red-600">
@@ -552,9 +538,9 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
           <div>
             <label
               htmlFor={`${formId}-email`}
-              className="block text-xs font-medium text-neutral-700"
+              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
             >
-              Email Address
+              Alamat Email
             </label>
             <input
               id={`${formId}-email`}
@@ -564,8 +550,8 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
               spellCheck={false}
               value={visitorEmail}
               onChange={(e) => setVisitorEmail(e.target.value)}
-              placeholder="e.g. visitor@example.com"
-              className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
+              placeholder="cth. visitor@example.com"
+              className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
             />
             {fieldErrors.visitorEmail && (
               <p className="mt-1 text-xs text-red-600">
@@ -578,9 +564,9 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
           <div>
             <label
               htmlFor={`${formId}-cert-type`}
-              className="block text-xs font-medium text-neutral-700"
+              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
             >
-              ID Document Type
+              Jenis Tanda Pengenal
             </label>
             <select
               id={`${formId}-cert-type`}
@@ -590,12 +576,12 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                   e.target.value ? (Number(e.target.value) as CertificateType) : "",
                 )
               }
-              className="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
+              className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
             >
-              <option value="">None / Optional</option>
+              <option value="">Tidak Ada / Opsional</option>
               {CERTIFICATE_TYPES.map((t) => (
                 <option key={t} value={t}>
-                  {CERTIFICATE_TYPE_LABELS[t]}
+                  {idDict.certificateTypes[t] ?? CERTIFICATE_TYPE_LABELS[t]}
                 </option>
               ))}
             </select>
@@ -605,9 +591,9 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
           <div>
             <label
               htmlFor={`${formId}-cert-no`}
-              className="block text-xs font-medium text-neutral-700"
+              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
             >
-              ID Document Number
+              Nomor Identitas (NIK KTP / Paspor)
             </label>
             <input
               id={`${formId}-cert-no`}
@@ -617,8 +603,8 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
               spellCheck={false}
               value={certificateNo}
               onChange={(e) => setCertificateNo(e.target.value)}
-              placeholder="e.g. 3171012345670001"
-              className="mt-1 block w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
+              placeholder="cth. 3171012345670001"
+              className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus:ring-1 focus:ring-neutral-900"
             />
             {fieldErrors.certificateNo && (
               <p className="mt-1 text-xs text-red-600">
@@ -635,30 +621,29 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
       </fieldset>
 
       {/* Biometric Face Photo Enrollment */}
-      <fieldset className="rounded-xl border border-neutral-200 bg-white p-5 shadow-xs">
+      <fieldset className="rounded-xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
         <div className="flex items-center justify-between">
-          <legend className="px-2 text-sm font-semibold text-neutral-900">
-            Biometric Face Photo (Fast Turnstile Access)
+          <legend className="px-2 text-sm font-semibold text-neutral-900 dark:text-white">
+            Foto Wajah Biometrik (Akses Cepat Pintu Putar)
           </legend>
           {faceByteSize > 0 && (
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                 isFacePhotoSizeValid(faceByteSize)
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-amber-100 text-amber-800"
+                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                  : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
               }`}
             >
               {isFacePhotoSizeValid(faceByteSize)
-                ? `✓ ${formatFacePhotoSize(faceByteSize)} (Compliant)`
-                : `⚠ ${formatFacePhotoSize(faceByteSize)} (Requires 10–100 KB)`}
+                ? `✓ ${formatFacePhotoSize(faceByteSize)} (Sesuai Standar)`
+                : `⚠ ${formatFacePhotoSize(faceByteSize)} (Memerlukan 10–100 KB)`}
             </span>
           )}
         </div>
 
-        <p className="mt-2 text-xs text-neutral-500">
-          Upload a clear selfie or use your device camera. Our pipeline
-          automatically crops and normalizes the photo into a HikCentral-compliant
-          JPEG strictly between 10 KB and 100 KB.
+        <p className="mt-2 text-xs text-neutral-500 dark:text-slate-400">
+          Unggah foto selfie yang jelas atau gunakan kamera smartphone Anda. Sistem akan secara otomatis
+          menyesuaikan ukuran foto agar sesuai dengan standar terminal pintu (10 KB – 100 KB).
         </p>
 
         {faceError && (
@@ -670,7 +655,7 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
 
         <div className="mt-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
           {/* Photo Preview or Camera Stream */}
-          <div className="relative flex h-48 w-48 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-neutral-300 bg-neutral-50 shadow-inner">
+          <div className="relative flex h-48 w-48 flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-neutral-300 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800 shadow-inner">
             {isCameraActive ? (
               <video
                 ref={videoRef}
@@ -683,13 +668,13 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={facePhoto}
-                alt="Visitor selfie preview"
+                alt="Pratinjau selfie tamu"
                 className="h-full w-full object-cover"
               />
             ) : (
               <div className="flex flex-col items-center p-3 text-center text-xs text-neutral-400">
                 <svg
-                  className="h-10 w-10 text-neutral-300"
+                  className="h-10 w-10 text-neutral-300 dark:text-slate-600"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -701,14 +686,14 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                     d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <span className="mt-1">No face photo</span>
+                <span className="mt-1">Belum ada foto wajah</span>
               </div>
             )}
 
             {isNormalizing && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-xs">
-                <span className="text-xs font-semibold text-neutral-700">
-                  Normalizing...
+              <div className="absolute inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-xs">
+                <span className="text-xs font-semibold text-neutral-700 dark:text-slate-300">
+                  Memproses foto...
                 </span>
               </div>
             )}
@@ -722,16 +707,16 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                   type="button"
                   onClick={handleCaptureSelfie}
                   disabled={isNormalizing}
-                  className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-neutral-800"
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 dark:bg-blue-600 px-4 py-2 text-xs font-medium text-white shadow-xs transition hover:bg-neutral-800 dark:hover:bg-blue-700"
                 >
-                  📸 Take Selfie
+                  📸 Ambil Foto Selfie
                 </button>
                 <button
                   type="button"
                   onClick={handleStopCamera}
-                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-700 shadow-xs transition hover:bg-neutral-50"
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-neutral-700 dark:text-slate-300 shadow-xs transition hover:bg-neutral-50 dark:hover:bg-slate-700"
                 >
-                  Cancel Camera
+                  Batal Kamera
                 </button>
               </div>
             ) : (
@@ -739,13 +724,13 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                 <button
                   type="button"
                   onClick={handleStartCamera}
-                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-800 shadow-xs transition hover:bg-neutral-50"
+                  className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-neutral-800 dark:text-slate-200 shadow-xs transition hover:bg-neutral-50 dark:hover:bg-slate-700"
                 >
-                  📷 Use Camera
+                  📷 Gunakan Kamera
                 </button>
 
-                <label className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-800 shadow-xs transition hover:bg-neutral-50">
-                  📁 Upload Photo
+                <label className="inline-flex min-h-10 cursor-pointer items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-neutral-800 dark:text-slate-200 shadow-xs transition hover:bg-neutral-50 dark:hover:bg-slate-700">
+                  📁 Unggah Foto
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -759,30 +744,30 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                   <button
                     type="button"
                     onClick={handleClearPhoto}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100"
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300 transition hover:bg-red-100"
                   >
-                    Remove Photo
+                    Hapus Foto
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={handleLoadSamplePhoto}
-                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 py-1.5 text-xs text-neutral-600 hover:bg-neutral-100"
+                    className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800 px-2.5 py-1.5 text-xs text-neutral-600 dark:text-slate-300 hover:bg-neutral-100 dark:hover:bg-slate-700"
                   >
-                    ⚡ Use Sample
+                    ⚡ Gunakan Contoh
                   </button>
                 )}
               </div>
             )}
 
-            <div className="rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600">
-              <span className="font-semibold text-neutral-800">
-                Photo Guidelines:
+            <div className="rounded-lg bg-neutral-50 dark:bg-slate-850 p-3 text-xs text-neutral-600 dark:text-slate-400">
+              <span className="font-semibold text-neutral-800 dark:text-slate-200">
+                Panduan Pengambilan Foto Selfie:
               </span>
               <ul className="mt-1 list-inside list-disc space-y-0.5">
-                <li>Look directly at the camera with neutral expression.</li>
-                <li>Ensure even lighting without heavy shadows or glare.</li>
-                <li>Remove hats, sunglasses, or face coverings.</li>
+                <li>Hadap lurus ke arah kamera dengan ekspresi wajar.</li>
+                <li>Pastikan pencahayaan terang dan merata tanpa bayangan gelap.</li>
+                <li>Lepaskan kacamata hitam, topi, atau masker penutup wajah.</li>
               </ul>
             </div>
           </div>
@@ -790,17 +775,17 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
       </fieldset>
 
       {/* Simulation Controls (Optional Collapsible) */}
-      <details className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 text-xs text-neutral-600">
-        <summary className="cursor-pointer font-semibold text-neutral-700">
-          Simulation & Hardware Execution Settings
+      <details className="rounded-xl border border-neutral-200 dark:border-slate-800 bg-neutral-50 dark:bg-slate-850 p-4 text-xs text-neutral-600 dark:text-slate-400">
+        <summary className="cursor-pointer font-semibold text-neutral-700 dark:text-slate-300">
+          Pengaturan Mode Eksekusi & Simulasi (Pengembangan)
         </summary>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="block text-neutral-600">Execution Mode</label>
+            <label className="block text-neutral-600 dark:text-slate-400">Mode Eksekusi</label>
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value as PreRegistrationMode)}
-              className="mt-1 block w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-800"
+              className="mt-1 block w-full rounded-md border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-neutral-800 dark:text-slate-200"
             >
               {PRE_REGISTRATION_MODES.map((m) => (
                 <option key={m} value={m}>
@@ -811,13 +796,13 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
           </div>
           {mode === "stub" && (
             <div>
-              <label className="block text-neutral-600">Stub Scenario</label>
+              <label className="block text-neutral-600 dark:text-slate-400">Skenario Simulasi Stub</label>
               <select
                 value={stubScenario}
                 onChange={(e) =>
                   setStubScenario(e.target.value as StubScenario)
                 }
-                className="mt-1 block w-full rounded-md border border-neutral-300 bg-white px-2 py-1 text-xs text-neutral-800"
+                className="mt-1 block w-full rounded-md border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs text-neutral-800 dark:text-slate-200"
               >
                 {STUB_SCENARIOS.map((s) => (
                   <option key={s} value={s}>
@@ -835,9 +820,9 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
         <button
           type="submit"
           disabled={isSubmitting || isNormalizing}
-          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-neutral-900 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:opacity-50 sm:w-auto"
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-neutral-900 dark:bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-neutral-800 dark:hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:opacity-50 sm:w-auto"
         >
-          {isSubmitting ? "Completing Registration..." : "Complete Registration & Get Pass →"}
+          {isSubmitting ? "Menyelesaikan Pendaftaran..." : "Selesaikan Pendaftaran & Dapatkan Tiket →"}
         </button>
       </div>
     </form>

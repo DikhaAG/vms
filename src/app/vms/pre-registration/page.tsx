@@ -1,49 +1,47 @@
-import Link from "next/link";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import { PreRegistrationForm } from "./pre-registration-form";
+import { PageGuideModal } from "@/components/vms/page-guide-modal";
+import { idDict } from "@/lib/vms/i18n/id";
 
 export const metadata = {
-  title: "Host Pre-Registration | VMS",
+  title: "Buat Undangan Tamu Terjadwal | VMS",
   description:
-    "Pre-register visitors across multi-facility IANA timezones with HikCentral OpenAPI synchronization.",
+    "Jadwalkan kunjungan tamu di muka dan kirimkan tautan pendaftaran mandiri foto biometrik wajah.",
 };
 
 export default async function PreRegistrationPage() {
   const facilities = await defaultVmsRepository.listFacilities();
   const accessLevels = await defaultVmsRepository.listAccessLevels();
 
-  return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <nav className="mb-6">
-        <Link
-          href="/"
-          className="text-xs font-medium text-neutral-600 transition hover:text-neutral-900"
-        >
-          &larr; Back to Home
-        </Link>
-      </nav>
+  const pageInfo = idDict.pages.preRegistration;
 
-      <div className="mb-8">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-            Host Pre-Registration
-          </h1>
-          <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-            Tracer Bullet
-          </span>
+  return (
+    <div className="space-y-6">
+      {/* Page Header with Guide Modal Trigger */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {pageInfo.title}
+            </h1>
+            <span className="rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 dark:border dark:border-blue-800 px-2.5 py-0.5 text-xs font-semibold">
+              Kunjungan Individual
+            </span>
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-3xl">
+            {pageInfo.subtitle}
+          </p>
         </div>
-        <p className="mt-2 text-sm text-neutral-600">
-          Schedule upcoming visitor appointments bound to canonical facility
-          IANA timezones. Timestamps are persisted in UTC and automatically
-          translated to localized ISO 8601 offset strings for HikCentral OpenAPI
-          execution.
-        </p>
+
+        <div>
+          <PageGuideModal pageKey="preRegistration" />
+        </div>
       </div>
 
       <PreRegistrationForm
         initialFacilities={facilities}
         initialAccessLevels={accessLevels}
       />
-    </main>
+    </div>
   );
 }

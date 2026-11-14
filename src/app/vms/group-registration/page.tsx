@@ -1,50 +1,47 @@
-import Link from "next/link";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import { GroupRegistrationClient } from "./group-registration-client";
+import { PageGuideModal } from "@/components/vms/page-guide-modal";
+import { idDict } from "@/lib/vms/i18n/id";
 
 export const metadata = {
-  title: "Group Visit Registration | VMS",
+  title: "Pendaftaran Rombongan & Delegasi | VMS",
   description:
-    "Schedule multi-visitor delegation bookings under unified HikCentral visitor groups with returning visitor auto-fill.",
+    "Daftarkan rombongan tamu, tim vendor, atau delegasi klien dalam satu grup janji temu terpadu dengan hak akses serentak.",
 };
 
 export default async function GroupRegistrationPage() {
   const facilities = await defaultVmsRepository.listFacilities();
   const allAccessLevels = await defaultVmsRepository.listAccessLevels();
 
-  return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-      <nav className="mb-6">
-        <Link
-          href="/"
-          className="text-xs font-medium text-neutral-600 transition hover:text-neutral-900"
-        >
-          &larr; Back to Home
-        </Link>
-      </nav>
+  const pageInfo = idDict.pages.groupRegistration;
 
-      <div className="mb-8">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-            Multi-Visitor Group Visits
-          </h1>
-          <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-800">
-            Ticket 08
-          </span>
+  return (
+    <div className="space-y-6">
+      {/* Page Header with Guide Modal Trigger */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {pageInfo.title}
+            </h1>
+            <span className="rounded-full bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border dark:border-indigo-800 px-2.5 py-0.5 text-xs font-semibold">
+              Kunjungan Kolektif
+            </span>
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-3xl">
+            {pageInfo.subtitle}
+          </p>
         </div>
-        <p className="mt-2 text-sm text-neutral-600 max-w-3xl">
-          Register client teams, vendor delegations, or contractor groups in a
-          single unified booking. Orchestrates individual visitor appointments to
-          HikCentral under a shared <code className="rounded bg-neutral-100 px-1 py-0.5 text-xs text-neutral-800 font-mono">visitorGroupName</code>,
-          with instant returning visitor recognition, profile auto-fill, and
-          biometric face credential reuse.
-        </p>
+
+        <div>
+          <PageGuideModal pageKey="groupRegistration" />
+        </div>
       </div>
 
       <GroupRegistrationClient
         facilities={facilities}
         allAccessLevels={allAccessLevels}
       />
-    </main>
+    </div>
   );
 }

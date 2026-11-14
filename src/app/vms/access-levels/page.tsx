@@ -1,48 +1,47 @@
-import Link from "next/link";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import { AccessLevelsClient } from "./access-levels-client";
+import { PageGuideModal } from "@/components/vms/page-guide-modal";
+import { idDict } from "@/lib/vms/i18n/id";
 
 export const metadata = {
-  title: "Dynamic Access Level Management | VMS",
+  title: "Pengaturan Hak Akses Pintu | VMS",
   description:
-    "Configure physical door and elevator floor bundles, time schedule templates, and tap quotas for visitor access control.",
+    "Konfigurasi kelompok pintu fisik, lantai lift, template jadwal waktu, dan batas tap untuk keamanan gedung.",
 };
 
 export default async function AccessLevelsPage() {
   const facilities = await defaultVmsRepository.listFacilities();
   const accessLevels = await defaultVmsRepository.listAccessLevels();
 
-  return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-      <nav className="mb-6">
-        <Link
-          href="/"
-          className="text-xs font-medium text-neutral-600 transition hover:text-neutral-900"
-        >
-          &larr; Back to Home
-        </Link>
-      </nav>
+  const pageInfo = idDict.pages.accessLevels;
 
-      <div className="mb-8">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-            Dynamic Access Level Management
-          </h1>
-          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
-            Ticket 05
-          </span>
+  return (
+    <div className="space-y-6">
+      {/* Page Header with Guide Modal Trigger */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {pageInfo.title}
+            </h1>
+            <span className="rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border dark:border-emerald-800 px-2.5 py-0.5 text-xs font-semibold">
+              Master Keamanan
+            </span>
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-3xl">
+            {pageInfo.subtitle}
+          </p>
         </div>
-        <p className="mt-2 text-sm text-neutral-600 max-w-3xl">
-          Security Administrator portal for managing dynamic Access Levels (Privilege Groups).
-          Bundle physical doors, turnstiles, elevator floors, and time schedule templates.
-          Assign access levels and configure tap quotas when scheduling visits to enforce least-privilege physical security.
-        </p>
+
+        <div>
+          <PageGuideModal pageKey="accessLevels" />
+        </div>
       </div>
 
       <AccessLevelsClient
         facilities={facilities}
         initialAccessLevels={accessLevels}
       />
-    </main>
+    </div>
   );
 }
