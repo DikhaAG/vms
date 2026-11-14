@@ -998,6 +998,7 @@ describe("InMemoryVmsRepository", () => {
     });
 
     it("saves and retrieves emergency access grants", async () => {
+      const futureExpiry = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
       const grant: EmergencyAccessGrant = {
         id: "grant-test-1",
         visitId: "vis-emg-1",
@@ -1007,7 +1008,7 @@ describe("InMemoryVmsRepository", () => {
         grantedByName: "Officer Wayne",
         reason: "Critical network fiber splice",
         grantedAtUtc: "2026-11-13T09:00:00.000Z",
-        expiresAtUtc: "2026-11-13T11:00:00.000Z",
+        expiresAtUtc: futureExpiry,
         status: "ACTIVE",
       };
 
@@ -1021,6 +1022,7 @@ describe("InMemoryVmsRepository", () => {
     });
 
     it("populates active emergency grants on getVisit and listActiveVisits", async () => {
+      const futureExpiry = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
       const grant: EmergencyAccessGrant = {
         id: "grant-test-2",
         visitId: "vis-emg-1",
@@ -1030,7 +1032,7 @@ describe("InMemoryVmsRepository", () => {
         grantedByName: "Officer Wayne",
         reason: "Emergency data center repair",
         grantedAtUtc: "2026-11-13T09:00:00.000Z",
-        expiresAtUtc: "2026-11-13T11:00:00.000Z",
+        expiresAtUtc: futureExpiry,
         status: "ACTIVE",
       };
 
@@ -1049,6 +1051,7 @@ describe("InMemoryVmsRepository", () => {
     });
 
     it("revokes an emergency grant and updates active grant population", async () => {
+      const futureExpiry = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
       const grant: EmergencyAccessGrant = {
         id: "grant-test-3",
         visitId: "vis-emg-1",
@@ -1058,7 +1061,7 @@ describe("InMemoryVmsRepository", () => {
         grantedByName: "Officer Wayne",
         reason: "Temporary investigation",
         grantedAtUtc: "2026-11-13T09:00:00.000Z",
-        expiresAtUtc: "2026-11-13T11:00:00.000Z",
+        expiresAtUtc: futureExpiry,
         status: "ACTIVE",
       };
 
