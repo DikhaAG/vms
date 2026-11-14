@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useRef } from "react";
 import type {
   ActiveVisitSummary,
   FacilityDoor,
   EmergencyAccessGrant,
 } from "@/lib/vms/checkout-contract";
 import { idDict } from "@/lib/vms/i18n/id";
+import { useModalFocusTrap } from "@/components/vms/use-modal-focus-trap";
 
 export interface EmergencyAccessModalProps {
   visit: ActiveVisitSummary | null;
@@ -31,41 +32,11 @@ export function EmergencyAccessModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!visit) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        onClose();
-        return;
-      }
-
-      if (e.key === "Tab") {
-        if (!modalRef.current) return;
-        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        );
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstElement) {
-            e.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            e.preventDefault();
-            firstElement.focus();
-          }
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [visit, onClose]);
+  useModalFocusTrap({
+    ref: modalRef,
+    isOpen: Boolean(visit),
+    onClose,
+  });
 
   const availableDoors = useMemo(() => {
     if (!visit) return [];

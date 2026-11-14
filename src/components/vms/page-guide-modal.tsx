@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { idDict, type PageKey, type PageGuideContent } from "@/lib/vms/i18n/id";
+import { useModalFocusTrap } from "./use-modal-focus-trap";
 
 export interface PageGuideModalProps {
   pageKey: PageKey;
@@ -28,50 +29,12 @@ export function PageGuideModal({
   const handleClose = useCallback(() => setIsOpen(false), []);
 
   // Keyboard navigation: Escape key closes modal & Tab focus trap
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        handleClose();
-        return;
-      }
-
-      if (event.key === "Tab") {
-        if (!modalRef.current) return;
-        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (event.shiftKey) {
-          if (document.activeElement === firstElement) {
-            event.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            event.preventDefault();
-            firstElement.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, handleClose]);
-
-  // Trap focus or focus close button on open
-  useEffect(() => {
-    if (isOpen && closeButtonRef.current) {
-      closeButtonRef.current.focus();
-    }
-  }, [isOpen]);
+  useModalFocusTrap({
+    ref: modalRef,
+    isOpen,
+    onClose: handleClose,
+    initialFocusRef: closeButtonRef,
+  });
 
   if (!guide) {
     return null;

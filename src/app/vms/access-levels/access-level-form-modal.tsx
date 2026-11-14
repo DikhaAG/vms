@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useId } from "react";
+import { useState, useRef, useId } from "react";
 import type { Facility } from "@/lib/vms/vms-contract";
 import type { FacilityDoor } from "@/lib/vms/checkout-contract";
 import {
@@ -10,6 +10,7 @@ import {
   type TimeScheduleTemplateId,
 } from "@/lib/vms/access-level-contract";
 import { idDict } from "@/lib/vms/i18n/id";
+import { useModalFocusTrap } from "@/components/vms/use-modal-focus-trap";
 
 const COMMON_FLOOR_PRESETS = ["B1", "1F", "2F", "3F", "4F", "5F"];
 
@@ -82,43 +83,11 @@ export function AccessLevelFormModal({
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
 
   // Keyboard navigation: Escape key closes modal & Tab focus trap
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-
-      if (event.key === "Tab") {
-        if (!modalRef.current) return;
-        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-        );
-        if (focusableElements.length === 0) return;
-
-        const firstElement = focusableElements[0];
-        const lastElement = focusableElements[focusableElements.length - 1];
-
-        if (event.shiftKey) {
-          if (document.activeElement === firstElement) {
-            event.preventDefault();
-            lastElement.focus();
-          }
-        } else {
-          if (document.activeElement === lastElement) {
-            event.preventDefault();
-            firstElement.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
+  useModalFocusTrap({
+    ref: modalRef,
+    isOpen,
+    onClose,
+  });
 
   if (!isOpen) return null;
 

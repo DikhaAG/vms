@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useRef } from "react";
 import Link from "next/link";
 import { idDict, type NavigationItem, type NavIconKey } from "@/lib/vms/i18n/id";
 import { useSafePathname } from "./use-safe-pathname";
+import { useModalFocusTrap } from "./use-modal-focus-trap";
 
 export interface SidebarProps {
   currentPath?: string;
@@ -78,43 +79,11 @@ export function Sidebar({
   const drawerRef = useRef<HTMLDivElement>(null);
 
   // Keyboard navigation & focus trapping for mobile drawer
-  useEffect(() => {
-    if (!mobileOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onCloseMobile?.();
-        return;
-      }
-
-      if (event.key === "Tab") {
-        if (!drawerRef.current) return;
-        const focusables = drawerRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusables.length === 0) return;
-
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-
-        if (event.shiftKey) {
-          if (document.activeElement === first) {
-            event.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (document.activeElement === last) {
-            event.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [mobileOpen, onCloseMobile]);
+  useModalFocusTrap({
+    ref: drawerRef,
+    isOpen: mobileOpen,
+    onClose: onCloseMobile,
+  });
 
   const renderNavLinks = (isDrawer = false) => (
     <div className="space-y-6">
