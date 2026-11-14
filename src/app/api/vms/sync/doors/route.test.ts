@@ -95,3 +95,4 @@ describe("POST /api/vms/sync/doors", () => {
     expect(data.error.message).toContain("connection refused");
   });
 });
+

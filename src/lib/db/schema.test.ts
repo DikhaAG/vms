@@ -50,3 +50,4 @@ describe("PostgreSQL Drizzle Schema & DDL Generator", () => {
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS host_arrival_notifications");
   });
 });
+
