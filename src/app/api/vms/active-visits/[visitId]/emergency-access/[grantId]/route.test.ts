@@ -85,6 +85,46 @@ describe("DELETE /api/vms/active-visits/[visitId]/emergency-access/[grantId]", (
     expect(json.grant.revokedByUserId).toBe("sec-query-01");
   });
 
+  it("rejects invalid non-empty JSON body with HTTP 400 Bad Request", async () => {
+    const req = new Request(
+      `http://localhost:3000/api/vms/active-visits/${visitId}/emergency-access/${grantId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: "invalid-json-body-syntax{{{",
+      },
+    );
+
+    const context = { params: Promise.resolve({ visitId, grantId }) };
+    const res = await DELETE(req, context);
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.ok).toBe(false);
+    expect(json.error.kind).toBe("validation");
+    expect(json.error.message).toBe("Invalid JSON body in delete request");
+  });
+
+  it("rejects non-object JSON body (e.g. array or primitive) with HTTP 400 Bad Request", async () => {
+    const req = new Request(
+      `http://localhost:3000/api/vms/active-visits/${visitId}/emergency-access/${grantId}`,
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(["not", "an", "object"]),
+      },
+    );
+
+    const context = { params: Promise.resolve({ visitId, grantId }) };
+    const res = await DELETE(req, context);
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.ok).toBe(false);
+    expect(json.error.kind).toBe("validation");
+    expect(json.error.message).toBe("Invalid JSON body in delete request");
+  });
+
   it("returns 404 when grant does not exist", async () => {
     const req = new Request(
       `http://localhost:3000/api/vms/active-visits/${visitId}/emergency-access/non-existent-grant`,
@@ -127,4 +167,3 @@ describe("DELETE /api/vms/active-visits/[visitId]/emergency-access/[grantId]", (
     expect(json.error.kind).toBe("upstream");
   });
 });
-

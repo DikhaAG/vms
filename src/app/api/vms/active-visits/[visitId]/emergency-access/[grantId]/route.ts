@@ -10,13 +10,36 @@ export async function DELETE(
   const { visitId, grantId } = await context.params;
 
   let body: Record<string, unknown> = {};
-  try {
-    const text = await request.text();
-    if (text.trim()) {
-      body = JSON.parse(text);
+  const rawText = await request.text().catch(() => "");
+  const trimmedText = rawText.trim();
+  if (trimmedText) {
+    try {
+      const parsed = JSON.parse(trimmedText);
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: {
+              kind: "validation",
+              message: "Invalid JSON body in delete request",
+            },
+          },
+          { status: 400 },
+        );
+      }
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            kind: "validation",
+            message: "Invalid JSON body in delete request",
+          },
+        },
+        { status: 400 },
+      );
     }
-  } catch {
-    // optional body
   }
 
   const url = new URL(request.url);
@@ -99,4 +122,3 @@ export async function DELETE(
     );
   }
 }
-
