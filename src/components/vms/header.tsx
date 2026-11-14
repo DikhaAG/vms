@@ -50,19 +50,9 @@ export function Header({
   const tz = selectedFacility?.timezone || "Asia/Jakarta";
   const tzAbbr = getTimezoneAbbreviation(tz);
 
-  const [currentTime, setCurrentTime] = useState<string>(() => {
-    try {
-      return new Intl.DateTimeFormat("id-ID", {
-        timeZone: tz,
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      }).format(new Date());
-    } catch {
-      return "";
-    }
-  });
+  // Initialize with empty string to ensure server HTML and client initial render
+  // match identically ("--:--:--"), preventing React hydration mismatch.
+  const [currentTime, setCurrentTime] = useState<string>("");
 
   useEffect(() => {
     const updateTime = () => {
@@ -151,7 +141,10 @@ export function Header({
 
           {/* Timezone Clock */}
           <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-            <span className="font-mono tabular-nums text-slate-900 dark:text-slate-100 font-medium">
+            <span
+              suppressHydrationWarning
+              className="font-mono tabular-nums text-slate-900 dark:text-slate-100 font-medium"
+            >
               {currentTime || "--:--:--"}
             </span>
             <span className="px-1.5 py-0.2 rounded-md bg-slate-200/70 dark:bg-slate-700 text-[10px] font-semibold text-slate-700 dark:text-slate-300">

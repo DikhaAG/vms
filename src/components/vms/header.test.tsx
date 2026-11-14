@@ -103,5 +103,37 @@ describe("Header Component", () => {
     expect(html).toContain("Monitoring Tamu &amp; Pintu");
     expect(html).toContain("Operasional Utama");
   });
+
+  it("prevents hydration mismatch when client initial render occurs after server render time", () => {
+    vi.useFakeTimers();
+    try {
+      // Step 1: Server renders at T1 (12:19:17)
+      vi.setSystemTime(new Date("2026-11-14T05:19:17.000Z"));
+      const serverHtml = renderToStaticMarkup(
+        <Header
+          facilities={mockFacilities}
+          selectedFacilityId="fac-jakarta"
+          currentPath="/vms/reception"
+        />
+      );
+
+      // Step 2: Client hydrates at T2 (12:19:18)
+      vi.setSystemTime(new Date("2026-11-14T05:19:18.000Z"));
+      const clientInitialHtml = renderToStaticMarkup(
+        <Header
+          facilities={mockFacilities}
+          selectedFacilityId="fac-jakarta"
+          currentPath="/vms/reception"
+        />
+      );
+
+      // The initial markup generated on server and client before effects run must be identical
+      // to avoid Next.js / React hydration mismatch ("12.19.18" vs "12.19.17").
+      expect(serverHtml).toEqual(clientInitialHtml);
+      expect(serverHtml).toContain("--:--:--");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
