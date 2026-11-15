@@ -362,10 +362,7 @@ export function ApprovalsClient({
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-4 py-3 text-xs"
               >
                 <div className="flex flex-wrap items-center gap-3">
-                  <UiBadge
-                    status={v.status}
-                    label={v.status}
-                  />
+                  <UiBadge status={v.status} />
                   <span className="font-semibold text-[var(--ks-ink)]">
                     {v.visitorFamilyName} {v.visitorGivenName}
                   </span>

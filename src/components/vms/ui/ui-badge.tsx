@@ -1,11 +1,15 @@
 import React from "react";
 import { idDict, type StatusBadgeInfo } from "@/lib/vms/i18n/id";
 
+export const UI_BADGE_VARIANTS = [
+  "normal",
+  "warning",
+  "danger",
+  "neutral",
+] as const;
+
 export type UiBadgeVariant =
-  | "normal"
-  | "warning"
-  | "danger"
-  | "neutral"
+  | (typeof UI_BADGE_VARIANTS)[number]
   | "default";
 
 export interface UiBadgeProps {

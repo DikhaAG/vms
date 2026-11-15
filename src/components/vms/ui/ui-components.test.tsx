@@ -3,14 +3,19 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   UiButton,
+  UI_BUTTON_VARIANTS,
+  UI_BUTTON_SIZES,
   UiCard,
   UiCardHeader,
   UiCardContent,
   UiKpiCard,
   UiKpiGrid,
+  KPI_STATUS_COLORS,
   UiFilterToolbar,
   UiBadge,
+  UI_BADGE_VARIANTS,
   UiModal,
+  UI_MODAL_SIZES,
   PageHeader,
 } from "./index";
 import { idDict } from "@/lib/vms/i18n/id";
@@ -43,12 +48,25 @@ describe("UiButton Primitive", () => {
     expect(html).toContain("text-white");
   });
 
-  it("renders ghost variant with transparent background", () => {
+  it("renders ghost variant with transparent background and shadow-none", () => {
     const html = renderToStaticMarkup(
       <UiButton variant="ghost">Bantuan</UiButton>
     );
     expect(html).toContain("Bantuan");
     expect(html).toContain("bg-transparent");
+    expect(html).toContain("shadow-none");
+    expect(html).toContain("hover:shadow-none");
+    expect(html).toContain("active:shadow-none");
+  });
+
+  it("exports canonical button variants and sizes", () => {
+    expect(UI_BUTTON_VARIANTS).toEqual([
+      "primary",
+      "secondary",
+      "danger",
+      "ghost",
+    ]);
+    expect(UI_BUTTON_SIZES).toEqual(["sm", "md", "lg"]);
   });
 
   it("renders small and large sizes correctly", () => {
@@ -176,6 +194,15 @@ describe("UiKpiCard & UiKpiGrid Primitives", () => {
     expect(htmlUnselected).toContain("aria-pressed=\"false\"");
     expect(htmlUnselected).toContain("bg-[var(--ks-paper-raised)]");
   });
+
+  it("exports canonical KPI status colors", () => {
+    expect(KPI_STATUS_COLORS).toEqual([
+      "patina",
+      "amber",
+      "vermilion",
+      "neutral",
+    ]);
+  });
 });
 
 describe("UiFilterToolbar Primitive", () => {
@@ -237,6 +264,15 @@ describe("UiBadge Primitive", () => {
     expect(html).toContain("Koneksi Lemah");
     expect(html).toContain("ks-led-amber");
   });
+
+  it("exports canonical badge variants", () => {
+    expect(UI_BADGE_VARIANTS).toEqual([
+      "normal",
+      "warning",
+      "danger",
+      "neutral",
+    ]);
+  });
 });
 
 describe("UiModal Primitive", () => {
@@ -264,11 +300,18 @@ describe("UiModal Primitive", () => {
     expect(html).toContain("role=\"dialog\"");
     expect(html).toContain("aria-modal=\"true\"");
     expect(html).toContain("backdrop-blur");
+    expect(html).toContain("rounded-[var(--ks-radius-md)]");
+    expect(html).toContain("sm:rounded-[var(--ks-radius-md)]");
+    expect(html).not.toContain("sm:rounded-2xl");
     expect(html).toContain("Check-Out Paksa Tamu");
     expect(html).toContain("Perhatian: Tindakan ini mencabut akses segera.");
     expect(html).toContain("Alasan check out wajib diisi");
     expect(html).toContain("Konfirmasi");
     expect(html).toContain("aria-label=\"Tutup dialog\"");
+  });
+
+  it("exports canonical modal sizes", () => {
+    expect(UI_MODAL_SIZES).toEqual(["sm", "md", "lg", "xl", "full"]);
   });
 });
 
@@ -297,5 +340,17 @@ describe("PageHeader Primitive", () => {
     );
     expect(html).toContain("Meja Resepsionis");
     expect(html).toContain("tambah-tamu");
+  });
+
+  it("renders eyebrow above title when provided", () => {
+    const html = renderToStaticMarkup(
+      <PageHeader
+        eyebrow="Operasional Resepsi"
+        title="Meja Resepsionis"
+      />
+    );
+    expect(html).toContain("ks-eyebrow");
+    expect(html).toContain("Operasional Resepsi");
+    expect(html).toContain("Meja Resepsionis");
   });
 });

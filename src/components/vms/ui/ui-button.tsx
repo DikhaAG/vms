@@ -2,8 +2,16 @@
 
 import React, { forwardRef, type ButtonHTMLAttributes } from "react";
 
-export type UiButtonVariant = "primary" | "secondary" | "danger" | "ghost";
-export type UiButtonSize = "sm" | "md" | "lg";
+export const UI_BUTTON_VARIANTS = [
+  "primary",
+  "secondary",
+  "danger",
+  "ghost",
+] as const;
+export type UiButtonVariant = (typeof UI_BUTTON_VARIANTS)[number];
+
+export const UI_BUTTON_SIZES = ["sm", "md", "lg"] as const;
+export type UiButtonSize = (typeof UI_BUTTON_SIZES)[number];
 
 export interface UiButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: UiButtonVariant;
@@ -19,7 +27,7 @@ const variantStyles: Record<UiButtonVariant, string> = {
   danger:
     "bg-[var(--ks-vermilion)] text-white hover:brightness-110 active:brightness-95 border border-transparent shadow-xs",
   ghost:
-    "bg-transparent text-[var(--ks-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] active:bg-[var(--ks-paper-deep)] border border-transparent",
+    "bg-transparent text-[var(--ks-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] active:bg-[var(--ks-paper-deep)] border border-transparent shadow-none hover:shadow-none active:shadow-none",
 };
 
 const sizeStyles: Record<UiButtonSize, string> = {

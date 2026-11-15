@@ -104,6 +104,36 @@ _Avoid_: Mock prompt, Toast popup, Dummy feedback
 The verifiable condition indicating whether a Visit, credential, or door state has been successfully committed to the active HikCentral Artemis controller.
 _Avoid_: Sync status, Cloud state, Connection flag
 
+### Reusable UI Component Primitives
+
+**UiButton**:
+The canonical tactile button primitive encapsulating micro-bevel elevations (`cap-lift`, `cap-press`), Kinpaku corner radiuses (`rounded-[var(--ks-radius-md)]`), loading states, and standard variants (`primary`, `secondary`, `danger`, `ghost`).
+_Avoid_: Raw HTML `<button>`, ad-hoc Tailwind button classes, unstyled buttons
+
+**UiCard**:
+The canonical surface container (`UiCard`, `UiCardHeader`, `UiCardContent`) rendering paper-raised backgrounds, hairline 1px borders, and standard padding.
+_Avoid_: Ad-hoc white boxes, disparate border colors, raw divs with custom borders
+
+**UiKpiCard & UiKpiGrid**:
+The canonical telemetry and summary metric display primitive, featuring uppercase eyebrow labels, high-contrast monospace tabular numerals, semantic LED glow dots, and optional interactive filter selection.
+_Avoid_: Static text widgets, unstandardized metric tiles, arbitrary counters
+
+**UiFilterToolbar**:
+The unified search, facility selection, and action control bar deployed across all operational list and monitoring views.
+_Avoid_: Ad-hoc flex rows, disparate search inputs, fragmented filter bars
+
+**UiBadge**:
+The standardized status indicator linking domain visit and hardware states to centralized Indonesian translations (`idDict.statusBadges`) and illuminated LED dots.
+_Avoid_: Hardcoded English pills, unlocalized badges, non-standard tag classes
+
+**UiModal**:
+The accessible, focus-trapped dialog primitive wrapping backdrop blur, escape key dismissal, standardized title headers, and action footers.
+_Avoid_: Ad-hoc popups, window.confirm dialogs, non-trapped overlays
+
+**PageHeader**:
+The standard page header component rendering localized page title, optional eyebrow, subtitle, live status badge, actions slot, and integrated Indonesian user guide modal (`PageGuideModal`).
+_Avoid_: Duplicate h1 tags, missing guide modals, inconsistent title bars
+
 ## Glosarium Bahasa Indonesia (Istilah Ramah Awam)
 
 | Istilah Domain Asli | Istilah Bahasa Indonesia Awam | Penjelasan Ringkas untuk Pengguna |

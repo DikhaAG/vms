@@ -682,10 +682,7 @@ export function ReceptionClient({
                     </div>
 
                     <div className="flex flex-col items-end gap-1">
-                      <UiBadge
-                        status={visit.status}
-                        label={visit.status.replace("_", " ")}
-                      />
+                      <UiBadge status={visit.status} />
                       {visit.credentialSyncStatus && (
                         <span
                           className={`rounded-full px-2 py-0.5 text-3xs font-mono font-medium border ${
@@ -1062,10 +1059,14 @@ export function ReceptionClient({
           {/* Names row */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label
+                htmlFor="walkInGivenName"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
                 Nama Depan *
               </label>
               <input
+                id="walkInGivenName"
                 type="text"
                 required
                 value={walkInGivenName}
@@ -1075,10 +1076,14 @@ export function ReceptionClient({
               />
             </div>
             <div>
-              <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label
+                htmlFor="walkInFamilyName"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
                 Nama Belakang / Marga *
               </label>
               <input
+                id="walkInFamilyName"
                 type="text"
                 required
                 value={walkInFamilyName}
@@ -1092,10 +1097,14 @@ export function ReceptionClient({
           {/* Contact row */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label
+                htmlFor="walkInPhone"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
                 Nomor Telepon / WhatsApp
               </label>
               <input
+                id="walkInPhone"
                 type="tel"
                 value={walkInPhone}
                 onChange={(e) => setWalkInPhone(e.target.value)}
@@ -1104,10 +1113,14 @@ export function ReceptionClient({
               />
             </div>
             <div>
-              <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label
+                htmlFor="walkInEmail"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
                 Alamat Email (Opsional)
               </label>
               <input
+                id="walkInEmail"
                 type="email"
                 value={walkInEmail}
                 onChange={(e) => setWalkInEmail(e.target.value)}
@@ -1136,12 +1149,12 @@ export function ReceptionClient({
               </select>
             </div>
             <div>
-              <label htmlFor="walk-in-cert-no" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label htmlFor="walkInIdNumber" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                 Nomor Dokumen Identitas (NIK/Paspor)
               </label>
               <div className="relative">
                 <input
-                  id="walk-in-cert-no"
+                  id="walkInIdNumber"
                   type="text"
                   autoCorrect="off"
                   autoCapitalize="none"
@@ -1225,10 +1238,14 @@ export function ReceptionClient({
               </select>
             </div>
             <div>
-              <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label
+                htmlFor="walkInReason"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
                 Rincian Keperluan {walkInReasonType === 4 ? "*" : "(opsional)"}
               </label>
               <input
+                id="walkInReason"
                 type="text"
                 required={walkInReasonType === 4}
                 value={walkInReasonDetail}

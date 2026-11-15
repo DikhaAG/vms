@@ -3,6 +3,7 @@ import { PageGuideModal } from "@/components/vms/page-guide-modal";
 import { idDict, type PageKey } from "@/lib/vms/i18n/id";
 
 export interface PageHeaderProps {
+  eyebrow?: React.ReactNode;
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
   badge?: React.ReactNode;
@@ -14,6 +15,7 @@ export interface PageHeaderProps {
 }
 
 export function PageHeader({
+  eyebrow,
   title,
   subtitle,
   badge,
@@ -34,6 +36,11 @@ export function PageHeader({
       className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--ks-rule-subtle)] ${className}`.trim()}
     >
       <div>
+        {eyebrow && (
+          <div className="ks-eyebrow text-2xs font-bold uppercase tracking-[0.14em] text-[var(--ks-muted)] mb-1">
+            {eyebrow}
+          </div>
+        )}
         <div className="flex items-center gap-3">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ks-ink)]">
             {resolvedTitle}

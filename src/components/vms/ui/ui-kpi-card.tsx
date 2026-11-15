@@ -28,7 +28,14 @@ export type UiKpiCardVariant =
   | "quota"
   | "neutral";
 
-export type UiKpiIndicatorColor = "patina" | "amber" | "vermilion" | "neutral";
+export const KPI_STATUS_COLORS = [
+  "patina",
+  "amber",
+  "vermilion",
+  "neutral",
+] as const;
+
+export type UiKpiIndicatorColor = (typeof KPI_STATUS_COLORS)[number];
 
 export interface UiKpiCardProps {
   label: React.ReactNode;

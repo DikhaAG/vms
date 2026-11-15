@@ -3,7 +3,8 @@
 import React, { useRef, useId, type RefObject } from "react";
 import { useModalFocusTrap } from "@/components/vms/use-modal-focus-trap";
 
-export type UiModalSize = "sm" | "md" | "lg" | "xl" | "full";
+export const UI_MODAL_SIZES = ["sm", "md", "lg", "xl", "full"] as const;
+export type UiModalSize = (typeof UI_MODAL_SIZES)[number];
 
 export interface UiModalProps {
   isOpen: boolean;
@@ -67,7 +68,7 @@ export function UiModal({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
-        className={`relative w-full rounded-[var(--ks-radius-md)] sm:rounded-2xl border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-6 shadow-2xl text-[var(--ks-text)] ${sizeClasses[size]} ${className}`.trim()}
+        className={`relative w-full rounded-[var(--ks-radius-md)] sm:rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-6 shadow-2xl text-[var(--ks-text)] ${sizeClasses[size]} ${className}`.trim()}
       >
         <div className="flex items-start justify-between border-b border-[var(--ks-rule-subtle)] pb-3">
           <div>
