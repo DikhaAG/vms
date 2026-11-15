@@ -105,8 +105,8 @@ export const idDict = {
 
   navigation: {
     toggleSidebar: "Buka / Tutup Menu Navigasi",
-    collapseMenu: "Ciutkan Navigasi",
-    expandMenu: "Bentangkan Navigasi",
+    collapseMenu: "Ciutkan Menu",
+    expandMenu: "Bentangkan Menu",
     groups: {
       mainOperations: {
         title: "Operasional Utama",

@@ -49,6 +49,8 @@ export function AppShell({
         onToggleCollapse={() => setCollapsed((prev) => !prev)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
+        facilities={initialFacilities}
+        selectedFacilityId={selectedFacilityId}
       />
 
       {/* Main Content Area */}

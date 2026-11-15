@@ -69,5 +69,46 @@ describe("Sidebar Component", () => {
 
     expect(html).not.toContain('aria-label="Menu Navigasi Mobile"');
   });
+
+  it("renders bottom footer dock with 'Ciutkan Menu' button in expanded mode", () => {
+    const html = renderToStaticMarkup(
+      <Sidebar currentPath="/vms/reception" collapsed={false} />
+    );
+
+    expect(html).toContain("mt-auto border-t");
+    expect(html).toContain(`aria-label="${idDict.navigation.collapseMenu}"`);
+    expect(html).toContain('aria-expanded="true"');
+    expect(html).toContain(idDict.navigation.collapseMenu);
+  });
+
+  it("renders bottom footer dock with centered square expand button and centered brand mark 'V' in collapsed mode", () => {
+    const html = renderToStaticMarkup(
+      <Sidebar currentPath="/vms/reception" collapsed={true} />
+    );
+
+    expect(html).toContain("mt-auto border-t");
+    expect(html).toContain(`aria-label="${idDict.navigation.expandMenu}"`);
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain(">V<");
+    expect(html).toContain("w-18");
+  });
+
+  it("renders mobile drawer with prominent top telemetry block showing active facility and timezone clock", () => {
+    const html = renderToStaticMarkup(
+      <Sidebar
+        currentPath="/vms/reception"
+        mobileOpen={true}
+        selectedFacility={{
+          id: "fac-bali",
+          name: "Bali Innovation Center",
+          timezone: "Asia/Makassar",
+        }}
+      />
+    );
+
+    expect(html).toContain("Bali Innovation Center");
+    expect(html).toContain("WITA");
+    expect(html).toContain("--:--:--");
+  });
 });
 

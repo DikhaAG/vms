@@ -163,5 +163,53 @@ describe("Header Component", () => {
       vi.useRealTimers();
     }
   });
+
+  it("enforces strict overflow constraints on header container", () => {
+    const html = renderToStaticMarkup(
+      <Header
+        facilities={mockFacilities}
+        selectedFacilityId="fac-jakarta"
+        currentPath="/vms/reception"
+      />
+    );
+
+    expect(html).toContain("max-w-full overflow-hidden");
+  });
+
+  it("hides live second clock and timezone badge on screens < 640px via responsive utility classes", () => {
+    const html = renderToStaticMarkup(
+      <Header
+        facilities={mockFacilities}
+        selectedFacilityId="fac-jakarta"
+        currentPath="/vms/reception"
+      />
+    );
+
+    expect(html).toContain("hidden sm:flex items-center gap-1.5");
+  });
+
+  it("truncates breadcrumb active page title on mobile viewports", () => {
+    const html = renderToStaticMarkup(
+      <Header
+        facilities={mockFacilities}
+        selectedFacilityId="fac-jakarta"
+        currentPath="/vms/active-monitoring"
+      />
+    );
+
+    expect(html).toContain("truncate max-w-[120px] sm:max-w-none");
+  });
+
+  it("applies responsive max-width truncation to facility selector to prevent horizontal overflow", () => {
+    const html = renderToStaticMarkup(
+      <Header
+        facilities={mockFacilities}
+        selectedFacilityId="fac-jakarta"
+        currentPath="/vms/reception"
+      />
+    );
+
+    expect(html).toContain("max-w-[120px] sm:max-w-none truncate");
+  });
 });
 

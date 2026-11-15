@@ -20,5 +20,24 @@ describe("AppShell Component", () => {
     expect(html).toContain("test-child-content");
     expect(html).toContain("Konten Halaman Meja Resepsionis");
   });
+
+  it("passes facility state to sidebar and header and enforces overflow-hidden on main content area", () => {
+    const customFacilities = [
+      {
+        id: "fac-surabaya",
+        name: "Surabaya Industrial Hub",
+        timezone: "Asia/Jakarta",
+      },
+    ];
+
+    const html = renderToStaticMarkup(
+      <AppShell currentPath="/vms/reception" initialFacilities={customFacilities}>
+        <div>Anak Komponen</div>
+      </AppShell>
+    );
+
+    expect(html).toContain("Surabaya Industrial Hub");
+    expect(html).toContain("flex-1 flex flex-col min-w-0 overflow-hidden");
+  });
 });
 
