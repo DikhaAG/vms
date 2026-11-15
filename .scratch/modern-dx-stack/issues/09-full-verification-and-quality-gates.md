@@ -4,12 +4,12 @@
 
 **Blocked by:** 04: Pre-Registration Vertical Slice (RHF + Zod + Sonner Pilot), 06: Visitors Directory Migration to `UiDataTable`, 07: Active Monitoring Migration to `UiDataTable` & TanStack Query Polling, 08: End-to-End Type-Safe tRPC Routers for Internal Dashboard
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Execute `pnpm lint` and ensure zero warnings or errors (with `jsx-a11y/label-has-associated-control` fully satisfied).
-- [ ] Execute `pnpm typecheck` (`tsc --noEmit`) and ensure 0 TypeScript compilation errors.
-- [ ] Execute `pnpm test` (`vitest run`) and ensure 100% pass rate across all test files (671+ tests).
-- [ ] Verify accessibility across all form fields (proper `label[for]`, `aria-invalid`, `aria-describedby`) and data tables (accessible sorting headers, pagination roles).
-- [ ] Verify that all UI strings strictly originate from `src/lib/vms/i18n/id.ts`.
-- [ ] Execute `pnpm build` to verify production bundle generation without Next.js 16 build warnings.
+- [x] Execute `pnpm lint` and ensure zero warnings or errors (with `jsx-a11y/label-has-associated-control` fully satisfied).
+- [x] Execute `pnpm typecheck` (`tsc --noEmit`) and ensure 0 TypeScript compilation errors.
+- [x] Execute `pnpm test` (`vitest run`) and ensure 100% pass rate across all test files (671+ tests).
+- [x] Verify accessibility across all form fields (proper `label[for]`, `aria-invalid`, `aria-describedby`) and data tables (accessible sorting headers, pagination roles).
+- [x] Verify that all UI strings strictly originate from `src/lib/vms/i18n/id.ts`.
+- [x] Execute `pnpm build` to verify production bundle generation without Next.js 16 build warnings.
 

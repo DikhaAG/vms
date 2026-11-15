@@ -14,6 +14,8 @@ export {
   type UiCardHeaderProps,
   UiCardContent,
   type UiCardContentProps,
+  UiLoadingFallback,
+  type UiLoadingFallbackProps,
 } from "./ui-card";
 
 export {

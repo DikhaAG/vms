@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import { defaultActiveMonitoringService } from "@/lib/vms/active-monitoring-service";
 import { ActiveMonitoringClient } from "./active-monitoring-client";
 import { PageGuideModal } from "@/components/vms/page-guide-modal";
+import { UiLoadingFallback } from "@/components/vms/ui";
 import { idDict } from "@/lib/vms/i18n/id";
 
 export const metadata = {
@@ -40,11 +42,13 @@ export default async function ActiveMonitoringPage() {
         </div>
       </div>
 
-      <ActiveMonitoringClient
-        facilities={facilities}
-        initialVisits={initialVisits}
-        doors={doors}
-      />
+      <Suspense fallback={<UiLoadingFallback message={idDict.common.loading} />}>
+        <ActiveMonitoringClient
+          facilities={facilities}
+          initialVisits={initialVisits}
+          doors={doors}
+        />
+      </Suspense>
     </div>
   );
 }
