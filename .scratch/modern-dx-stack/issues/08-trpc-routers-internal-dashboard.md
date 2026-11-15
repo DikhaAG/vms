@@ -4,18 +4,17 @@
 
 **Blocked by:** 01: Core DX Dependencies, Unified Client Providers, and Test Harness, 02: Isomorphic Zod Contracts with Backward-Compatible Validation Wrappers
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Create `src/server/trpc/trpc.ts` with tRPC initialization, procedure helpers, and error formatting.
-- [ ] Create `src/server/trpc/context.ts` injecting `vmsRepository` and facility timezone.
-- [ ] Create domain routers under `src/server/trpc/routers/`:
+- [x] Create `src/server/trpc/trpc.ts` with tRPC initialization, procedure helpers, and error formatting.
+- [x] Create `src/server/trpc/context.ts` injecting `vmsRepository` and facility timezone.
+- [x] Create domain routers under `src/server/trpc/routers/`:
   - `visitorRouter`: search visitors, pre-register visitor, cancel pre-registration.
   - `approvalRouter`: list pending approvals, approve visit, reject visit.
   - `accessLevelRouter`: list access levels, create access level.
   - `monitoringRouter`: list active visits, fetch door telemetry, trigger emergency door unlock.
-- [ ] Combine domain routers into root `appRouter` in `src/server/trpc/routers/_app.ts`.
-- [ ] Create Next.js route handler at `src/app/api/trpc/[trpc]/route.ts` using `fetchRequestHandler`.
-- [ ] Create typed client instance in `src/lib/trpc/client.ts`.
-- [ ] Write unit tests for routers in `src/server/trpc/routers.test.ts` using `appRouter.createCaller()`.
-- [ ] Verify that `pnpm check` passes with 0 warnings or errors.
-
+- [x] Combine domain routers into root `appRouter` in `src/server/trpc/routers/_app.ts`.
+- [x] Create Next.js route handler at `src/app/api/trpc/[trpc]/route.ts` using `fetchRequestHandler`.
+- [x] Create typed client instance in `src/lib/trpc/client.ts`.
+- [x] Write unit tests for routers in `src/server/trpc/routers.test.ts` using `appRouter.createCaller()`.
+- [x] Verify that `pnpm check` passes with 0 warnings or errors.
