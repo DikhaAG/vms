@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: Canonical Reusable UI Component Primitives, 02: Responsive Shell & Ergonomic Bottom Dock Sidebar Toggle, 03: Reception Desk Migration, 04: Approvals Queue Migration, 05: Pre-Registration & Self-Invite Form Migration, 06: Group Registration Migration, 07: Access Levels Master Migration, 08: Visitors Directory & PDP Archive Migration
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `pnpm lint` runs with 0 errors and 0 warnings.
 - [ ] `pnpm typecheck` runs with 0 type errors.
