@@ -42,6 +42,56 @@ describe("InMemoryVmsRepository", () => {
     });
   });
 
+  describe("systemSettings", () => {
+    it("returns default singleton settings on initial repository instantiation", async () => {
+      const settings = await repo.getSettings();
+      expect(settings).toBeDefined();
+      expect(settings.id).toBe("default");
+      expect(settings.timezone).toBe("Asia/Jakarta");
+      expect(settings.overstayGraceMinutes).toBe(15);
+      expect(settings.autoCheckInEarlyBufferMinutes).toBe(15);
+      expect(settings.updatedAt).toBeDefined();
+    });
+
+    it("updates system settings partially and preserves untouched fields", async () => {
+      const updated = await repo.updateSettings({
+        timezone: "Asia/Makassar",
+        overstayGraceMinutes: 30,
+      });
+
+      expect(updated.timezone).toBe("Asia/Makassar");
+      expect(updated.overstayGraceMinutes).toBe(30);
+      expect(updated.autoCheckInEarlyBufferMinutes).toBe(15);
+
+      const refreshed = await repo.getSettings();
+      expect(refreshed.timezone).toBe("Asia/Makassar");
+      expect(refreshed.overstayGraceMinutes).toBe(30);
+      expect(refreshed.autoCheckInEarlyBufferMinutes).toBe(15);
+    });
+
+    it("instantiates repository with custom initial system settings", async () => {
+      const customRepo = new InMemoryVmsRepository(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          id: "default",
+          timezone: "Asia/Jayapura",
+          overstayGraceMinutes: 45,
+          autoCheckInEarlyBufferMinutes: 20,
+          updatedAt: "2026-11-15T00:00:00Z",
+        },
+      );
+
+      const settings = await customRepo.getSettings();
+      expect(settings.timezone).toBe("Asia/Jayapura");
+      expect(settings.overstayGraceMinutes).toBe(45);
+      expect(settings.autoCheckInEarlyBufferMinutes).toBe(20);
+    });
+  });
+
   describe("visits", () => {
     const sampleVisit: Visit = {
       id: "visit-123",

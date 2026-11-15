@@ -106,8 +106,10 @@ export class CheckInService {
     }
 
     // 3. Fetch facility for timezone and name
-    const facility = await this.repository.getFacility(visit.facilityId);
-    if (!facility) {
+    const facility = visit.facilityId
+      ? await this.repository.getFacility(visit.facilityId)
+      : undefined;
+    if (visit.facilityId && !facility) {
       return {
         ok: false,
         error: {
@@ -144,7 +146,9 @@ export class CheckInService {
 
     // 6. Time formatting in facility timezone
     const nowUtc = new Date();
-    const checkInTimeFacility = formatFacilityIso(nowUtc, facility.timezone);
+    const facilityTimezone = facility?.timezone ?? "Asia/Jakarta";
+    const facilityName = facility?.name ?? visit.facilityName ?? "Facility";
+    const checkInTimeFacility = formatFacilityIso(nowUtc, facilityTimezone);
     const checkOutTimeFacility = visit.scheduledEndTimeFacility;
 
     // 7. Invoke HikCentral check-in adapter (POST /artemis/api/visitor/v1/registerment)
@@ -231,7 +235,7 @@ export class CheckInService {
 
     const pass = this.buildCheckInPass(
       updatedVisit,
-      facility.name,
+      facilityName,
       accessLevelNames,
     );
 

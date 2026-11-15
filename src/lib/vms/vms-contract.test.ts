@@ -15,6 +15,11 @@ import {
   credentialSyncStatusSchema,
   createPreRegistrationSchema,
   updateFacilitySchema,
+  systemSettingsSchema,
+  updateSystemSettingsSchema,
+  DEFAULT_SYSTEM_SETTINGS,
+  validateUpdateSystemSettingsInput,
+  doorSchema,
   type CreatePreRegistrationInput,
 } from "./vms-contract";
 
@@ -262,6 +267,84 @@ describe("vms-contract", () => {
         overstayGraceMinutes: 15,
       });
       expect(res.success).toBe(true);
+    });
+
+    it("validates DEFAULT_SYSTEM_SETTINGS and systemSettingsSchema defaults", () => {
+      expect(DEFAULT_SYSTEM_SETTINGS.timezone).toBe("Asia/Jakarta");
+      expect(DEFAULT_SYSTEM_SETTINGS.overstayGraceMinutes).toBe(15);
+      expect(DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes).toBe(15);
+
+      const parsed = systemSettingsSchema.safeParse({});
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.id).toBe("default");
+        expect(parsed.data.timezone).toBe("Asia/Jakarta");
+        expect(parsed.data.overstayGraceMinutes).toBe(15);
+        expect(parsed.data.autoCheckInEarlyBufferMinutes).toBe(15);
+      }
+    });
+
+    it("validates systemSettingsSchema with custom valid IANA timezone and numeric boundaries", () => {
+      const valid = systemSettingsSchema.safeParse({
+        id: "default",
+        timezone: "Asia/Makassar",
+        overstayGraceMinutes: 30,
+        autoCheckInEarlyBufferMinutes: 20,
+      });
+      expect(valid.success).toBe(true);
+
+      const invalidTimezone = systemSettingsSchema.safeParse({
+        timezone: "Invalid/Not_A_Timezone",
+      });
+      expect(invalidTimezone.success).toBe(false);
+
+      const negativeGrace = systemSettingsSchema.safeParse({
+        overstayGraceMinutes: -5,
+      });
+      expect(negativeGrace.success).toBe(false);
+
+      const negativeEarlyBuffer = systemSettingsSchema.safeParse({
+        autoCheckInEarlyBufferMinutes: -1,
+      });
+      expect(negativeEarlyBuffer.success).toBe(false);
+    });
+
+    it("validates updateSystemSettingsSchema and validateUpdateSystemSettingsInput pure validator", () => {
+      const partialUpdate = {
+        overstayGraceMinutes: 45,
+      };
+      expect(updateSystemSettingsSchema.safeParse(partialUpdate).success).toBe(true);
+      const res = validateUpdateSystemSettingsInput(partialUpdate);
+      expect(res.valid).toBe(true);
+      if (res.valid) {
+        expect(res.input.overstayGraceMinutes).toBe(45);
+        expect(res.input.timezone).toBeUndefined();
+      }
+
+      const invalidInput = validateUpdateSystemSettingsInput({
+        timezone: "Invalid/Fake",
+      });
+      expect(invalidInput.valid).toBe(false);
+      if (!invalidInput.valid) {
+        expect(invalidInput.errors.timezone).toBeDefined();
+      }
+    });
+
+    it("validates doorSchema preserves regionIndexCode and allows optional facilityId", () => {
+      const flatDoor = {
+        doorIndexCode: "door-turnstile-1",
+        doorName: "Main Entrance SpeedGate",
+        regionIndexCode: "region-hq-fl1",
+        accessType: "DUAL_DIRECTION" as const,
+        isPerimeter: true,
+      };
+      const res = doorSchema.safeParse(flatDoor);
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.doorIndexCode).toBe("door-turnstile-1");
+        expect(res.data.regionIndexCode).toBe("region-hq-fl1");
+        expect(res.data.facilityId).toBeUndefined();
+      }
     });
   });
 });

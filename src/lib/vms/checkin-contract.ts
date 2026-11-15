@@ -160,7 +160,7 @@ export const checkInPassSchema = z.object({
   certificateNo: z.string().optional(),
   hostId: z.string().optional(),
   hostName: z.string().optional(),
-  facilityId: z.string(),
+  facilityId: z.string().optional(),
   facilityName: z.string().optional(),
   scheduledStartTime: z.string(),
   scheduledEndTime: z.string(),

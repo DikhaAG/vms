@@ -13,9 +13,11 @@ import type {
 import type {
   Facility,
   HostEmployee,
+  SystemSettings,
   Visit,
   VisitStatus,
 } from "./vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS } from "./vms-contract";
 import type { AccessLevel } from "./access-level-contract";
 import type { ApprovalRecord } from "./approval-contract";
 import type { CheckInAuditEvent, VerificationMethod } from "./checkin-contract";
@@ -37,8 +39,65 @@ export class PostgresVmsRepository implements IVmsRepository {
     this.db = db ?? createPostgresClient();
   }
 
+  // 0. Global System Settings (Single-Site Architecture)
+  async getSettings(): Promise<SystemSettings> {
+    const rows = await this.db
+      .select()
+      .from(s.systemSettings)
+      .where(eq(s.systemSettings.id, "default"));
+
+    if (rows.length === 0) {
+      return {
+        id: "default",
+        timezone: DEFAULT_SYSTEM_SETTINGS.timezone,
+        overstayGraceMinutes: DEFAULT_SYSTEM_SETTINGS.overstayGraceMinutes,
+        autoCheckInEarlyBufferMinutes: DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes,
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    return structuredClone(rows[0].data);
+  }
+
+  async updateSettings(updates: Partial<SystemSettings>): Promise<SystemSettings> {
+    const current = await this.getSettings();
+    const cleanedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([, v]) => v !== undefined),
+    );
+    const updated: SystemSettings = {
+      ...current,
+      ...cleanedUpdates,
+      id: "default",
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.db
+      .insert(s.systemSettings)
+      .values({
+        id: "default",
+        timezone: updated.timezone,
+        overstayGraceMinutes: updated.overstayGraceMinutes,
+        autoCheckInEarlyBufferMinutes: updated.autoCheckInEarlyBufferMinutes,
+        updatedAt: updated.updatedAt ?? new Date().toISOString(),
+        data: updated,
+      })
+      .onConflictDoUpdate({
+        target: s.systemSettings.id,
+        set: {
+          timezone: updated.timezone,
+          overstayGraceMinutes: updated.overstayGraceMinutes,
+          autoCheckInEarlyBufferMinutes: updated.autoCheckInEarlyBufferMinutes,
+          updatedAt: updated.updatedAt ?? new Date().toISOString(),
+          data: updated,
+        },
+      });
+
+    return structuredClone(updated);
+  }
+
   // 1. Facilities
-  async getFacility(id: string): Promise<Facility | undefined> {
+  async getFacility(id?: string): Promise<Facility | undefined> {
+    if (!id) return undefined;
     const rows = await this.db
       .select()
       .from(s.facilities)
@@ -141,7 +200,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       .insert(s.visits)
       .values({
         id: cloned.id,
-        facilityId: cloned.facilityId,
+        facilityId: cloned.facilityId ?? null,
         status: cloned.status,
         createdAtUtc: cloned.createdAtUtc,
         data: cloned,
@@ -149,7 +208,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       .onConflictDoUpdate({
         target: s.visits.id,
         set: {
-          facilityId: cloned.facilityId,
+          facilityId: cloned.facilityId ?? null,
           status: cloned.status,
           data: cloned,
         },
@@ -705,7 +764,8 @@ export class PostgresVmsRepository implements IVmsRepository {
       .insert(s.facilityDoors)
       .values({
         doorIndexCode: cloned.doorIndexCode,
-        facilityId: cloned.facilityId,
+        facilityId: cloned.facilityId ?? null,
+        regionIndexCode: cloned.regionIndexCode ?? null,
         doorName: cloned.doorName,
         isPerimeter: Boolean(cloned.isPerimeter),
         data: cloned,
@@ -713,7 +773,8 @@ export class PostgresVmsRepository implements IVmsRepository {
       .onConflictDoUpdate({
         target: s.facilityDoors.doorIndexCode,
         set: {
-          facilityId: cloned.facilityId,
+          facilityId: cloned.facilityId ?? null,
+          regionIndexCode: cloned.regionIndexCode ?? null,
           doorName: cloned.doorName,
           isPerimeter: Boolean(cloned.isPerimeter),
           data: cloned,

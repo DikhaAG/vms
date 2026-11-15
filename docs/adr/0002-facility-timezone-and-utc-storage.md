@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: superceded
+superceded_by: 0010-single-site-lean-architecture-and-native-hikcentral-alignment.md
 ---
 
 # Facility Timezone Binding with UTC Storage and HikCentral Offset Formatting

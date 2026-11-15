@@ -24,9 +24,9 @@ _Avoid_: Reviewer, Manager, Authorizer
 
 ### Core Concepts
 
-**Facility**:
-A distinct physical site, building, or branch managed within the system, configured with its own IANA timezone and physical access points.
-_Avoid_: Site, Building, Location, Branch
+**System Settings**:
+Global operational configuration parameters (System Timezone, Overstay Grace Period, and Fast-Track Early Buffer) applying across the entire deployment.
+_Avoid_: Facility, Site, Branch config
 
 **Visit**:
 A bounded attendance by one Visitor during an explicit time window in a facility's local timezone, progressing through scheduling, approval, check-in, and check-out.
@@ -68,9 +68,9 @@ _Avoid_: Expired visit, Late departure, Timeout
 The configurable duration after scheduled visit end time before an uncleared Visit triggers a security Overstay alert.
 _Avoid_: Tolerance time, Delay buffer, Overstay threshold
 
-**Facility Timezone**:
-The canonical IANA timezone identifier assigned to a Facility governing Visit scheduling and hardware synchronization.
-_Avoid_: Server timezone, Client timezone, Local time
+**System Timezone**:
+The canonical IANA timezone identifier configured globally for the system (governing Visit scheduling and HikCentral hardware synchronization).
+_Avoid_: Server timezone, Client timezone, Local time, Facility Timezone
 
 **Monitoring List**:
 A security register of individuals flagged for denied entry or mandatory security review.
@@ -142,7 +142,7 @@ _Avoid_: Duplicate h1 tags, missing guide modals, inconsistent title bars
 | **Host** | **Karyawan Tuan Rumah** | Karyawan internal yang mengundang, membuat janji temu, dan bertanggung jawab atas tamu. |
 | **Receptionist** | **Petugas Resepsionis** | Staf meja depan yang melayani tamu datang langsung (*walk-in*), verifikasi identitas, dan cetak lencana/kartu akses. |
 | **Approver** | **Pejabat Penyetuju / Atasan** | Manajer atau staf keamanan yang berhak menyetujui atau menolak permohonan kunjungan. |
-| **Facility** | **Gedung / Lokasi Fasilitas** | Bangunan fisik tempat kunjungan berlangsung (misal: Kantor Pusat Jakarta, Cabang Bali, Gudang Jayapura). |
+| **System Settings** | **Pengaturan Sistem Global** | Konfigurasi terpusat untuk seluruh sistem (zona waktu, batas toleransi overstay, dan jeda auto check-in). |
 | **Visit** | **Kunjungan / Janji Temu** | Sesi kehadiran satu tamu dalam jangka waktu tertentu di suatu gedung. |
 | **Pre-Registration** | **Pendaftaran Tamu Terjadwal** | Pendaftaran janji tamu di muka oleh karyawan sebelum tamu tiba di lokasi. |
 | **Self-Registration Link** | **Tautan Pendaftaran Mandiri** | Tautan web khusus bagi tamu untuk mengisi data diri dan foto selfie dari smartphone sebelum datang. |

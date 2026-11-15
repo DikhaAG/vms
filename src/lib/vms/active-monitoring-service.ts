@@ -65,7 +65,7 @@ export class ActiveMonitoringService {
     const summaries: ActiveVisitSummary[] = [];
 
     for (const visit of activeVisits) {
-      const facility = facilityMap.get(visit.facilityId);
+      const facility = visit.facilityId ? facilityMap.get(visit.facilityId) : undefined;
       const overstay = evaluateOverstayStatus(visit, facility, nowUtc);
 
       // State machine enforcement: transition CHECKED_IN -> OVERSTAY upon exceeding cutoff
@@ -126,7 +126,7 @@ export class ActiveMonitoringService {
             }
           : undefined,
         facility: {
-          id: facility?.id ?? visit.facilityId,
+          id: facility?.id ?? visit.facilityId ?? "",
           name: facility?.name ?? visit.facilityName ?? "Facility",
           timezone: facility?.timezone ?? "Asia/Jakarta",
         },
@@ -181,7 +181,9 @@ export class ActiveMonitoringService {
 
     // Fast-track touchless auto check-in handling for visits in APPROVED status
     if (visit.status === "APPROVED") {
-      const facility = await this.repository.getFacility(visit.facilityId);
+      const facility = visit.facilityId
+        ? await this.repository.getFacility(visit.facilityId)
+        : undefined;
       const earlyArrivalBufferMinutes =
         facility?.autoCheckInEarlyBufferMinutes ?? 15;
 

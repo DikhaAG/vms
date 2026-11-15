@@ -19,6 +19,7 @@ import {
   doorAccessTypeSchema,
   emergencyGrantStatusSchema,
   facilityDoorSchema,
+  doorSchema,
   doorTapEventSchema,
   checkOutInputSchema,
   grantEmergencyAccessInputSchema,
@@ -685,6 +686,23 @@ describe("checkout-contract", () => {
       if (res.success) {
         expect(res.data.accessType).toBe("DUAL_DIRECTION");
         expect(res.data.isPerimeter).toBe(false);
+      }
+    });
+
+    it("validates flat doorSchema without facilityId and with regionIndexCode", () => {
+      const res = doorSchema.safeParse({
+        doorIndexCode: "d-turnstile-2",
+        doorName: "Turnstile Gate 2",
+        regionIndexCode: "reg-lobby",
+        accessType: "DUAL_DIRECTION",
+        isPerimeter: true,
+      });
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.doorIndexCode).toBe("d-turnstile-2");
+        expect(res.data.regionIndexCode).toBe("reg-lobby");
+        expect(res.data.facilityId).toBeUndefined();
+        expect(res.data.isPerimeter).toBe(true);
       }
     });
 

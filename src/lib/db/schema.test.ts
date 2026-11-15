@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+  systemSettings,
   facilities,
   facilityDoors,
+  doors,
   accessLevels,
   hostEmployees,
   visitorProfiles,
@@ -18,8 +20,10 @@ import {
 
 describe("PostgreSQL Drizzle Schema & DDL Generator", () => {
   it("exports all required relational tables with proper names", () => {
+    expect(systemSettings).toBeDefined();
     expect(facilities).toBeDefined();
     expect(facilityDoors).toBeDefined();
+    expect(doors).toBeDefined();
     expect(accessLevels).toBeDefined();
     expect(hostEmployees).toBeDefined();
     expect(visitorProfiles).toBeDefined();
@@ -35,6 +39,7 @@ describe("PostgreSQL Drizzle Schema & DDL Generator", () => {
 
   it("generates idempotent CREATE TABLE IF NOT EXISTS SQL statements for all tables", () => {
     const sql = getInitSchemaSql();
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS system_settings");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS facilities");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS facility_doors");
     expect(sql).toContain("CREATE TABLE IF NOT EXISTS access_levels");

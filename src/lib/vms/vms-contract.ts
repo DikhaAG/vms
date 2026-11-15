@@ -14,6 +14,9 @@ import {
   isEmergencyGrantActive,
   isEmergencyGrantStatus,
   validateGrantEmergencyAccessInput,
+  doorSchema,
+  facilityDoorSchema,
+  type Door,
   type DoorAccessType,
   type EmergencyAccessGrant,
   type EmergencyGrantStatus,
@@ -26,10 +29,13 @@ import { formatZodErrors, isRecord } from "./validation-helpers";
 export {
   DOOR_ACCESS_TYPES,
   EMERGENCY_GRANT_STATUSES,
+  doorSchema,
+  facilityDoorSchema,
   isDoorAccessType,
   isEmergencyGrantActive,
   isEmergencyGrantStatus,
   validateGrantEmergencyAccessInput,
+  type Door,
   type DoorAccessType,
   type EmergencyAccessGrant,
   type EmergencyGrantStatus,
@@ -159,7 +165,7 @@ export type HikCentralVisitReference = z.infer<
 
 export const visitSchema = z.object({
   id: z.string(),
-  facilityId: z.string(),
+  facilityId: z.string().optional(),
   facilityName: z.string().optional(),
   groupId: z.string().optional(),
   visitorGroupName: z.string().optional(),
@@ -500,6 +506,102 @@ export function validateUpdateFacilityInput(
       overstayGraceMinutes:
         typeof result.data.overstayGraceMinutes === "number"
           ? Math.floor(result.data.overstayGraceMinutes)
+          : undefined,
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Global System Settings (Single-Site Architecture)
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_SYSTEM_SETTINGS = {
+  timezone: "Asia/Jakarta",
+  overstayGraceMinutes: 15,
+  autoCheckInEarlyBufferMinutes: 15,
+} as const;
+
+export const systemSettingsSchema = z.object({
+  id: z.string().default("default"),
+  timezone: z
+    .string({ error: "Timezone is required." })
+    .trim()
+    .min(1, "Timezone is required.")
+    .refine(isValidIanaTimezone, {
+      message:
+        "Timezone must be a valid IANA timezone identifier (e.g., 'Asia/Jakarta').",
+    })
+    .default(DEFAULT_SYSTEM_SETTINGS.timezone),
+  overstayGraceMinutes: z
+    .number({ error: "Overstay grace period must be a number." })
+    .int("Overstay grace period must be an integer.")
+    .min(0, "Overstay grace period cannot be negative.")
+    .default(DEFAULT_SYSTEM_SETTINGS.overstayGraceMinutes),
+  autoCheckInEarlyBufferMinutes: z
+    .number({ error: "Auto check-in early buffer must be a number." })
+    .int("Auto check-in early buffer must be an integer.")
+    .min(0, "Auto check-in early buffer cannot be negative.")
+    .default(DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes),
+  updatedAt: z.string().optional(),
+});
+export type SystemSettings = z.infer<typeof systemSettingsSchema>;
+
+export const updateSystemSettingsSchema = z.object({
+  timezone: z
+    .string()
+    .trim()
+    .min(1, "Timezone cannot be empty.")
+    .refine(isValidIanaTimezone, {
+      message:
+        "Timezone must be a valid IANA timezone identifier (e.g., 'Asia/Jakarta').",
+    })
+    .optional(),
+  overstayGraceMinutes: z
+    .number({ error: "Overstay grace period must be a number." })
+    .int("Overstay grace period must be an integer.")
+    .min(0, "Overstay grace period cannot be negative.")
+    .optional(),
+  autoCheckInEarlyBufferMinutes: z
+    .number({ error: "Auto check-in early buffer must be a number." })
+    .int("Auto check-in early buffer must be an integer.")
+    .min(0, "Auto check-in early buffer cannot be negative.")
+    .optional(),
+});
+export type UpdateSystemSettingsInput = z.infer<typeof updateSystemSettingsSchema>;
+
+export type SystemSettingsValidationOutcome =
+  | { valid: true; input: UpdateSystemSettingsInput }
+  | { valid: false; errors: Record<string, string> };
+
+/**
+ * Pure validator for system settings update payloads.
+ */
+export function validateUpdateSystemSettingsInput(
+  raw: unknown,
+): SystemSettingsValidationOutcome {
+  if (!isRecord(raw)) {
+    return {
+      valid: false,
+      errors: { _global: "Request payload must be a JSON object." },
+    };
+  }
+
+  const result = updateSystemSettingsSchema.safeParse(raw);
+  if (!result.success) {
+    return { valid: false, errors: formatZodErrors(result.error) };
+  }
+
+  return {
+    valid: true,
+    input: {
+      ...result.data,
+      overstayGraceMinutes:
+        typeof result.data.overstayGraceMinutes === "number"
+          ? Math.floor(result.data.overstayGraceMinutes)
+          : undefined,
+      autoCheckInEarlyBufferMinutes:
+        typeof result.data.autoCheckInEarlyBufferMinutes === "number"
+          ? Math.floor(result.data.autoCheckInEarlyBufferMinutes)
           : undefined,
     },
   };

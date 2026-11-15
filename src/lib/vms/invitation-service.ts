@@ -228,7 +228,9 @@ export async function validateInvitationToken(
     };
   }
 
-  const facility = await repository.getFacility(visit.facilityId);
+  const facility = visit.facilityId
+    ? await repository.getFacility(visit.facilityId)
+    : undefined;
 
   // Check single-use
   if (tokenRecord.isConsumed) {

@@ -3,9 +3,11 @@ import type {
   Facility,
   HikCentralVisitReference,
   HostEmployee,
+  SystemSettings,
   Visit,
   VisitStatus,
 } from "./vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS } from "./vms-contract";
 import type { InvitationToken } from "./invitation-contract";
 import type { ApprovalRecord } from "./approval-contract";
 import type { AccessLevel } from "./access-level-contract";
@@ -60,7 +62,11 @@ export interface RecordDoorTapResult {
 }
 
 export interface IVmsRepository {
-  getFacility(id: string): Promise<Facility | undefined>;
+  // Global system settings (Single-Site Architecture)
+  getSettings(): Promise<SystemSettings>;
+  updateSettings(updates: Partial<SystemSettings>): Promise<SystemSettings>;
+
+  getFacility(id?: string): Promise<Facility | undefined>;
   listFacilities(): Promise<Facility[]>;
   saveFacility(facility: Facility): Promise<void>;
   updateFacility(
@@ -431,6 +437,13 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private doors = new Map<string, FacilityDoor>();
   private emergencyGrants = new Map<string, EmergencyAccessGrant>();
   private hostNotifications: HostArrivalNotification[] = [];
+  private systemSettings: SystemSettings = {
+    id: "default",
+    timezone: DEFAULT_SYSTEM_SETTINGS.timezone,
+    overstayGraceMinutes: DEFAULT_SYSTEM_SETTINGS.overstayGraceMinutes,
+    autoCheckInEarlyBufferMinutes: DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes,
+    updatedAt: new Date().toISOString(),
+  };
 
   constructor(
     initialFacilities: Facility[] = DEFAULT_FACILITIES,
@@ -438,7 +451,11 @@ export class InMemoryVmsRepository implements IVmsRepository {
     initialVisitorProfiles: VisitorProfile[] = DEFAULT_VISITOR_PROFILES,
     initialHosts: HostEmployee[] = DEFAULT_HOSTS,
     initialDoors: FacilityDoor[] = DEFAULT_DOORS,
+    initialSettings?: SystemSettings,
   ) {
+    if (initialSettings) {
+      this.systemSettings = structuredClone(initialSettings);
+    }
     for (const f of initialFacilities) {
       this.facilities.set(f.id, structuredClone(f));
     }
@@ -456,7 +473,26 @@ export class InMemoryVmsRepository implements IVmsRepository {
     }
   }
 
-  async getFacility(id: string): Promise<Facility | undefined> {
+  // 0. Global System Settings (Single-Site Architecture)
+  async getSettings(): Promise<SystemSettings> {
+    return structuredClone(this.systemSettings);
+  }
+
+  async updateSettings(updates: Partial<SystemSettings>): Promise<SystemSettings> {
+    const cleanedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([, v]) => v !== undefined),
+    );
+    this.systemSettings = {
+      ...this.systemSettings,
+      ...cleanedUpdates,
+      id: "default",
+      updatedAt: new Date().toISOString(),
+    };
+    return structuredClone(this.systemSettings);
+  }
+
+  async getFacility(id?: string): Promise<Facility | undefined> {
+    if (!id) return undefined;
     const facility = this.facilities.get(id);
     return facility ? structuredClone(facility) : undefined;
   }

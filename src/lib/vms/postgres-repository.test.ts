@@ -163,4 +163,77 @@ describe("PostgresVmsRepository", () => {
       expect(visit?.tapQuota?.maxTaps).toBe(4);
     });
   });
+
+  describe("systemSettings", () => {
+    it("returns default fallback settings when no record exists in database", async () => {
+      const mockWhere = vi.fn().mockResolvedValue([]);
+      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+      mockDb.select.mockReturnValue({ from: mockFrom });
+
+      const settings = await repo.getSettings();
+      expect(settings).toBeDefined();
+      expect(settings.id).toBe("default");
+      expect(settings.timezone).toBe("Asia/Jakarta");
+      expect(settings.overstayGraceMinutes).toBe(15);
+      expect(settings.autoCheckInEarlyBufferMinutes).toBe(15);
+      expect(settings.updatedAt).toBeDefined();
+    });
+
+    it("returns database system settings record when present", async () => {
+      const mockSettings = {
+        id: "default",
+        timezone: "Asia/Makassar",
+        overstayGraceMinutes: 30,
+        autoCheckInEarlyBufferMinutes: 20,
+        updatedAt: "2026-11-15T12:00:00.000Z",
+      };
+      const mockWhere = vi.fn().mockResolvedValue([
+        {
+          id: "default",
+          timezone: "Asia/Makassar",
+          overstayGraceMinutes: 30,
+          autoCheckInEarlyBufferMinutes: 20,
+          updatedAt: "2026-11-15T12:00:00.000Z",
+          data: mockSettings,
+        },
+      ]);
+      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+      mockDb.select.mockReturnValue({ from: mockFrom });
+
+      const settings = await repo.getSettings();
+      expect(settings).toEqual(mockSettings);
+    });
+
+    it("updates system settings with upsert onConflictDoUpdate", async () => {
+      // 1. Mock getSettings returning default
+      const mockWhere = vi.fn().mockResolvedValue([]);
+      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+      mockDb.select.mockReturnValue({ from: mockFrom });
+
+      // 2. Mock insert with onConflictDoUpdate
+      const mockOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+      const mockValues = vi.fn().mockReturnValue({
+        onConflictDoUpdate: mockOnConflictDoUpdate,
+      });
+      mockDb.insert.mockReturnValue({ values: mockValues });
+
+      const result = await repo.updateSettings({
+        timezone: "Asia/Jayapura",
+        overstayGraceMinutes: 45,
+      });
+
+      expect(result.timezone).toBe("Asia/Jayapura");
+      expect(result.overstayGraceMinutes).toBe(45);
+      expect(result.autoCheckInEarlyBufferMinutes).toBe(15);
+      expect(mockDb.insert).toHaveBeenCalledWith(s.systemSettings);
+      expect(mockValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "default",
+          timezone: "Asia/Jayapura",
+          overstayGraceMinutes: 45,
+          autoCheckInEarlyBufferMinutes: 15,
+        }),
+      );
+    });
+  });
 });

@@ -286,4 +286,43 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
       ).rejects.toThrow(TRPCError);
     });
   });
+
+  describe("settingsRouter", () => {
+    it("retrieves current global system settings", async () => {
+      const settings = await caller.settings.get();
+      expect(settings).toBeDefined();
+      expect(settings.id).toBe("default");
+      expect(settings.timezone).toBe("Asia/Jakarta");
+      expect(settings.overstayGraceMinutes).toBe(15);
+      expect(settings.autoCheckInEarlyBufferMinutes).toBe(15);
+
+      const settingsAlias = await caller.settings.getSettings();
+      expect(settingsAlias).toEqual(settings);
+    });
+
+    it("updates global system settings through mutation", async () => {
+      const updated = await caller.settings.updateSettings({
+        timezone: "Asia/Makassar",
+        overstayGraceMinutes: 20,
+        autoCheckInEarlyBufferMinutes: 10,
+      });
+
+      expect(updated.timezone).toBe("Asia/Makassar");
+      expect(updated.overstayGraceMinutes).toBe(20);
+      expect(updated.autoCheckInEarlyBufferMinutes).toBe(10);
+
+      const refreshed = await caller.settings.get();
+      expect(refreshed.timezone).toBe("Asia/Makassar");
+      expect(refreshed.overstayGraceMinutes).toBe(20);
+    });
+
+    it("validates input on update mutation and rejects invalid timezones", async () => {
+      await expect(
+        caller.settings.update({
+          timezone: "Invalid/Not_A_Real_Timezone",
+        }),
+      ).rejects.toThrow();
+    });
+  });
 });
+

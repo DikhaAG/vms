@@ -34,7 +34,8 @@ export function isDoorAccessType(value: unknown): value is DoorAccessType {
 
 export const facilityDoorSchema = z.object({
   id: z.string().optional(),
-  facilityId: z.string().trim().min(1, "Facility ID is required."),
+  facilityId: z.string().trim().min(1, "Facility ID is required.").optional(),
+  regionIndexCode: z.string().trim().optional(),
   doorIndexCode: z.string().trim().min(1, "Door index code is required."),
   doorName: z.string().trim().min(1, "Door name is required."),
   accessType: doorAccessTypeSchema.default("DUAL_DIRECTION"),
@@ -45,6 +46,9 @@ export const facilityDoorSchema = z.object({
     .optional(),
 });
 export type FacilityDoor = z.infer<typeof facilityDoorSchema>;
+
+export const doorSchema = facilityDoorSchema;
+export type Door = FacilityDoor;
 
 export const visitLastSeenDoorSchema = z.object({
   doorIndexCode: z.string(),
@@ -527,6 +531,7 @@ export function validateFacilityDoorInput(
       input: {
         id,
         facilityId: result.data.facilityId,
+        regionIndexCode: result.data.regionIndexCode,
         doorIndexCode: result.data.doorIndexCode,
         doorName: result.data.doorName,
         accessType: result.data.accessType,
