@@ -6,6 +6,7 @@ export interface PageHeaderProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   badge?: React.ReactNode;
+  pageKey?: PageKey;
   guidePageKey?: PageKey;
   guideSlot?: React.ReactNode;
   actions?: React.ReactNode;
@@ -16,11 +17,13 @@ export function PageHeader({
   title,
   subtitle,
   badge,
+  pageKey,
   guidePageKey,
   guideSlot,
   actions,
   className = "",
 }: PageHeaderProps) {
+  const resolvedGuideKey = guidePageKey ?? pageKey;
   return (
     <div
       className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--ks-rule-subtle)] ${className}`.trim()}
@@ -46,12 +49,12 @@ export function PageHeader({
         )}
       </div>
 
-      {(guidePageKey || guideSlot || actions) && (
+      {(resolvedGuideKey || guideSlot || actions) && (
         <div className="flex items-center gap-2">
           {actions}
           {guideSlot}
-          {guidePageKey && !guideSlot && (
-            <PageGuideModal pageKey={guidePageKey} />
+          {resolvedGuideKey && !guideSlot && (
+            <PageGuideModal pageKey={resolvedGuideKey} />
           )}
         </div>
       )}
