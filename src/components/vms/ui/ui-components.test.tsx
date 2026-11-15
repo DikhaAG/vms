@@ -17,6 +17,8 @@ import {
   UiModal,
   UI_MODAL_SIZES,
   PageHeader,
+  UiDataTable,
+  useTableUrlState,
 } from "./index";
 import { idDict } from "@/lib/vms/i18n/id";
 
@@ -354,3 +356,11 @@ describe("PageHeader Primitive", () => {
     expect(html).toContain("Meja Resepsionis");
   });
 });
+
+describe("UiDataTable Export Integrity", () => {
+  it("exports UiDataTable and useTableUrlState from index", () => {
+    expect(typeof UiDataTable).toBe("function");
+    expect(typeof useTableUrlState).toBe("function");
+  });
+});
+

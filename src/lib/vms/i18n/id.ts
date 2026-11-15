@@ -227,6 +227,27 @@ export const idDict = {
     guideButtonLabel: "Panduan Halaman Ini",
   },
 
+  layTerms: {
+    noDataFound: "Tidak ada data yang ditemukan",
+    noMatchingRecords: "Tidak ada data yang sesuai dengan penyaringan",
+    tableEmpty: "Belum ada data tersedia",
+  },
+
+  table: {
+    page: "Halaman",
+    of: "dari",
+    rowsPerPage: "Baris per halaman",
+    previous: "Sebelumnya",
+    next: "Selanjutnya",
+    showing: "Menampilkan",
+    totalRows: "Total data",
+    searchPlaceholder: "Cari data...",
+    noDataFound: "Tidak ada data yang ditemukan",
+    sortAscending: "Urutkan naik",
+    sortDescending: "Urutkan turun",
+    sortClear: "Hapus urutan",
+  },
+
   certificateTypes: {
     111: "KTP (Kartu Tanda Penduduk)",
     414: "Paspor",

@@ -71,3 +71,14 @@ export {
   type UiTextareaProps,
 } from "./ui-textarea";
 
+export {
+  UiDataTable,
+  type UiDataTableProps,
+  type UiTableColumnDef,
+  type UiTableFeatures,
+  useTableUrlState,
+  type UseTableUrlStateOptions,
+  type UseTableUrlStateReturn,
+  defaultTableFeatures,
+} from "./ui-data-table";
+

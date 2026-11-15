@@ -4,15 +4,14 @@
 
 **Blocked by:** 01: Core DX Dependencies, Unified Client Providers, and Test Harness
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Implement `UiDataTable` in `src/components/vms/ui/ui-data-table.tsx` with generic type `<TData, TValue>`.
-- [ ] Provide column sorting with tactile header buttons and visual indicators (up/down chevrons).
-- [ ] Provide pagination footer using `UiButton` and tabular page counters.
-- [ ] Implement global search filter integration compatible with `UiFilterToolbar`.
-- [ ] Provide optional `useTableUrlState` hook backed by `nuqs` for URL search params synchronization.
-- [ ] Render empty state message localized via `idDict.statusBadges` / `idDict.layTerms`.
-- [ ] Export `UiDataTable` from `src/components/vms/ui/index.ts`.
-- [ ] Write comprehensive unit tests in `src/components/vms/ui/ui-data-table.test.tsx` testing sorting, filtering, pagination, and URL state sync.
-- [ ] Verify that `pnpm check` passes with 0 warnings or errors.
-
+- [x] Implement `UiDataTable` in `src/components/vms/ui/ui-data-table.tsx` with generic type `<TData, TValue>`.
+- [x] Provide column sorting with tactile header buttons and visual indicators (up/down chevrons).
+- [x] Provide pagination footer using `UiButton` and tabular page counters.
+- [x] Implement global search filter integration compatible with `UiFilterToolbar`.
+- [x] Provide optional `useTableUrlState` hook backed by `nuqs` for URL search params synchronization.
+- [x] Render empty state message localized via `idDict.statusBadges` / `idDict.layTerms`.
+- [x] Export `UiDataTable` from `src/components/vms/ui/index.ts`.
+- [x] Write comprehensive unit tests in `src/components/vms/ui/ui-data-table.test.tsx` testing sorting, filtering, pagination, and URL state sync.
+- [x] Verify that `pnpm check` passes with 0 warnings or errors.
