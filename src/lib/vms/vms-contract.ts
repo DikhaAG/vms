@@ -338,6 +338,10 @@ export type CreatePreRegistrationInput = z.infer<
   typeof createPreRegistrationSchema
 >;
 
+/** Canonical isomorphic alias for React Hook Form + Zod resolver integrations */
+export const preRegistrationInputSchema = createPreRegistrationSchema;
+export type PreRegistrationInput = CreatePreRegistrationInput;
+
 export type PreRegistrationErrorKind =
   | "validation"
   | "not_found"

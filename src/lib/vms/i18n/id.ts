@@ -491,6 +491,18 @@ export const idDict = {
     preRegistration: {
       title: "Buat Undangan Tamu Terjadwal",
       subtitle: "Jadwalkan Kunjungan Tamu di Muka & Kirim Tautan Pendaftaran Mandiri",
+      toasts: {
+        success: "Janji temu tamu berhasil didaftarkan dan dijadwalkan.",
+        error: "Pendaftaran tamu gagal diproses.",
+        inviteSuccess: "Tautan pendaftaran mandiri berhasil dibuat.",
+        inviteError: "Gagal membuat tautan pendaftaran mandiri.",
+        profileApplied: "Profil tersimpan tamu berhasil diterapkan.",
+        photoVerified: "Foto wajah berhasil diproses dan diverifikasi.",
+        photoNormalized: "Foto kamera web berhasil dinormalkan.",
+        photoRemoved: "Foto wajah telah dihapus.",
+        syncSuccess: "Terminal berhasil disinkronkan ulang.",
+        syncError: "Sinkronisasi ulang terminal gagal.",
+      },
       guide: {
         title: "Panduan Pembuatan Undangan Tamu",
         subtitle: "Langkah mengundang tamu bisnis perorangan sebelum kedatangan di lokasi",

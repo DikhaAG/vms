@@ -4,13 +4,13 @@
 
 **Blocked by:** 02: Isomorphic Zod Contracts with Backward-Compatible Validation Wrappers, 03: Accessible Kinpaku Form Component Suite
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Connect `PreRegistrationForm` to React Hook Form with `zodResolver(preRegistrationInputSchema)`.
-- [ ] Replace hand-rolled input fields with canonical `UiFormField`, `UiTextInput`, and `UiSelect` components.
-- [ ] Connect webcam photo capture (`processBrowserImageFile`) and tap quota radio cards via RHF `<Controller />`.
-- [ ] Replace inline status banners and alerts with Sonner toasts (`toast.success`, `toast.error`) pulling localized Indonesian strings from `idDict`.
-- [ ] Drastically reduce file length and cyclomatic complexity of `pre-registration-form.tsx`.
-- [ ] Update and expand `pre-registration-form.test.tsx` using `renderWithVmsProviders`, asserting user interactions, validation feedback, and successful submission.
-- [ ] Verify that `pnpm check` passes with 100% test success rate.
+- [x] Connect `PreRegistrationForm` to React Hook Form with `zodResolver(preRegistrationInputSchema)`.
+- [x] Replace hand-rolled input fields with canonical `UiFormField`, `UiTextInput`, and `UiSelect` components.
+- [x] Connect webcam photo capture (`processBrowserImageFile`) and tap quota radio cards via RHF `<Controller />`.
+- [x] Replace inline status banners and alerts with Sonner toasts (`toast.success`, `toast.error`) pulling localized Indonesian strings from `idDict`.
+- [x] Drastically reduce file length and cyclomatic complexity of `pre-registration-form.tsx`.
+- [x] Update and expand `pre-registration-form.test.tsx` using `renderWithVmsProviders`, asserting user interactions, validation feedback, and successful submission.
+- [x] Verify that `pnpm check` passes with 100% test success rate.
 
