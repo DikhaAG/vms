@@ -5,6 +5,12 @@ import {
   validateTapQuota,
   validateAccessLevelInput,
   validateUpdateAccessLevelInput,
+  timeScheduleTemplateIdSchema,
+  tapQuotaModeSchema,
+  tapQuotaSchema,
+  accessLevelSchema,
+  createAccessLevelSchema,
+  updateAccessLevelSchema,
 } from "./access-level-contract";
 
 describe("access-level-contract", () => {
@@ -153,6 +159,72 @@ describe("access-level-contract", () => {
       if (result.valid) {
         expect(result.input.name).toBe("Updated Name");
       }
+    });
+  });
+
+  describe("Zod canonical schemas directly", () => {
+    it("validates timeScheduleTemplateIdSchema", () => {
+      expect(timeScheduleTemplateIdSchema.safeParse(1).success).toBe(true);
+      expect(timeScheduleTemplateIdSchema.safeParse(2).success).toBe(true);
+      expect(timeScheduleTemplateIdSchema.safeParse(3).success).toBe(true);
+      expect(timeScheduleTemplateIdSchema.safeParse(4).success).toBe(false);
+      expect(timeScheduleTemplateIdSchema.safeParse("1").success).toBe(false);
+    });
+
+    it("validates tapQuotaModeSchema", () => {
+      expect(tapQuotaModeSchema.safeParse("unlimited").success).toBe(true);
+      expect(tapQuotaModeSchema.safeParse("limited").success).toBe(true);
+      expect(tapQuotaModeSchema.safeParse("other").success).toBe(false);
+    });
+
+    it("validates tapQuotaSchema directly", () => {
+      const unlimited = tapQuotaSchema.safeParse({ mode: "unlimited" });
+      expect(unlimited.success).toBe(true);
+      if (unlimited.success) {
+        expect(unlimited.data.mode).toBe("unlimited");
+      }
+
+      const limited = tapQuotaSchema.safeParse({ mode: "limited", maxTaps: 5 });
+      expect(limited.success).toBe(true);
+      if (limited.success) {
+        expect(limited.data.maxTaps).toBe(5);
+      }
+    });
+
+    it("validates createAccessLevelSchema directly", () => {
+      const parsed = createAccessLevelSchema.safeParse({
+        facilityId: "fac-jkt",
+        name: "Lobby Turnstiles",
+        doors: ["Turnstile 1"],
+        timeScheduleId: 1,
+      });
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.isDefault).toBe(false);
+        expect(parsed.data.description).toBe("");
+      }
+    });
+
+    it("validates accessLevelSchema entity structure", () => {
+      const parsed = accessLevelSchema.safeParse({
+        id: "acc-101",
+        facilityId: "fac-jkt",
+        name: "Lobby Access",
+        description: "General entrance",
+        doors: ["d-1"],
+        timeScheduleId: 2,
+        isDefault: true,
+      });
+      expect(parsed.success).toBe(true);
+    });
+
+    it("validates updateAccessLevelSchema directly", () => {
+      const parsed = updateAccessLevelSchema.safeParse({
+        name: "Updated Name",
+        description: "Updated Description",
+        doors: ["d-2"],
+      });
+      expect(parsed.success).toBe(true);
     });
   });
 });

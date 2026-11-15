@@ -15,6 +15,13 @@ import {
   validateDoorTapInput,
   validateFacilityDoorInput,
   validateGrantEmergencyAccessInput,
+  doorDirectionSchema,
+  doorAccessTypeSchema,
+  emergencyGrantStatusSchema,
+  facilityDoorSchema,
+  doorTapEventSchema,
+  checkOutInputSchema,
+  grantEmergencyAccessInputSchema,
   type CheckOutInput,
   type DoorTapEvent,
   type EmergencyAccessGrant,
@@ -652,6 +659,74 @@ describe("checkout-contract", () => {
       expect(result.error).toBe(
         "Visit window has expired. Scheduled end was 2026-11-13T12:00:00.000Z. Please proceed to reception.",
       );
+    });
+  });
+
+  describe("Zod canonical schemas directly", () => {
+    it("validates doorDirectionSchema and doorAccessTypeSchema", () => {
+      expect(doorDirectionSchema.safeParse("in").success).toBe(true);
+      expect(doorDirectionSchema.safeParse("out").success).toBe(true);
+      expect(doorDirectionSchema.safeParse("sideways").success).toBe(false);
+
+      expect(doorAccessTypeSchema.safeParse("DUAL_DIRECTION").success).toBe(true);
+      expect(doorAccessTypeSchema.safeParse("SINGLE_DIRECTION_IN").success).toBe(true);
+      expect(doorAccessTypeSchema.safeParse("INVALID").success).toBe(false);
+    });
+
+    it("validates facilityDoorSchema entity validation", () => {
+      const res = facilityDoorSchema.safeParse({
+        facilityId: "fac-jkt",
+        doorIndexCode: "d-1",
+        doorName: "Main Entrance",
+        accessType: "DUAL_DIRECTION",
+        isPerimeter: false,
+      });
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.accessType).toBe("DUAL_DIRECTION");
+        expect(res.data.isPerimeter).toBe(false);
+      }
+    });
+
+    it("validates checkOutInputSchema forced reason requirement", () => {
+      const normalRes = checkOutInputSchema.safeParse({
+        visitId: "vis-1",
+        operatorUserId: "op-1",
+        isForced: false,
+      });
+      expect(normalRes.success).toBe(true);
+
+      const forcedWithoutReason = checkOutInputSchema.safeParse({
+        visitId: "vis-1",
+        operatorUserId: "op-1",
+        isForced: true,
+      });
+      expect(forcedWithoutReason.success).toBe(false);
+    });
+
+    it("validates emergencyGrantStatusSchema", () => {
+      expect(emergencyGrantStatusSchema.safeParse("ACTIVE").success).toBe(true);
+      expect(emergencyGrantStatusSchema.safeParse("EXPIRED").success).toBe(true);
+      expect(emergencyGrantStatusSchema.safeParse("REVOKED").success).toBe(true);
+      expect(emergencyGrantStatusSchema.safeParse("UNKNOWN").success).toBe(false);
+    });
+
+    it("validates doorTapEventSchema and grantEmergencyAccessInputSchema directly", () => {
+      const tapRes = doorTapEventSchema.safeParse({
+        visitId: "vis-1",
+        doorIndexCode: "door-101",
+        tappedAtUtc: "2026-11-13T10:00:00Z",
+        direction: "in",
+      });
+      expect(tapRes.success).toBe(true);
+
+      const grantRes = grantEmergencyAccessInputSchema.safeParse({
+        doorIndexCodes: ["door-101"],
+        grantedByUserId: "op-1",
+        reason: "VIP emergency escalation access requirement",
+        durationHours: 2,
+      });
+      expect(grantRes.success).toBe(true);
     });
   });
 });

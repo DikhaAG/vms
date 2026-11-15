@@ -3,6 +3,10 @@ import {
   isInvitationStatus,
   validateCreateInvitationInput,
   validateSelfRegistrationSubmission,
+  invitationStatusSchema,
+  createInvitationSchema,
+  selfRegistrationSubmissionSchema,
+  publicInvitationMetadataSchema,
 } from "./invitation-contract";
 
 describe("invitation-contract", () => {
@@ -153,6 +157,55 @@ describe("invitation-contract", () => {
       if (!outcome.valid) {
         expect(outcome.errors.facePhoto).toBeDefined();
       }
+    });
+  });
+
+  describe("Zod canonical schemas directly", () => {
+    it("validates invitationStatusSchema", () => {
+      expect(invitationStatusSchema.safeParse("valid").success).toBe(true);
+      expect(invitationStatusSchema.safeParse("consumed").success).toBe(true);
+      expect(invitationStatusSchema.safeParse("expired").success).toBe(true);
+      expect(invitationStatusSchema.safeParse("pending").success).toBe(false);
+    });
+
+    it("validates createInvitationSchema directly", () => {
+      const valid = createInvitationSchema.safeParse({
+        facilityId: "fac-jkt",
+        visitReasonType: 0,
+        scheduledStartTime: "2026-11-20T09:00",
+        scheduledEndTime: "2026-11-20T11:00",
+      });
+      expect(valid.success).toBe(true);
+    });
+
+    it("validates selfRegistrationSubmissionSchema directly", () => {
+      const valid = selfRegistrationSubmissionSchema.safeParse({
+        visitorFamilyName: "Wijaya",
+        visitorGivenName: "Andi",
+      });
+      expect(valid.success).toBe(true);
+    });
+
+    it("validates publicInvitationMetadataSchema directly", () => {
+      const valid = publicInvitationMetadataSchema.safeParse({
+        token: "tok-abc-123456",
+        visitId: "vis-1",
+        status: "valid",
+        facility: {
+          id: "fac-jkt",
+          name: "Jakarta HQ",
+          timezone: "Asia/Jakarta",
+        },
+        visitReasonType: 3,
+        visitReasonLabel: "Meeting",
+        scheduledStartTimeFacility: "2026-11-20 09:00",
+        scheduledEndTimeFacility: "2026-11-20 11:00",
+        scheduledStartTimeUtc: "2026-11-20T02:00:00Z",
+        scheduledEndTimeUtc: "2026-11-20T04:00:00Z",
+        expiresAtUtc: "2026-11-20T04:00:00Z",
+        isConsumed: false,
+      });
+      expect(valid.success).toBe(true);
     });
   });
 });

@@ -7,6 +7,14 @@ import {
   isVisitStatus,
   validatePreRegistrationInput,
   validateUpdateFacilityInput,
+  visitStatusSchema,
+  visitReasonTypeSchema,
+  certificateTypeSchema,
+  preRegistrationModeSchema,
+  stubScenarioSchema,
+  credentialSyncStatusSchema,
+  createPreRegistrationSchema,
+  updateFacilitySchema,
   type CreatePreRegistrationInput,
 } from "./vms-contract";
 
@@ -202,6 +210,58 @@ describe("vms-contract", () => {
       if (!res.valid) {
         expect(res.errors.overstayGraceMinutes).toBeDefined();
       }
+    });
+  });
+
+  describe("Zod canonical schemas directly", () => {
+    it("validates visitStatusSchema and credentialSyncStatusSchema", () => {
+      expect(visitStatusSchema.safeParse("APPROVED").success).toBe(true);
+      expect(visitStatusSchema.safeParse("CHECKED_IN").success).toBe(true);
+      expect(visitStatusSchema.safeParse("UNKNOWN_STATUS").success).toBe(false);
+
+      expect(credentialSyncStatusSchema.safeParse("Applied").success).toBe(true);
+      expect(credentialSyncStatusSchema.safeParse("Invalid").success).toBe(false);
+    });
+
+    it("validates visitReasonTypeSchema and certificateTypeSchema", () => {
+      expect(visitReasonTypeSchema.safeParse(0).success).toBe(true);
+      expect(visitReasonTypeSchema.safeParse(4).success).toBe(true);
+      expect(visitReasonTypeSchema.safeParse(9).success).toBe(false);
+
+      expect(certificateTypeSchema.safeParse(111).success).toBe(true);
+      expect(certificateTypeSchema.safeParse(414).success).toBe(true);
+      expect(certificateTypeSchema.safeParse(999).success).toBe(false);
+    });
+
+    it("validates preRegistrationModeSchema and stubScenarioSchema", () => {
+      expect(preRegistrationModeSchema.safeParse("live").success).toBe(true);
+      expect(preRegistrationModeSchema.safeParse("stub").success).toBe(true);
+      expect(preRegistrationModeSchema.safeParse("invalid").success).toBe(false);
+
+      expect(stubScenarioSchema.safeParse("network-error").success).toBe(true);
+      expect(stubScenarioSchema.safeParse("face-quality-failed").success).toBe(true);
+      expect(stubScenarioSchema.safeParse("invalid-scenario").success).toBe(false);
+    });
+
+    it("validates createPreRegistrationSchema directly", () => {
+      const valid = createPreRegistrationSchema.safeParse({
+        facilityId: "fac-jkt",
+        visitorFamilyName: "Santoso",
+        visitorGivenName: "Budi",
+        visitReasonType: 0,
+        scheduledStartTime: "2026-11-20T09:00:00Z",
+        scheduledEndTime: "2026-11-20T11:00:00Z",
+      });
+      expect(valid.success).toBe(true);
+    });
+
+    it("validates updateFacilitySchema directly", () => {
+      const res = updateFacilitySchema.safeParse({
+        name: "Jakarta HQ",
+        timezone: "Asia/Jakarta",
+        overstayGraceMinutes: 15,
+      });
+      expect(res.success).toBe(true);
     });
   });
 });

@@ -5,6 +5,10 @@ import {
   validateCheckInInput,
   validateWalkInRegistrationInput,
   validateVisitorSearchQuery,
+  verificationMethodSchema,
+  checkInInputSchema,
+  walkInRegistrationSchema,
+  visitorSearchQuerySchema,
 } from "./checkin-contract";
 
 describe("checkin-contract", () => {
@@ -181,6 +185,44 @@ describe("checkin-contract", () => {
       if (outcomeMulti.valid) {
         expect(outcomeMulti.input.status).toEqual(["APPROVED", "CHECKED_IN"]);
       }
+    });
+  });
+
+  describe("Zod canonical schemas directly", () => {
+    it("validates verificationMethodSchema", () => {
+      expect(verificationMethodSchema.safeParse("qr").success).toBe(true);
+      expect(verificationMethodSchema.safeParse("manual").success).toBe(true);
+      expect(verificationMethodSchema.safeParse("biometric").success).toBe(true);
+      expect(verificationMethodSchema.safeParse("id_card").success).toBe(true);
+      expect(verificationMethodSchema.safeParse("carrier-pigeon").success).toBe(false);
+    });
+
+    it("validates checkInInputSchema directly", () => {
+      const valid = checkInInputSchema.safeParse({
+        visitId: "vis-123",
+        receptionistUserId: "rec-01",
+        verificationMethod: "qr",
+      });
+      expect(valid.success).toBe(true);
+    });
+
+    it("validates walkInRegistrationSchema directly", () => {
+      const valid = walkInRegistrationSchema.safeParse({
+        facilityId: "fac-jkt",
+        visitorFamilyName: "Pratama",
+        visitorGivenName: "Rian",
+        visitReasonType: 0,
+        receptionistUserId: "rec-01",
+      });
+      expect(valid.success).toBe(true);
+    });
+
+    it("validates visitorSearchQuerySchema directly", () => {
+      const res = visitorSearchQuerySchema.safeParse({
+        query: "Budi",
+        status: "CHECKED_IN",
+      });
+      expect(res.success).toBe(true);
     });
   });
 });
