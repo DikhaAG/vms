@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useRef } from "react";
 import type { Facility } from "@/lib/vms/vms-contract";
 import type {
   ActiveVisitSummary,
@@ -10,6 +10,7 @@ import type {
   VisitLastSeenDoor,
 } from "@/lib/vms/checkout-contract";
 import { isEmergencyGrantActive } from "@/lib/vms/checkout-contract";
+import { useModalFocusTrap } from "@/components/vms/use-modal-focus-trap";
 import { EmergencyAccessModal } from "./emergency-access-modal";
 
 export interface ActiveMonitoringClientProps {
@@ -47,17 +48,16 @@ export function ActiveMonitoringClient({
     message: string;
   } | null>(null);
 
-  useEffect(() => {
-    if (!forceVisit) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setForceVisit(null);
-        setForceReason("");
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [forceVisit]);
+  const forceModalRef = useRef<HTMLDivElement>(null);
+
+  useModalFocusTrap({
+    ref: forceModalRef,
+    isOpen: Boolean(forceVisit),
+    onClose: () => {
+      setForceVisit(null);
+      setForceReason("");
+    },
+  });
 
   // Helper to resolve door access directionality
   const resolveDoorAccessType = (
@@ -367,7 +367,7 @@ export function ActiveMonitoringClient({
         <button
           onClick={refreshVisits}
           disabled={isRefreshing}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-semibold text-neutral-700 dark:text-slate-200 shadow-xs hover:bg-neutral-50 dark:hover:bg-slate-700 disabled:opacity-50 cursor-pointer"
+          className="ks-btn inline-flex items-center gap-1.5 rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-[var(--ks-ink)] shadow-xs hover:bg-[var(--ks-paper)] disabled:opacity-50 cursor-pointer transition-colors"
         >
           {isRefreshing ? "Menyegarkan..." : "↻ Segarkan Daftar Tamu Aktif"}
         </button>
@@ -377,12 +377,12 @@ export function ActiveMonitoringClient({
       {notification && (
         <div
           role="alert"
-          className={`flex items-start justify-between rounded-lg p-4 text-sm ${
+          className={`flex items-start justify-between rounded-lg p-4 text-xs ${
             notification.type === "success"
-              ? "border border-emerald-200 bg-emerald-50 text-emerald-900"
+              ? "border border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/10 text-[var(--ks-ink)]"
               : notification.type === "warning"
-                ? "border border-amber-300 bg-amber-50 text-amber-950 font-medium"
-                : "border border-rose-200 bg-rose-50 text-rose-900"
+                ? "border border-[var(--ks-kinpaku)]/40 bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)] font-medium"
+                : "border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/10 text-[var(--ks-vermilion)]"
           }`}
         >
           <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export function ActiveMonitoringClient({
           </div>
           <button
             onClick={() => setNotification(null)}
-            className="p-1 text-slate-500 hover:text-slate-800 rounded-md cursor-pointer"
+            className="p-1 text-[var(--ks-muted)] hover:text-[var(--ks-ink)] rounded-md cursor-pointer transition-colors"
             aria-label="Tutup notifikasi"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -404,90 +404,90 @@ export function ActiveMonitoringClient({
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <button
           onClick={() => setActiveTab("all")}
-          className={`flex flex-col rounded-xl border p-4 text-left transition ${
+          className={`flex flex-col rounded-xl border p-4 text-left transition cursor-pointer ${
             activeTab === "all"
-              ? "border-neutral-900 bg-neutral-900 text-white shadow-sm"
-              : "border-neutral-200 bg-white text-neutral-900 hover:border-neutral-300"
+              ? "border-[var(--ks-ink)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] shadow-sm"
+              : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] text-[var(--ks-ink)] hover:border-[var(--ks-rule)]"
           }`}
         >
-          <span className={`text-xs font-medium ${activeTab === "all" ? "text-neutral-300" : "text-neutral-500"}`}>
+          <span className={`text-2xs font-bold uppercase tracking-[0.08em] ${activeTab === "all" ? "text-[var(--ks-paper)]/70" : "text-[var(--ks-muted)]"}`}>
             Total Tamu di Gedung
           </span>
           <span className="mt-1 text-2xl font-bold tracking-tight font-mono tabular-nums">{stats.total}</span>
-          <span className={`mt-0.5 text-[11px] ${activeTab === "all" ? "text-neutral-400" : "text-neutral-500"}`}>
+          <span className={`mt-0.5 text-2xs ${activeTab === "all" ? "text-[var(--ks-paper)]/60" : "text-[var(--ks-muted)]"}`}>
             Tamu aktif di dalam
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab("normal")}
-          className={`flex flex-col rounded-xl border p-4 text-left transition ${
+          className={`flex flex-col rounded-xl border p-4 text-left transition cursor-pointer ${
             activeTab === "normal"
-              ? "border-emerald-600 bg-emerald-600 text-white shadow-sm"
-              : "border-neutral-200 bg-white text-neutral-900 hover:border-emerald-300"
+              ? "border-[var(--ks-patina)] bg-[var(--ks-patina)] text-white shadow-sm"
+              : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] text-[var(--ks-ink)] hover:border-[var(--ks-patina)]/40"
           }`}
         >
-          <span className={`text-xs font-medium ${activeTab === "normal" ? "text-emerald-100" : "text-emerald-700"}`}>
+          <span className={`text-2xs font-bold uppercase tracking-[0.08em] ${activeTab === "normal" ? "text-emerald-100" : "text-[var(--ks-patina)]"}`}>
             Status Normal
           </span>
-          <span className="mt-1 text-2xl font-bold tracking-tight text-emerald-800 dark:text-emerald-300 font-mono tabular-nums">
+          <span className={`mt-1 text-2xl font-bold tracking-tight font-mono tabular-nums ${activeTab === "normal" ? "text-white" : "text-[var(--ks-patina)]"}`}>
             {stats.normal}
           </span>
-          <span className={`mt-0.5 text-[11px] ${activeTab === "normal" ? "text-emerald-100" : "text-neutral-500"}`}>
+          <span className={`mt-0.5 text-2xs ${activeTab === "normal" ? "text-emerald-100" : "text-[var(--ks-muted)]"}`}>
             Sesuai jadwal &amp; kuota
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab("overstay")}
-          className={`flex flex-col rounded-xl border p-4 text-left transition ${
+          className={`flex flex-col rounded-xl border p-4 text-left transition cursor-pointer ${
             activeTab === "overstay"
-              ? "border-rose-600 bg-rose-600 text-white shadow-sm"
+              ? "border-[var(--ks-vermilion)] bg-[var(--ks-vermilion)] text-white shadow-sm"
               : stats.overstay > 0
-                ? "border-rose-300 bg-rose-50 text-neutral-900 hover:border-rose-400"
-                : "border-neutral-200 bg-white text-neutral-900 hover:border-rose-200"
+                ? "border-[var(--ks-vermilion)]/40 bg-[var(--ks-vermilion)]/10 text-[var(--ks-ink)] hover:border-[var(--ks-vermilion)]"
+                : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] text-[var(--ks-ink)] hover:border-[var(--ks-vermilion)]/30"
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-medium ${activeTab === "overstay" ? "text-rose-100" : "text-rose-700"}`}>
+            <span className={`text-2xs font-bold uppercase tracking-[0.08em] ${activeTab === "overstay" ? "text-rose-100" : "text-[var(--ks-vermilion)]"}`}>
               Peringatan Overstay
             </span>
             {stats.overstay > 0 && activeTab !== "overstay" && (
-              <span className="flex h-2 w-2 rounded-full bg-rose-500" />
+              <span className="flex h-2 w-2 rounded-full ks-led-vermilion" />
             )}
           </div>
-          <span className={`mt-1 text-2xl font-bold tracking-tight font-mono tabular-nums ${activeTab === "overstay" ? "text-white" : "text-rose-700"}`}>
+          <span className={`mt-1 text-2xl font-bold tracking-tight font-mono tabular-nums ${activeTab === "overstay" ? "text-white" : "text-[var(--ks-vermilion)]"}`}>
             {stats.overstay}
           </span>
-          <span className={`mt-0.5 text-[11px] ${activeTab === "overstay" ? "text-rose-100" : "text-rose-600"}`}>
+          <span className={`mt-0.5 text-2xs ${activeTab === "overstay" ? "text-rose-100" : "text-[var(--ks-vermilion)]"}`}>
             Melewati batas toleransi
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab("quota")}
-          className={`flex flex-col rounded-xl border p-4 text-left transition ${
+          className={`flex flex-col rounded-xl border p-4 text-left transition cursor-pointer ${
             activeTab === "quota"
-              ? "border-amber-600 bg-amber-600 text-white shadow-sm"
+              ? "border-[var(--ks-kinpaku)] bg-[var(--ks-kinpaku)] text-[var(--ks-ink)] shadow-sm"
               : stats.quota > 0
-                ? "border-amber-300 bg-amber-50 text-neutral-900 hover:border-amber-400"
-                : "border-neutral-200 bg-white text-neutral-900 hover:border-amber-200"
+                ? "border-[var(--ks-kinpaku)]/40 bg-[var(--ks-kinpaku)]/10 text-[var(--ks-ink)] hover:border-[var(--ks-kinpaku)]"
+                : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] text-[var(--ks-ink)] hover:border-[var(--ks-kinpaku)]/30"
           }`}
         >
-          <span className={`text-xs font-medium ${activeTab === "quota" ? "text-amber-100" : "text-amber-800"}`}>
+          <span className={`text-2xs font-bold uppercase tracking-[0.08em] ${activeTab === "quota" ? "text-[var(--ks-ink)]" : "text-[var(--ks-ink)]"}`}>
             Peringatan Kuota Tap
           </span>
-          <span className={`mt-1 text-2xl font-bold tracking-tight font-mono tabular-nums ${activeTab === "quota" ? "text-white" : "text-amber-800"}`}>
+          <span className="mt-1 text-2xl font-bold tracking-tight font-mono tabular-nums text-[var(--ks-ink)]">
             {stats.quota}
           </span>
-          <span className={`mt-0.5 text-[11px] ${activeTab === "quota" ? "text-amber-100" : "text-amber-700"}`}>
+          <span className={`mt-0.5 text-2xs ${activeTab === "quota" ? "text-[var(--ks-ink)]/70" : "text-[var(--ks-muted)]"}`}>
             Mendekati / capai batas
           </span>
         </button>
       </div>
 
       {/* Facility & Search Filter Toolbar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-neutral-200 bg-white p-4 shadow-xs">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between rounded-xl border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-4 shadow-xs">
         <div className="flex flex-1 flex-wrap items-center gap-3">
           <div className="min-w-[200px]">
             <label htmlFor="facilityFilter" className="sr-only">
@@ -497,7 +497,7 @@ export function ActiveMonitoringClient({
               id="facilityFilter"
               value={selectedFacilityId}
               onChange={(e) => handleFacilityChange(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-neutral-900 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
             >
               <option value="all">Semua Gedung Fasilitas</option>
               {facilities.map((fac) => (
@@ -518,7 +518,7 @@ export function ActiveMonitoringClient({
               placeholder="Cari nama tamu, tuan rumah, atau nomor kunjungan..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
             />
           </div>
         </div>
@@ -534,10 +534,10 @@ export function ActiveMonitoringClient({
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as FilterTab)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+              className={`rounded-lg px-2.5 py-1 text-xs font-bold uppercase tracking-[0.08em] transition cursor-pointer ${
                 activeTab === tab.id
-                  ? "bg-neutral-900 text-white"
-                  : "text-neutral-600 hover:bg-neutral-100"
+                  ? "bg-[var(--ks-ink)] text-[var(--ks-paper-raised)]"
+                  : "text-[var(--ks-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper)]"
               }`}
             >
               {tab.label}
@@ -548,14 +548,14 @@ export function ActiveMonitoringClient({
 
       {/* Active Visitors List */}
       {filteredVisits.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-12 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 text-xl font-bold">
+        <div className="rounded-xl border border-dashed border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-12 text-center">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--ks-paper-deep)] text-[var(--ks-muted)] text-xl font-bold font-mono">
             0
           </div>
-          <h3 className="mt-3 text-sm font-semibold text-neutral-900">
+          <h3 className="mt-3 text-sm font-semibold text-[var(--ks-ink)]">
             {visits.length === 0 ? "Tidak Ada Tamu Aktif di Dalam Gedung" : "Tidak Ada Tamu Aktif Sesuai Saringan"}
           </h3>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-[var(--ks-muted)]">
             {visits.length === 0
               ? "Seluruh tamu telah selesai berkunjung atau belum melakukan check-in."
               : "Coba sesuaikan kata kunci pencarian, pemilihan fasilitas gedung, atau tab penyaring."}
@@ -586,12 +586,12 @@ export function ActiveMonitoringClient({
             return (
               <div
                 key={visit.visitId}
-                className={`flex flex-col justify-between rounded-xl border bg-white p-5 shadow-xs transition ${
+                className={`flex flex-col justify-between rounded-xl border p-5 shadow-xs transition bg-[var(--ks-paper-raised)] ${
                   visit.isOverstay
-                    ? "border-rose-400 ring-1 ring-rose-300"
+                    ? "border-[var(--ks-vermilion)]/50 ring-1 ring-[var(--ks-vermilion)]/30"
                     : visit.isQuotaExceeded
-                      ? "border-amber-400 ring-1 ring-amber-300"
-                      : "border-neutral-200"
+                      ? "border-[var(--ks-kinpaku)]/50 ring-1 ring-[var(--ks-kinpaku)]/30"
+                      : "border-[var(--ks-rule-subtle)] hover:border-[var(--ks-rule)]"
                 }`}
               >
                 <div>
@@ -607,35 +607,35 @@ export function ActiveMonitoringClient({
                               : `data:image/jpeg;base64,${visit.visitor.photo}`
                           }
                           alt={visit.visitor.fullName}
-                          className="h-12 w-12 rounded-full object-cover border border-neutral-200 shadow-xs"
+                          className="h-12 w-12 rounded-full object-cover border border-[var(--ks-rule-subtle)] shadow-xs"
                         />
                       ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-sm font-bold text-neutral-700 border border-neutral-200">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--ks-paper-deep)] text-xs font-bold text-[var(--ks-ink)] border border-[var(--ks-rule-subtle)]">
                           {visit.visitor.givenName[0]}
                           {visit.visitor.familyName[0]}
                         </div>
                       )}
                       <div>
-                        <h2 className="text-base font-bold text-neutral-950 flex flex-wrap items-center gap-2">
+                        <h2 className="text-base font-bold text-[var(--ks-ink)] flex flex-wrap items-center gap-2">
                           <span>{visit.visitor.fullName}</span>
-                          <span className="text-[11px] font-normal text-neutral-500">
+                          <span className="text-[11px] font-normal text-[var(--ks-muted)]">
                             ({visit.visitReason})
                           </span>
                           {visit.isFastTrack && (
                             <span
                               data-testid="fast-track-badge"
-                              className="inline-flex items-center gap-1 rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-semibold text-cyan-800 border border-cyan-200"
+                              className="inline-flex items-center gap-1 rounded-full border border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/15 px-2 py-0.5 text-2xs font-bold uppercase tracking-wider text-[var(--ks-patina)]"
                             >
                               Masuk Otomatis Tanpa Antre
                             </span>
                           )}
                         </h2>
                         {visit.visitorGroupName && (
-                          <span className="inline-block rounded-md bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 border border-indigo-200 mt-0.5">
+                          <span className="inline-block rounded-md border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-2 py-0.5 text-2xs font-semibold text-[var(--ks-ink)] mt-0.5">
                             Rombongan: {visit.visitorGroupName}
                           </span>
                         )}
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-[var(--ks-muted)]">
                           {visit.visitor.phone || visit.visitor.email || "Tanpa data kontak"}
                           {visit.visitor.certificateNo && ` • No. Identitas: ${visit.visitor.certificateNo}`}
                         </p>
@@ -645,17 +645,17 @@ export function ActiveMonitoringClient({
                     {/* Status Badges */}
                     <div className="flex flex-col items-end gap-1.5">
                       {visit.isOverstay ? (
-                        <span className="inline-flex items-center rounded-full bg-rose-50 border border-rose-300 px-2.5 py-0.5 text-xs font-bold text-rose-800">
+                        <span className="inline-flex items-center rounded-full border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/15 px-2.5 py-0.5 text-xs font-bold text-[var(--ks-vermilion)]">
                           {visit.overstayMinutes}m Overstay
                         </span>
                       ) : (
-                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-200">
+                        <span className="inline-flex items-center rounded-full border border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/15 px-2.5 py-0.5 text-xs font-semibold text-[var(--ks-patina)]">
                           Sesuai Jadwal
                         </span>
                       )}
 
                       {visit.appointRecordId && (
-                        <span className="text-[10px] font-mono text-neutral-500">
+                        <span className="text-3xs font-mono text-[var(--ks-muted)]">
                           HC: {visit.appointRecordId}
                         </span>
                       )}
@@ -663,22 +663,22 @@ export function ActiveMonitoringClient({
                   </div>
 
                   {/* Metadata Grid */}
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs border-y border-neutral-100 py-3">
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs border-y border-[var(--ks-rule-subtle)] py-3">
                     <div>
-                      <span className="text-neutral-600 dark:text-slate-400">Gedung:</span>{" "}
-                      <span className="font-semibold text-neutral-800">{visit.facility.name}</span>
+                      <span className="text-[var(--ks-muted)]">Gedung:</span>{" "}
+                      <span className="font-semibold text-[var(--ks-ink)]">{visit.facility.name}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-600 dark:text-slate-400">Karyawan Tuan Rumah:</span>{" "}
-                      <span className="font-semibold text-neutral-800">{visit.host?.name || "Tamu Datang Langsung (Walk-in)"}</span>
+                      <span className="text-[var(--ks-muted)]">Karyawan Tuan Rumah:</span>{" "}
+                      <span className="font-semibold text-[var(--ks-ink)]">{visit.host?.name || "Tamu Datang Langsung (Walk-in)"}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-600 dark:text-slate-400">Waktu Masuk:</span>{" "}
-                      <span className="font-semibold text-neutral-800">{checkInFormatted}</span>
+                      <span className="text-[var(--ks-muted)]">Waktu Masuk:</span>{" "}
+                      <span className="font-semibold text-[var(--ks-ink)] font-mono">{checkInFormatted}</span>
                     </div>
                     <div>
-                      <span className="text-neutral-600 dark:text-slate-400">Jadwal Keluar:</span>{" "}
-                      <span className={`font-semibold ${visit.isOverstay ? "text-rose-700" : "text-neutral-800"}`}>
+                      <span className="text-[var(--ks-muted)]">Jadwal Keluar:</span>{" "}
+                      <span className={`font-semibold font-mono ${visit.isOverstay ? "text-[var(--ks-vermilion)]" : "text-[var(--ks-ink)]"}`}>
                         {scheduledEndFormatted}
                       </span>
                     </div>
@@ -688,14 +688,14 @@ export function ActiveMonitoringClient({
                   {visit.lastSeenDoor && (
                     <div
                       data-testid="visitor-last-seen-door"
-                      className="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg bg-neutral-50 px-3 py-2 text-xs border border-neutral-100"
+                      className="mt-2.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg bg-[var(--ks-paper-deep)] px-3 py-2 text-xs border border-[var(--ks-rule-subtle)]"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="text-neutral-600 dark:text-slate-400 font-medium">Lokasi Terakhir:</span>
-                        <span className="font-semibold text-neutral-900">
+                        <span className="text-[var(--ks-muted)] font-medium">Lokasi Terakhir:</span>
+                        <span className="font-semibold text-[var(--ks-ink)]">
                           {visit.lastSeenDoor.doorName || visit.lastSeenDoor.doorIndexCode}
                         </span>
-                        <span className="text-[11px] text-neutral-400">
+                        <span className="text-[11px] text-[var(--ks-muted)]">
                           ({visit.lastSeenDoor.direction === "in" ? "Masuk" : "Keluar"} pada{" "}
                           {new Date(visit.lastSeenDoor.tappedAtUtc).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -706,7 +706,7 @@ export function ActiveMonitoringClient({
                       {doorAccessType === "DUAL_DIRECTION" && (
                         <span
                           data-testid="directionality-badge-dual"
-                          className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-[11px] font-semibold text-blue-800 border border-blue-200"
+                          className="inline-flex items-center rounded-full border border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] px-2.5 py-0.5 text-2xs font-semibold text-[var(--ks-ink)]"
                         >
                           Pintu Dua Arah
                         </span>
@@ -714,7 +714,7 @@ export function ActiveMonitoringClient({
                       {doorAccessType === "SINGLE_DIRECTION_IN" && (
                         <span
                           data-testid="directionality-badge-single"
-                          className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800 border border-amber-200"
+                          className="inline-flex items-center rounded-full border border-[var(--ks-kinpaku)]/40 bg-[var(--ks-kinpaku)]/20 px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider text-[var(--ks-ink)]"
                         >
                           Pintu Masuk Saja
                         </span>
@@ -724,12 +724,12 @@ export function ActiveMonitoringClient({
 
                   {/* Movement Breadcrumbs */}
                   {visit.movementBreadcrumbs && visit.movementBreadcrumbs.length > 0 && (
-                    <div className="mt-3 rounded-lg border border-neutral-200 bg-neutral-50/70 p-2.5">
-                      <div className="text-[11px] font-semibold text-neutral-600 dark:text-slate-400 mb-1.5 flex items-center gap-1">
+                    <div className="mt-3 rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] p-2.5">
+                      <div className="text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1.5 flex items-center gap-1">
                         <span>Riwayat Pergerakan Pintu</span>
                       </div>
                       <div
-                        className="flex flex-wrap items-center gap-1.5 text-xs text-neutral-800"
+                        className="flex flex-wrap items-center gap-1.5 text-xs text-[var(--ks-ink)]"
                         data-testid="movement-breadcrumbs"
                       >
                         {visit.movementBreadcrumbs.map((crumb, idx) => {
@@ -739,16 +739,16 @@ export function ActiveMonitoringClient({
                               key={crumb.id || `${crumb.doorIndexCode}-${idx}`}
                               className="inline-flex items-center gap-1.5"
                             >
-                              {idx > 0 && <span className="text-neutral-400 font-bold">→</span>}
+                              {idx > 0 && <span className="text-[var(--ks-muted)] font-bold">→</span>}
                               <span
                                 className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium border ${
                                   isImplicit
-                                    ? "bg-amber-100 text-amber-900 border-amber-300"
-                                    : "bg-white text-neutral-800 border-neutral-200 shadow-2xs"
+                                    ? "bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)] border-[var(--ks-kinpaku)]/30 font-semibold"
+                                    : "bg-[var(--ks-paper-raised)] text-[var(--ks-ink)] border-[var(--ks-rule-subtle)] shadow-2xs"
                                 }`}
                               >
                                 <span>{crumb.doorName || crumb.doorIndexCode}</span>
-                                <span className={isImplicit ? "text-amber-800 font-bold" : "text-neutral-500"}>
+                                <span className={isImplicit ? "text-[var(--ks-ink)] font-bold" : "text-[var(--ks-muted)]"}>
                                   ({isImplicit ? "Keluar Otomatis" : crumb.direction === "in" ? "Masuk" : "Keluar"})
                                 </span>
                               </span>
@@ -784,36 +784,36 @@ export function ActiveMonitoringClient({
                             key={grant.id}
                             className={`flex flex-wrap items-center justify-between gap-2 rounded-lg p-2.5 text-xs border ${
                               isActive
-                                ? "border-amber-300 bg-amber-50/90 text-amber-950"
-                                : "border-neutral-200 bg-neutral-50 text-neutral-500 opacity-75"
+                                ? "border-[var(--ks-kinpaku)]/40 bg-[var(--ks-kinpaku)]/10 text-[var(--ks-ink)]"
+                                : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] text-[var(--ks-muted)] opacity-75"
                             }`}
                           >
                             <div className="flex flex-col gap-0.5">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-neutral-900 flex items-center gap-1">
+                                <span className="font-bold text-[var(--ks-ink)] flex items-center gap-1">
                                   <span>Izin Akses Darurat Sementara:</span>
                                   <span>{grant.doorNames?.join(", ") || grant.doorIndexCodes?.join(", ")}</span>
                                 </span>
                                 {isActive && (
-                                  <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-800 border border-rose-200">
+                                  <span className="rounded-full border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/15 px-2 py-0.5 text-3xs font-bold text-[var(--ks-vermilion)]">
                                     {remainingLabel}
                                   </span>
                                 )}
                                 {isRevoked && (
-                                  <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
+                                  <span className="rounded-full border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-2 py-0.5 text-3xs font-medium text-[var(--ks-muted)]">
                                     Dicabut
                                   </span>
                                 )}
                                 {isExpired && !isRevoked && (
-                                  <span className="rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium text-neutral-600">
+                                  <span className="rounded-full border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-2 py-0.5 text-3xs font-medium text-[var(--ks-muted)]">
                                     Kedaluwarsa
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[11px] text-neutral-600">
-                                <span className="font-medium">Alasan:</span> {grant.reason} •{" "}
-                                <span className="font-medium">Berakhir:</span> {expiryFormatted} •{" "}
-                                <span className="font-medium">Oleh:</span> {grant.grantedByName || grant.grantedByUserId}
+                              <p className="text-[11px] text-[var(--ks-muted)]">
+                                <span className="font-medium text-[var(--ks-ink)]">Alasan:</span> {grant.reason} •{" "}
+                                <span className="font-medium text-[var(--ks-ink)]">Berakhir:</span> {expiryFormatted} •{" "}
+                                <span className="font-medium text-[var(--ks-ink)]">Oleh:</span> {grant.grantedByName || grant.grantedByUserId}
                               </p>
                             </div>
 
@@ -822,7 +822,7 @@ export function ActiveMonitoringClient({
                                 type="button"
                                 onClick={() => handleRevokeEmergencyAccess(visit, grant)}
                                 disabled={actionLoadingId === grant.id}
-                                className="inline-flex items-center rounded-md border border-rose-300 bg-white px-2.5 py-1 text-xs font-semibold text-rose-700 shadow-2xs hover:bg-rose-50 active:bg-rose-100 disabled:opacity-50"
+                                className="ks-btn inline-flex items-center rounded-md border border-[var(--ks-vermilion)]/40 bg-[var(--ks-paper-raised)] px-2.5 py-1 text-xs font-semibold text-[var(--ks-vermilion)] hover:bg-[var(--ks-vermilion)]/10 transition-colors disabled:opacity-50 cursor-pointer"
                               >
                                 {actionLoadingId === grant.id ? "Mencabut..." : "Cabut Izin Akses"}
                               </button>
@@ -836,26 +836,26 @@ export function ActiveMonitoringClient({
                   {/* Door Tap Quota Tracking */}
                   <div className="mt-3.5 space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-neutral-700 flex items-center gap-1">
+                      <span className="text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] flex items-center gap-1">
                         <span>Jatah Buka Pintu (Kuota Tap):</span>
                       </span>
-                      <span className="font-mono text-neutral-800 font-medium">
+                      <span className="font-mono text-[var(--ks-ink)] font-medium">
                         {visit.tapQuotaMode === "limited" ? (
                           <>
-                            <strong className={visit.tapCount >= visit.maxTaps ? "text-rose-600" : "text-neutral-900"}>
+                            <strong className={visit.tapCount >= visit.maxTaps ? "text-[var(--ks-vermilion)]" : "text-[var(--ks-ink)]"}>
                               {visit.tapCount}
                             </strong>{" "}
                             / {visit.maxTaps} Tap{" "}
                             {visit.tapCount >= visit.maxTaps ? (
-                              <span className="text-rose-600 font-bold">(Habis)</span>
+                              <span className="text-[var(--ks-vermilion)] font-bold">(Habis)</span>
                             ) : (
-                              <span className="text-neutral-400">
+                              <span className="text-[var(--ks-muted)]">
                                 ({visit.maxTaps - visit.tapCount} tersisa)
                               </span>
                             )}
                           </>
                         ) : (
-                          <span className="text-emerald-700 font-semibold">
+                          <span className="text-[var(--ks-patina)] font-semibold">
                             {visit.tapCount} Tap (Bebas / Tanpa Batas)
                           </span>
                         )}
@@ -863,14 +863,14 @@ export function ActiveMonitoringClient({
                     </div>
 
                     {visit.tapQuotaMode === "limited" && (
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-100">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--ks-paper-deep)] border border-[var(--ks-rule-subtle)]">
                         <div
                           className={`h-full transition-all duration-300 ${
                             visit.tapCount >= visit.maxTaps
-                              ? "bg-rose-600"
+                              ? "bg-[var(--ks-vermilion)]"
                               : tapRatio >= 75
-                                ? "bg-amber-500"
-                                : "bg-neutral-800"
+                                ? "bg-[var(--ks-kinpaku)]"
+                                : "bg-[var(--ks-ink)]"
                           }`}
                           style={{ width: `${tapRatio}%` }}
                         />
@@ -880,13 +880,13 @@ export function ActiveMonitoringClient({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-neutral-100 pt-3.5">
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--ks-rule-subtle)] pt-3.5">
                   <div className="flex flex-wrap items-center gap-2">
                     {canGrantEmergency && (
                       <button
                         onClick={() => openEmergencyAccessModal(visit)}
                         disabled={isLoading}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 shadow-2xs hover:bg-amber-100 active:bg-amber-200 disabled:opacity-50"
+                        className="ks-btn inline-flex items-center gap-1.5 rounded-lg border border-[var(--ks-kinpaku)]/40 bg-[var(--ks-kinpaku)]/15 px-3 py-1.5 text-xs font-semibold text-[var(--ks-ink)] shadow-2xs hover:brightness-105 active:scale-98 disabled:opacity-50 transition-colors cursor-pointer"
                       >
                         <span>Izin Akses Darurat</span>
                       </button>
@@ -897,7 +897,7 @@ export function ActiveMonitoringClient({
                     <button
                       onClick={() => handleNormalCheckOut(visit)}
                       disabled={isLoading}
-                      className="inline-flex items-center rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 active:bg-emerald-800 disabled:opacity-50"
+                      className="ks-btn inline-flex items-center rounded-lg bg-[var(--ks-patina)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs hover:brightness-110 active:scale-98 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                       {isLoading ? "Memproses..." : "Check-Out Normal"}
                     </button>
@@ -905,7 +905,7 @@ export function ActiveMonitoringClient({
                     <button
                       onClick={() => openForceCheckOutModal(visit)}
                       disabled={isLoading}
-                      className="inline-flex items-center rounded-lg border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-800 hover:bg-rose-100 active:bg-rose-200 disabled:opacity-50"
+                      className="ks-btn inline-flex items-center rounded-lg border border-[var(--ks-vermilion)]/40 bg-[var(--ks-vermilion)]/10 px-3 py-1.5 text-xs font-semibold text-[var(--ks-vermilion)] hover:bg-[var(--ks-vermilion)]/20 active:scale-98 disabled:opacity-50 transition-colors cursor-pointer"
                     >
                       Check-Out Paksa
                     </button>
@@ -919,15 +919,20 @@ export function ActiveMonitoringClient({
 
       {/* Force Check-out Modal */}
       {forceVisit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
-              <h3 className="text-base font-bold text-neutral-900 flex items-center gap-2">
+        <div
+          ref={forceModalRef}
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ks-ink)]/60 p-4 backdrop-blur-xs"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-6 shadow-2xl text-[var(--ks-text)]">
+            <div className="flex items-center justify-between border-b border-[var(--ks-rule-subtle)] pb-3">
+              <h3 className="text-base font-bold text-[var(--ks-ink)] flex items-center gap-2">
                 Check-Out Paksa Tamu
               </h3>
               <button
                 onClick={() => setForceVisit(null)}
-                className="text-neutral-400 hover:text-neutral-600 p-1 rounded-lg cursor-pointer"
+                className="text-[var(--ks-muted)] hover:text-[var(--ks-ink)] p-1 rounded-lg cursor-pointer transition-colors"
                 aria-label="Tutup dialog"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -937,21 +942,21 @@ export function ActiveMonitoringClient({
             </div>
 
             <div className="mt-4 space-y-3">
-              <div className="rounded-lg bg-neutral-50 p-3 text-xs">
-                <p className="font-bold text-neutral-900">{forceVisit.visitor.fullName}</p>
-                <p className="text-neutral-600">
+              <div className="rounded-lg bg-[var(--ks-paper-deep)] p-3 text-xs border border-[var(--ks-rule-subtle)]">
+                <p className="font-bold text-[var(--ks-ink)]">{forceVisit.visitor.fullName}</p>
+                <p className="text-[var(--ks-muted)]">
                   Gedung: {forceVisit.facility.name} • Tuan Rumah: {forceVisit.host?.name || "N/A"}
                 </p>
                 {forceVisit.isOverstay && (
-                  <p className="mt-1 font-bold text-rose-700">
+                  <p className="mt-1 font-bold text-[var(--ks-vermilion)]">
                     Kunjungan Melebihi Waktu (Overstay): Melewati jadwal keluar sebesar {forceVisit.overstayMinutes} menit
                   </p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="securityReason" className="block text-xs font-semibold text-neutral-700 mb-1">
-                  Alasan Keamanan Check-Out Paksa <span className="text-rose-600">*</span>
+                <label htmlFor="securityReason" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+                  Alasan Keamanan Check-Out Paksa <span className="text-[var(--ks-vermilion)]">*</span>
                 </label>
                 <textarea
                   id="securityReason"
@@ -959,13 +964,13 @@ export function ActiveMonitoringClient({
                   value={forceReason}
                   onChange={(e) => setForceReason(e.target.value)}
                   placeholder="Cantumkan alasan detail check-out paksa tamu..."
-                  className="w-full rounded-lg border border-neutral-300 p-2.5 text-xs text-neutral-900 focus:border-rose-600 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-rose-500"
+                  className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] p-2.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-vermilion)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-vermilion)]"
                 />
               </div>
 
               {/* Quick preset chips */}
               <div className="space-y-1">
-                <span className="text-[11px] font-medium text-neutral-500">Pilihan alasan cepat:</span>
+                <span className="text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)]">Pilihan alasan cepat:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {[
                     "Melewati batas toleransi waktu kunjungan (Overstay)",
@@ -977,7 +982,7 @@ export function ActiveMonitoringClient({
                       key={preset}
                       type="button"
                       onClick={() => setForceReason(preset)}
-                      className="rounded border border-neutral-200 bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-700 hover:bg-neutral-200 cursor-pointer"
+                      className="rounded border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-2 py-0.5 text-2xs font-medium text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] cursor-pointer transition-colors"
                     >
                       {preset}
                     </button>
@@ -985,17 +990,17 @@ export function ActiveMonitoringClient({
                 </div>
               </div>
 
-              <div className="rounded-lg bg-amber-50 p-3 text-[11px] text-amber-900 border border-amber-200">
+              <div className="rounded-lg bg-[var(--ks-kinpaku)]/10 p-3 text-2xs text-[var(--ks-ink)] border border-[var(--ks-kinpaku)]/30">
                 <strong>Dampak Perangkat Fisik:</strong> Langsung mencabut seluruh izin kartu RFID, pencocokan biometrik wajah, dan kode QR dinamis di seluruh controller pintu fisik seketika.
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end gap-2 border-t border-neutral-100 pt-4">
+            <div className="mt-6 flex items-center justify-end gap-2 border-t border-[var(--ks-rule-subtle)] pt-4">
               <button
                 type="button"
                 onClick={() => setForceVisit(null)}
                 disabled={isForceSubmitting}
-                className="rounded-lg border border-neutral-300 px-3.5 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 cursor-pointer"
+                className="ks-btn rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-3.5 py-2 text-xs font-semibold text-[var(--ks-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] cursor-pointer transition-colors"
               >
                 Batal
               </button>
@@ -1003,7 +1008,7 @@ export function ActiveMonitoringClient({
                 type="button"
                 onClick={handleConfirmForceCheckOut}
                 disabled={isForceSubmitting || !forceReason.trim()}
-                className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 disabled:opacity-50 cursor-pointer"
+                className="ks-btn rounded-lg bg-[var(--ks-vermilion)] px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] text-white shadow-xs hover:brightness-110 disabled:opacity-50 cursor-pointer transition-colors"
               >
                 {isForceSubmitting ? "Mencabut izin..." : "Cabut Izin Akses & Eksekusi Check-Out Paksa"}
               </button>

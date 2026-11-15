@@ -115,24 +115,24 @@ export function HikCentralStatusBadge({
 
   const badgeConfig = {
     checking: {
-      dotBg: "bg-slate-400",
-      pillBg: "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
-      label: "Memeriksa Gateway...",
+      dotBg: "bg-[var(--ks-text-faint)]",
+      pillBg: "bg-[var(--ks-paper-deep)] text-[var(--ks-text-muted)] border-[var(--ks-rule)]",
+      label: idDict.header.systemChecking,
     },
     online: {
-      dotBg: "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]",
-      pillBg: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60",
+      dotBg: "bg-[var(--ks-patina)] ks-led-patina",
+      pillBg: "bg-[var(--ks-paper-deep)] text-[var(--ks-ink)] border-[var(--ks-rule)]",
       label: idDict.header.systemConnected,
     },
     offline: {
-      dotBg: "bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.5)]",
-      pillBg: "bg-rose-50 text-rose-800 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60",
+      dotBg: "bg-[var(--ks-vermilion)] ks-led-vermilion",
+      pillBg: "bg-[var(--ks-vermilion)]/10 text-[var(--ks-vermilion)] border-[var(--ks-vermilion)]/30",
       label: idDict.header.systemDisconnected,
     },
     config: {
-      dotBg: "bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.5)]",
-      pillBg: "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60",
-      label: "Konfigurasi Belum Lengkap",
+      dotBg: "bg-[var(--ks-amber)] ks-led-amber",
+      pillBg: "bg-[var(--ks-amber)]/10 text-[var(--ks-amber-deep)] border-[var(--ks-amber)]/30",
+      label: idDict.header.systemConfigIncomplete,
     },
   }[status];
 
@@ -143,7 +143,7 @@ export function HikCentralStatusBadge({
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-label="Status Koneksi HikCentral"
-        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition cursor-pointer ${badgeConfig.pillBg}`}
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-[var(--ks-radius-md)] border text-xs font-semibold transition cursor-pointer shadow-2xs hover:border-[var(--ks-edge)] ${badgeConfig.pillBg}`}
       >
         <span
           className={`inline-flex h-2 w-2 rounded-full shrink-0 ${badgeConfig.dotBg} ${
@@ -165,48 +165,48 @@ export function HikCentralStatusBadge({
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
           />
-          <div className="absolute right-0 mt-2 z-40 w-72 rounded-xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-lg text-xs text-neutral-800 dark:text-slate-200">
-            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-slate-800 pb-2">
-              <span className="font-semibold text-neutral-900 dark:text-white">
+          <div className="absolute right-0 mt-2 z-40 w-76 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-4 shadow-[var(--ks-lift-2)] text-xs text-[var(--ks-text)]">
+            <div className="flex items-center justify-between border-b border-[var(--ks-rule)] pb-2.5">
+              <span className="font-bold text-[var(--ks-ink)] tracking-tight">
                 Konektivitas HikCentral
               </span>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-neutral-400 hover:text-neutral-600 dark:hover:text-slate-200 font-bold"
+                className="text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] font-bold text-sm"
               >
                 &times;
               </button>
             </div>
 
-            <div className="mt-3 space-y-2">
+            <div className="mt-3 space-y-2.5">
               <div>
-                <span className="text-neutral-500 dark:text-slate-400">Status Gateway:</span>
-                <p className="font-semibold capitalize mt-0.5">{status}</p>
+                <span className="text-[var(--ks-text-muted)] font-medium">Status Gateway:</span>
+                <p className="font-bold capitalize text-[var(--ks-ink)] mt-0.5">{status}</p>
               </div>
 
               {latencyMs !== undefined ? (
                 <div>
-                  <span className="text-neutral-500 dark:text-slate-400">Latensi Respon:</span>
-                  <p className="font-mono mt-0.5">{latencyMs} ms</p>
+                  <span className="text-[var(--ks-text-muted)] font-medium">Latensi Respon:</span>
+                  <p className="font-mono mt-0.5 font-bold text-[var(--ks-ink)]">{latencyMs} ms</p>
                 </div>
               ) : null}
 
               {errorMessage ? (
-                <div className="rounded-lg bg-rose-50 dark:bg-rose-950/40 p-2 text-[11px] text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+                <div className="rounded-[var(--ks-radius-sm)] bg-[var(--ks-vermilion)]/10 p-2.5 text-[11px] text-[var(--ks-vermilion)] border border-[var(--ks-vermilion)]/30">
                   {errorMessage}
                 </div>
               ) : null}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-neutral-100 dark:border-slate-800 flex justify-end">
+            <div className="mt-4 pt-3 border-t border-[var(--ks-rule)] flex justify-end">
               <button
                 type="button"
                 onClick={() => {
                   void handleManualCheck();
                 }}
                 disabled={isChecking}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-neutral-900 dark:bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-neutral-800 dark:hover:bg-blue-700 disabled:opacity-50"
+                className="ks-btn inline-flex items-center gap-1.5 rounded-[var(--ks-radius-sm)] bg-[var(--ks-ink)] px-3 py-1.5 text-xs font-semibold text-[var(--ks-paper-raised)] shadow-xs transition hover:bg-[var(--ks-text)] disabled:opacity-50"
               >
                 <span>{isChecking ? "⏳" : "🔄"}</span>
                 {isChecking ? "Memeriksa..." : "Uji Koneksi Ulang"}

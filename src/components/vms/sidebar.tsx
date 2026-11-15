@@ -90,7 +90,7 @@ export function Sidebar({
       {groups.map(([groupKey, group]) => (
         <div key={groupKey}>
           {(!collapsed || isDrawer) && (
-            <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+            <h3 className="px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ks-text-faint)] mb-2">
               {group.title}
             </h3>
           )}
@@ -104,17 +104,17 @@ export function Sidebar({
                   onClick={isDrawer ? onCloseMobile : undefined}
                   aria-current={isActive ? "page" : undefined}
                   title={item.title}
-                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-[var(--ks-radius-md)] text-sm font-medium transition-all ${
                     isActive
-                      ? "bg-blue-50/90 text-blue-700 font-semibold ring-1 ring-blue-500/20 dark:bg-blue-950/60 dark:text-blue-300 dark:ring-blue-400/30 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60"
+                      ? "bg-[var(--ks-paper-deep)] text-[var(--ks-ink)] font-semibold shadow-2xs border-l-2 border-[var(--ks-kinpaku-rich)]"
+                      : "text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper-deep)]/60"
                   }`}
                 >
                   <span
                     className={
                       isActive
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 transition-colors"
+                        ? "text-[var(--ks-kinpaku-deep)]"
+                        : "text-[var(--ks-text-faint)] group-hover:text-[var(--ks-ink)] transition-colors"
                     }
                   >
                     {renderNavIcon(item.icon)}
@@ -135,28 +135,28 @@ export function Sidebar({
     <>
       {/* Desktop Sidebar (visible on lg screens) */}
       <aside
-        className={`hidden lg:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-200 z-30 shrink-0 ${
+        className={`hidden lg:flex flex-col bg-[var(--ks-paper-raised)] border-r border-[var(--ks-rule)] transition-all duration-200 z-30 shrink-0 ${
           collapsed ? "w-18" : "w-64"
         }`}
       >
         {/* Brand / Logo */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center justify-between h-16 px-4 border-b border-[var(--ks-rule)]">
           {!collapsed ? (
             <Link href="/vms/reception" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-700 flex items-center justify-center text-white font-bold text-sm shadow-xs ring-1 ring-white/20">
+              <div className="w-9 h-9 rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] flex items-center justify-center font-bold text-sm shadow-xs border border-[var(--ks-rule)]">
                 VMS
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                <span className="text-sm font-bold text-[var(--ks-ink)] truncate tracking-tight">
                   {idDict.appName}
                 </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                <span className="text-[10px] text-[var(--ks-text-muted)] truncate">
                   {idDict.appShortName}
                 </span>
               </div>
             </Link>
           ) : (
-            <div className="mx-auto w-9 h-9 rounded-xl bg-blue-700 flex items-center justify-center text-white font-bold text-sm shadow-xs ring-1 ring-white/20">
+            <div className="mx-auto w-9 h-9 rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] flex items-center justify-center font-bold text-sm shadow-xs border border-[var(--ks-rule)]">
               V
             </div>
           )}
@@ -167,7 +167,7 @@ export function Sidebar({
             onClick={onToggleCollapse}
             aria-label={collapsed ? idDict.navigation.expandMenu : idDict.navigation.collapseMenu}
             aria-expanded={!collapsed}
-            className={`p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors dark:hover:text-slate-200 dark:hover:bg-slate-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 ${
+            className={`p-1.5 rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper-deep)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--ks-patina-deep)] ${
               collapsed ? "mx-auto mt-2" : ""
             }`}
           >
@@ -207,19 +207,19 @@ export function Sidebar({
           {/* Drawer Sheet */}
           <div
             ref={drawerRef}
-            className="relative flex flex-col w-72 max-w-[80vw] bg-white dark:bg-slate-900 shadow-2xl border-r border-slate-200 dark:border-slate-800 z-10 animate-in slide-in-from-left duration-200"
+            className="relative flex flex-col w-72 max-w-[80vw] bg-[var(--ks-paper-raised)] shadow-[var(--ks-lift-2)] border-r border-[var(--ks-rule)] z-10 animate-in slide-in-from-left duration-200"
           >
             {/* Drawer Header */}
-            <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between h-16 px-4 border-b border-[var(--ks-rule)]">
               <Link href="/vms/reception" onClick={onCloseMobile} className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
+                <div className="w-8 h-8 rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] flex items-center justify-center font-bold text-xs shadow-xs border border-[var(--ks-rule)]">
                   VMS
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                  <span className="text-sm font-bold text-[var(--ks-ink)] truncate tracking-tight">
                     {idDict.appName}
                   </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <span className="text-[10px] text-[var(--ks-text-muted)]">
                     {idDict.appShortName}
                   </span>
                 </div>
@@ -229,7 +229,7 @@ export function Sidebar({
                 type="button"
                 onClick={onCloseMobile}
                 aria-label="Tutup menu navigasi"
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors dark:hover:text-slate-200 dark:hover:bg-slate-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="p-1.5 text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper-deep)] rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--ks-patina-deep)]"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

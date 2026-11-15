@@ -33,6 +33,7 @@ import {
   processBrowserImageFile,
   toJpegDataUri,
 } from "@/lib/vms/face-normalizer";
+import { useModalFocusTrap } from "@/components/vms/use-modal-focus-trap";
 
 interface ReceptionClientProps {
   facilities: Facility[];
@@ -110,29 +111,6 @@ export function ReceptionClient({
     certificateNo?: string;
     facePhoto?: string;
   } | null>(null);
-
-  useEffect(() => {
-    const isAnyModalOpen = Boolean(verifyingVisit || isWalkInModalOpen || issuedPass);
-    if (!isAnyModalOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (verifyingVisit) {
-          setVerifyingVisit(null);
-          setCheckInError(null);
-        } else if (isWalkInModalOpen) {
-          setIsWalkInModalOpen(false);
-          setWalkInError(null);
-        } else if (issuedPass) {
-          setIssuedPass(null);
-          setSyncFeedback(null);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [verifyingVisit, isWalkInModalOpen, issuedPass]);
 
   async function checkReturningWalkInVisitor(cert: string) {
     const trimmed = cert.trim();
@@ -310,6 +288,38 @@ export function ReceptionClient({
     setFaceError(null);
   }, []);
 
+  const verifyModalRef = useRef<HTMLDivElement>(null);
+  const walkInModalRef = useRef<HTMLDivElement>(null);
+  const issuedPassModalRef = useRef<HTMLDivElement>(null);
+
+  useModalFocusTrap({
+    ref: verifyModalRef,
+    isOpen: Boolean(verifyingVisit),
+    onClose: () => {
+      setVerifyingVisit(null);
+      setCheckInError(null);
+    },
+  });
+
+  useModalFocusTrap({
+    ref: walkInModalRef,
+    isOpen: isWalkInModalOpen,
+    onClose: () => {
+      setIsWalkInModalOpen(false);
+      setWalkInError(null);
+      handleStopCamera();
+    },
+  });
+
+  useModalFocusTrap({
+    ref: issuedPassModalRef,
+    isOpen: Boolean(issuedPass),
+    onClose: () => {
+      setIssuedPass(null);
+      setSyncFeedback(null);
+    },
+  });
+
   // Check-in action execution
   const handleConfirmCheckIn = async () => {
     if (!verifyingVisit) return;
@@ -454,21 +464,21 @@ export function ReceptionClient({
   return (
     <div className="space-y-6">
       {/* Top Banner / Operator Identity & Fast Actions */}
-      <div className="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 font-semibold text-sm">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] font-bold text-sm border border-[var(--ks-rule)] shadow-2xs">
             DF
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-neutral-900">
+              <span className="text-sm font-bold text-[var(--ks-ink)] tracking-tight">
                 {receptionistUser.name}
               </span>
-              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-2xs font-medium text-neutral-600">
+              <span className="rounded-[var(--ks-radius-sm)] bg-[var(--ks-paper-deep)] border border-[var(--ks-rule)] px-2 py-0.5 text-2xs font-mono font-medium text-[var(--ks-ink)]">
                 {receptionistUser.id}
               </span>
             </div>
-            <p className="text-xs text-neutral-500">
+            <p className="text-xs text-[var(--ks-text-muted)] mt-0.5">
               Terminal Resepsionis Lobi &bull; {facilities.find((f) => f.id === selectedFacilityId)?.name || "Semua Gedung Fasilitas"}
             </p>
           </div>
@@ -481,7 +491,7 @@ export function ReceptionClient({
               resetWalkInForm();
               setIsWalkInModalOpen(true);
             }}
-            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 cursor-pointer"
+            className="ks-btn inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[var(--ks-radius-sm)] bg-[var(--ks-ink)] px-4 py-2 text-sm font-semibold text-[var(--ks-paper-raised)] shadow-xs transition hover:bg-[var(--ks-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ks-patina-deep)] cursor-pointer"
           >
             <svg
               className="h-4 w-4"
@@ -497,11 +507,11 @@ export function ReceptionClient({
       </div>
 
       {/* Search, Filter & Environment Control Bar */}
-      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-xs space-y-3">
+      <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-4 shadow-xs space-y-3">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           {/* Search Input */}
           <div className="relative flex-1">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--ks-text-faint)]">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -511,7 +521,7 @@ export function ReceptionClient({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cari tamu berdasarkan nama, nomor telepon, nomor identitas, atau kode QR..."
-              className="w-full rounded-lg border border-neutral-300 bg-white py-2 pl-9 pr-8 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+              className="w-full rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] bg-[var(--ks-paper-deep)] py-2 pl-9 pr-8 text-sm text-[var(--ks-ink)] placeholder:text-[var(--ks-text-faint)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)] outline-hidden"
               autoComplete="off"
               autoCorrect="off"
               spellCheck={false}
@@ -520,7 +530,7 @@ export function ReceptionClient({
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-neutral-400 hover:text-neutral-600"
+                className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] cursor-pointer"
               >
                 &times;
               </button>
@@ -529,14 +539,14 @@ export function ReceptionClient({
 
           {/* Facility Filter */}
           <div className="flex items-center gap-2">
-            <label htmlFor={`${formId}-facility`} className="text-xs font-medium text-neutral-600 whitespace-nowrap">
+            <label htmlFor={`${formId}-facility`} className="text-xs font-semibold text-[var(--ks-text-muted)] whitespace-nowrap">
               Gedung:
             </label>
             <select
               id={`${formId}-facility`}
               value={selectedFacilityId}
               onChange={(e) => setSelectedFacilityId(e.target.value)}
-              className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:border-emerald-600 focus:ring-emerald-600"
+              className="rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] bg-[var(--ks-paper-deep)] px-3 py-2 text-xs font-semibold text-[var(--ks-ink)] focus:border-[var(--ks-edge)] outline-hidden"
             >
               <option value="all">Semua Gedung Fasilitas</option>
               {facilities.map((f) => (
@@ -549,19 +559,19 @@ export function ReceptionClient({
         </div>
 
         {/* Status Tabs */}
-        <div className="flex border-b border-neutral-200 text-xs font-medium">
+        <div className="flex border-b border-[var(--ks-rule)] text-xs font-semibold">
           <button
             type="button"
             onClick={() => setActiveTab("expected")}
-            className={`pb-2.5 px-3.5 border-b-2 font-medium transition cursor-pointer flex items-center gap-2 ${
+            className={`pb-2.5 px-3.5 border-b-2 font-semibold transition cursor-pointer flex items-center gap-2 ${
               activeTab === "expected"
-                ? "border-emerald-600 text-emerald-800 font-semibold"
-                : "border-transparent text-neutral-500 hover:text-neutral-800"
+                ? "border-[var(--ks-patina-deep)] text-[var(--ks-ink)]"
+                : "border-transparent text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)]"
             }`}
           >
             <span>Tamu Diharapkan Hari Ini</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-mono font-medium ${
-              activeTab === "expected" ? "bg-emerald-100 text-emerald-800" : "bg-neutral-100 text-neutral-600"
+            <span className={`rounded-[var(--ks-radius-pill)] px-2 py-0.5 text-xs font-mono font-bold ${
+              activeTab === "expected" ? "bg-[var(--ks-patina)]/20 text-[var(--ks-patina-deep)]" : "bg-[var(--ks-paper-deep)] text-[var(--ks-text-muted)]"
             }`}>
               {countExpected}
             </span>
@@ -569,15 +579,15 @@ export function ReceptionClient({
           <button
             type="button"
             onClick={() => setActiveTab("checked_in")}
-            className={`pb-2.5 px-3.5 border-b-2 font-medium transition cursor-pointer flex items-center gap-2 ${
+            className={`pb-2.5 px-3.5 border-b-2 font-semibold transition cursor-pointer flex items-center gap-2 ${
               activeTab === "checked_in"
-                ? "border-blue-600 text-blue-800 font-semibold"
-                : "border-transparent text-neutral-500 hover:text-neutral-800"
+                ? "border-[var(--ks-kinpaku-rich)] text-[var(--ks-ink)]"
+                : "border-transparent text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)]"
             }`}
           >
             <span>Sedang di Gedung</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-mono font-medium ${
-              activeTab === "checked_in" ? "bg-blue-100 text-blue-800" : "bg-neutral-100 text-neutral-600"
+            <span className={`rounded-[var(--ks-radius-pill)] px-2 py-0.5 text-xs font-mono font-bold ${
+              activeTab === "checked_in" ? "bg-[var(--ks-kinpaku)]/25 text-[var(--ks-ink)]" : "bg-[var(--ks-paper-deep)] text-[var(--ks-text-muted)]"
             }`}>
               {countCheckedIn}
             </span>
@@ -585,14 +595,14 @@ export function ReceptionClient({
           <button
             type="button"
             onClick={() => setActiveTab("all")}
-            className={`pb-2.5 px-3.5 border-b-2 font-medium transition cursor-pointer flex items-center gap-2 ${
+            className={`pb-2.5 px-3.5 border-b-2 font-semibold transition cursor-pointer flex items-center gap-2 ${
               activeTab === "all"
-                ? "border-neutral-900 text-neutral-900 font-semibold"
-                : "border-transparent text-neutral-500 hover:text-neutral-800"
+                ? "border-[var(--ks-ink)] text-[var(--ks-ink)]"
+                : "border-transparent text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)]"
             }`}
           >
             <span>Semua Kunjungan</span>
-            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-mono font-medium text-neutral-600">
+            <span className="rounded-[var(--ks-radius-pill)] bg-[var(--ks-paper-deep)] px-2 py-0.5 text-xs font-mono font-bold text-[var(--ks-text-muted)]">
               {countAll}
             </span>
           </button>
@@ -601,23 +611,23 @@ export function ReceptionClient({
 
       {/* Arrival Queue / Visits Display */}
       {isSearching ? (
-        <div className="rounded-xl border border-neutral-200 bg-white p-12 text-center text-sm text-neutral-500 shadow-xs">
+        <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-12 text-center text-sm text-[var(--ks-text-muted)] shadow-xs">
           Memuat antrean kedatangan tamu...
         </div>
       ) : filteredVisits.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-12 text-center shadow-xs">
+        <div className="rounded-[var(--ks-radius-md)] border border-dashed border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-12 text-center shadow-xs">
           <svg
-            className="mx-auto h-10 w-10 text-neutral-400"
+            className="mx-auto h-10 w-10 text-[var(--ks-text-faint)]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <h3 className="mt-3 text-sm font-semibold text-neutral-900">
+          <h3 className="mt-3 text-sm font-bold text-[var(--ks-ink)] tracking-tight">
             {searchQuery ? "Tidak Ada Tamu Ditemukan" : "Belum Ada Kunjungan Terdaftar Hari Ini"}
           </h3>
-          <p className="mt-1 text-xs text-neutral-500 max-w-sm mx-auto">
+          <p className="mt-1 text-xs text-[var(--ks-text-muted)] max-w-sm mx-auto">
             {searchQuery
               ? `Tidak ada tamu yang cocok dengan "${searchQuery}". Coba gunakan kata kunci lain atau daftarkan tamu datang langsung (walk-in).`
               : "Buat jadwal kunjungan baru melalui menu Pra-Registrasi atau layani tamu datang langsung (Walk-in)."}
@@ -628,7 +638,7 @@ export function ReceptionClient({
               resetWalkInForm();
               setIsWalkInModalOpen(true);
             }}
-            className="mt-4 inline-flex items-center rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 cursor-pointer"
+            className="ks-btn mt-4 inline-flex items-center rounded-[var(--ks-radius-sm)] bg-[var(--ks-ink)] px-3.5 py-2 text-xs font-semibold text-[var(--ks-paper-raised)] transition hover:bg-[var(--ks-text)] cursor-pointer shadow-xs"
           >
             Daftarkan Tamu Datang Langsung
           </button>
@@ -642,12 +652,12 @@ export function ReceptionClient({
             return (
               <div
                 key={visit.id}
-                className={`flex flex-col justify-between rounded-xl border bg-white p-5 shadow-xs transition hover:shadow-md ${
+                className={`flex flex-col justify-between rounded-[var(--ks-radius-md)] border bg-[var(--ks-paper-raised)] p-5 shadow-2xs transition hover:shadow-xs hover:border-[var(--ks-edge)] ${
                   isCheckedIn
-                    ? "border-blue-200 bg-blue-50/20"
+                    ? "border-[var(--ks-kinpaku-rich)]/40 bg-[var(--ks-kinpaku)]/5"
                     : isApproved
-                      ? "border-emerald-200"
-                      : "border-neutral-200"
+                      ? "border-[var(--ks-patina)]/40"
+                      : "border-[var(--ks-rule)]"
                 }`}
               >
                 <div>
@@ -659,19 +669,19 @@ export function ReceptionClient({
                         <img
                           src={toJpegDataUri(visit.facePhoto)}
                           alt={`${visit.visitorGivenName} ${visit.visitorFamilyName}`}
-                          className="h-12 w-12 rounded-full object-cover border border-neutral-200 shadow-2xs"
+                          className="h-12 w-12 rounded-[var(--ks-radius-pill)] object-cover border border-[var(--ks-rule)] shadow-2xs"
                         />
                       ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 font-semibold text-sm border border-neutral-200">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-[var(--ks-radius-pill)] bg-[var(--ks-paper-deep)] text-[var(--ks-ink)] font-bold text-sm border border-[var(--ks-rule)]">
                           {visit.visitorGivenName[0]}
                           {visit.visitorFamilyName[0]}
                         </div>
                       )}
                       <div>
-                        <h4 className="text-sm font-bold text-neutral-900 leading-tight">
+                        <h4 className="text-sm font-bold text-[var(--ks-ink)] leading-tight tracking-tight">
                           {visit.visitorGivenName} {visit.visitorFamilyName}
                         </h4>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-[var(--ks-text-muted)] font-mono mt-0.5">
                           {visit.certificateType
                             ? CERTIFICATE_TYPE_LABELS[visit.certificateType]
                             : "ID"}
@@ -682,24 +692,24 @@ export function ReceptionClient({
 
                     <div className="flex flex-col items-end gap-1">
                       <span
-                        className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${
+                        className={`rounded-[var(--ks-radius-pill)] px-2.5 py-0.5 text-2xs font-bold ${
                           isCheckedIn
-                            ? "bg-blue-100 text-blue-800"
+                            ? "bg-[var(--ks-kinpaku)]/20 text-[var(--ks-ink)] border border-[var(--ks-kinpaku-rich)]/30"
                             : isApproved
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-neutral-100 text-neutral-700"
+                              ? "bg-[var(--ks-patina)]/15 text-[var(--ks-patina-deep)] border border-[var(--ks-patina)]/30 ks-led-patina"
+                              : "bg-[var(--ks-paper-deep)] text-[var(--ks-ink)] border border-[var(--ks-rule)]"
                         }`}
                       >
                         {visit.status.replace("_", " ")}
                       </span>
                       {visit.credentialSyncStatus && (
                         <span
-                          className={`rounded-full px-2 py-0.2 text-3xs font-medium ${
+                          className={`rounded-[var(--ks-radius-pill)] px-2 py-0.2 text-3xs font-mono font-medium ${
                             visit.credentialSyncStatus === "Applied"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              ? "bg-[var(--ks-patina)]/10 text-[var(--ks-patina-deep)] border border-[var(--ks-patina)]/30"
                               : visit.credentialSyncStatus === "Failed"
-                                ? "bg-red-50 text-red-700 border border-red-200"
-                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                                ? "bg-[var(--ks-vermilion)]/10 text-[var(--ks-vermilion)] border border-[var(--ks-vermilion)]/30"
+                                : "bg-[#d97706]/10 text-[#b45309] border border-[#d97706]/30"
                           }`}
                         >
                           Sync: {visit.credentialSyncStatus}
@@ -709,42 +719,42 @@ export function ReceptionClient({
                   </div>
 
                   {/* Visit Details */}
-                  <div className="mt-4 space-y-1.5 text-xs text-neutral-600">
+                  <div className="mt-4 space-y-1.5 text-xs text-[var(--ks-text)]">
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Karyawan Tuan Rumah:</span>
-                      <span className="font-medium text-neutral-900">
+                      <span className="text-[var(--ks-text-muted)]">Karyawan Tuan Rumah:</span>
+                      <span className="font-semibold text-[var(--ks-ink)]">
                         {visit.hostName || "Tamu Meja Depan"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Gedung:</span>
-                      <span>{visit.facilityName || visit.facilityId}</span>
+                      <span className="text-[var(--ks-text-muted)]">Gedung:</span>
+                      <span className="font-medium text-[var(--ks-ink)]">{visit.facilityName || visit.facilityId}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Keperluan:</span>
-                      <span className="font-medium text-neutral-800">
+                      <span className="text-[var(--ks-text-muted)]">Keperluan:</span>
+                      <span className="font-semibold text-[var(--ks-ink)]">
                         {VISIT_REASON_LABELS[visit.visitReasonType]}
                         {visit.visitReasonDetail ? ` (${visit.visitReasonDetail})` : ""}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Jadwal:</span>
-                      <span className="font-mono text-neutral-800">
+                      <span className="text-[var(--ks-text-muted)]">Jadwal:</span>
+                      <span className="font-mono text-[var(--ks-ink)] font-semibold">
                         {visit.scheduledStartTimeFacility.split("T")[1]?.substring(0, 5)} - {visit.scheduledEndTimeFacility.split("T")[1]?.substring(0, 5)}
                       </span>
                     </div>
                     {visit.actualCheckInTimeUtc && (
-                      <div className="flex items-center justify-between text-blue-700">
+                      <div className="flex items-center justify-between text-[var(--ks-patina-deep)]">
                         <span>Waktu Masuk:</span>
-                        <span className="font-mono font-medium">
+                        <span className="font-mono font-semibold">
                           {new Date(visit.actualCheckInTimeUtc).toLocaleTimeString()}
                         </span>
                       </div>
                     )}
                     {visit.hikCentral?.pinCode && (
-                      <div className="flex items-center justify-between bg-neutral-100 rounded px-2 py-1">
-                        <span className="text-neutral-600">Kode PIN:</span>
-                        <span className="font-mono font-bold tracking-wider text-neutral-900">
+                      <div className="flex items-center justify-between bg-[var(--ks-paper-deep)] border border-[var(--ks-rule)] rounded-[var(--ks-radius-sm)] px-2 py-1">
+                        <span className="text-[var(--ks-text-muted)]">Kode PIN:</span>
+                        <span className="font-mono font-bold tracking-wider text-[var(--ks-ink)]">
                           {visit.hikCentral.pinCode}
                         </span>
                       </div>
@@ -753,7 +763,7 @@ export function ReceptionClient({
                 </div>
 
                 {/* Card Action Buttons */}
-                <div className="mt-4 pt-3 border-t border-neutral-100 flex gap-2">
+                <div className="mt-4 pt-3 border-t border-[var(--ks-rule)] flex gap-2">
                   {isApproved && (
                     <button
                       type="button"
@@ -762,7 +772,7 @@ export function ReceptionClient({
                         setCheckInError(null);
                         setCheckInNotes("");
                       }}
-                      className="w-full inline-flex min-h-9 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 cursor-pointer"
+                      className="ks-btn w-full inline-flex min-h-9 items-center justify-center rounded-[var(--ks-radius-sm)] bg-[var(--ks-ink)] px-3 py-1.5 text-xs font-semibold text-[var(--ks-paper-raised)] transition hover:bg-[var(--ks-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ks-patina-deep)] cursor-pointer shadow-xs"
                     >
                       Verifikasi &amp; Proses Masuk
                     </button>
@@ -793,7 +803,7 @@ export function ReceptionClient({
                         });
                         setSyncFeedback(null);
                       }}
-                      className="w-full inline-flex min-h-9 items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 transition hover:bg-neutral-50 cursor-pointer"
+                      className="w-full inline-flex min-h-9 items-center justify-center rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] bg-[var(--ks-paper-deep)] px-3 py-1.5 text-xs font-semibold text-[var(--ks-ink)] transition hover:border-[var(--ks-edge)] cursor-pointer shadow-2xs"
                     >
                       Lihat Lencana Akses
                     </button>
@@ -808,31 +818,32 @@ export function ReceptionClient({
       {/* Verification & Check-in Modal */}
       {verifyingVisit && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-xs"
+          ref={verifyModalRef}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ks-ink)]/50 p-4 backdrop-blur-xs"
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+          <div className="w-full max-w-lg rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-6 shadow-[var(--ks-lift-2)] animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-[var(--ks-rule)] pb-3">
               <div>
-                <h3 className="text-base font-bold text-neutral-900">
+                <h3 className="text-base font-bold text-[var(--ks-ink)] tracking-tight">
                   Verifikasi Identitas Tamu
                 </h3>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-[var(--ks-text-muted)] mt-0.5">
                   Periksa kesesuaian foto dan dokumen identitas fisik sebelum mengaktifkan hak akses pintu.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setVerifyingVisit(null)}
-                className="text-neutral-400 hover:text-neutral-600 cursor-pointer text-lg"
+                className="text-[var(--ks-text-faint)] hover:text-[var(--ks-ink)] cursor-pointer text-lg font-bold"
               >
                 &times;
               </button>
             </div>
 
             {checkInError && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+              <div className="mt-3 rounded-[var(--ks-radius-sm)] border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/10 p-3 text-xs text-[var(--ks-vermilion)]">
                 {checkInError}
               </div>
             )}
@@ -845,29 +856,29 @@ export function ReceptionClient({
                   <img
                     src={toJpegDataUri(verifyingVisit.facePhoto)}
                     alt="Foto Tamu"
-                    className="h-28 w-28 rounded-xl object-cover border-2 border-emerald-500 shadow-sm"
+                    className="h-28 w-28 rounded-[var(--ks-radius-md)] object-cover border-2 border-[var(--ks-patina)] shadow-sm"
                   />
                 ) : (
-                  <div className="flex h-28 w-28 items-center justify-center rounded-xl bg-neutral-100 text-neutral-400 font-medium text-xs border border-neutral-300">
+                  <div className="flex h-28 w-28 items-center justify-center rounded-[var(--ks-radius-md)] bg-[var(--ks-paper-deep)] text-[var(--ks-text-muted)] font-medium text-xs border border-[var(--ks-rule)]">
                     Tanpa Foto Wajah
                   </div>
                 )}
-                <span className="mt-1.5 text-3xs font-medium text-neutral-500">
+                <span className="mt-1.5 text-3xs font-medium text-[var(--ks-text-muted)]">
                   {verifyingVisit.facePhoto ? "Biometrik Wajah Terdaftar" : "Hanya Lencana Fisik / Kartu"}
                 </span>
               </div>
 
               {/* Identity details */}
-              <div className="flex-1 space-y-1.5 text-xs text-neutral-700">
+              <div className="flex-1 space-y-1.5 text-xs text-[var(--ks-text)]">
                 <div>
-                  <span className="text-neutral-400">Nama Lengkap:</span>
-                  <p className="font-bold text-neutral-900 text-sm">
+                  <span className="text-[var(--ks-text-muted)]">Nama Lengkap:</span>
+                  <p className="font-bold text-[var(--ks-ink)] text-sm tracking-tight">
                     {verifyingVisit.visitorGivenName} {verifyingVisit.visitorFamilyName}
                   </p>
                 </div>
                 <div>
-                  <span className="text-neutral-400">Nomor Identitas:</span>
-                  <p className="font-mono text-neutral-900">
+                  <span className="text-[var(--ks-text-muted)]">Nomor Identitas:</span>
+                  <p className="font-mono text-[var(--ks-ink)] font-semibold">
                     {verifyingVisit.certificateType
                       ? CERTIFICATE_TYPE_LABELS[verifyingVisit.certificateType]
                       : "ID"}
@@ -875,14 +886,14 @@ export function ReceptionClient({
                   </p>
                 </div>
                 <div>
-                  <span className="text-neutral-400">Tuan Rumah &amp; Fasilitas:</span>
-                  <p className="text-neutral-900 font-medium">
+                  <span className="text-[var(--ks-text-muted)]">Tuan Rumah &amp; Fasilitas:</span>
+                  <p className="text-[var(--ks-ink)] font-semibold">
                     {verifyingVisit.hostName || "Host"} &bull; {verifyingVisit.facilityName || verifyingVisit.facilityId}
                   </p>
                 </div>
                 <div>
-                  <span className="text-neutral-400">Jam Kunjungan:</span>
-                  <p className="font-mono text-neutral-900">
+                  <span className="text-[var(--ks-text-muted)]">Jam Kunjungan:</span>
+                  <p className="font-mono text-[var(--ks-ink)] font-semibold">
                     {verifyingVisit.scheduledStartTimeFacility.split("T")[1]?.substring(0, 5)} - {verifyingVisit.scheduledEndTimeFacility.split("T")[1]?.substring(0, 5)}
                   </p>
                 </div>
@@ -890,8 +901,8 @@ export function ReceptionClient({
             </div>
 
             {/* Verification Method Radio Selection */}
-            <div className="mt-5 border-t border-neutral-100 pt-4">
-              <label className="block text-xs font-semibold text-neutral-900 mb-2">
+            <div className="mt-5 border-t border-[var(--ks-rule)] pt-4">
+              <label className="block text-xs font-bold text-[var(--ks-ink)] mb-2">
                 Metode Verifikasi yang Diterapkan:
               </label>
               <div className="grid grid-cols-2 gap-2 text-xs">
@@ -905,10 +916,10 @@ export function ReceptionClient({
                   return (
                     <label
                       key={m}
-                      className={`flex items-center gap-2 rounded-lg border p-2 cursor-pointer transition ${
+                      className={`flex items-center gap-2 rounded-[var(--ks-radius-sm)] border p-2 cursor-pointer transition ${
                         verificationMethod === m
-                          ? "border-emerald-600 bg-emerald-50 text-emerald-900 font-medium"
-                          : "border-neutral-200 hover:bg-neutral-50 text-neutral-700"
+                          ? "border-[var(--ks-patina-deep)] bg-[var(--ks-patina)]/15 text-[var(--ks-ink)] font-bold shadow-2xs"
+                          : "border-[var(--ks-rule)] bg-[var(--ks-paper-deep)] hover:border-[var(--ks-edge)] text-[var(--ks-text)]"
                       }`}
                     >
                       <input
@@ -917,7 +928,7 @@ export function ReceptionClient({
                         value={m}
                         checked={verificationMethod === m}
                         onChange={() => setVerificationMethod(m)}
-                        className="text-emerald-600 focus:ring-emerald-500"
+                        className="text-[var(--ks-patina-deep)] focus:ring-[var(--ks-patina-deep)]"
                       />
                       <span>{methodLabels[m] || m.replace("_", " ")}</span>
                     </label>
@@ -928,7 +939,7 @@ export function ReceptionClient({
 
             {/* Receptionist Notes */}
             <div className="mt-3">
-              <label className="block text-xs font-medium text-neutral-700 mb-1">
+              <label className="block text-xs font-semibold text-[var(--ks-text)] mb-1">
                 Catatan Resepsionis (Opsional):
               </label>
               <input
@@ -936,7 +947,7 @@ export function ReceptionClient({
                 value={checkInNotes}
                 onChange={(e) => setCheckInNotes(e.target.value)}
                 placeholder="Contoh: Kartu KTP asli telah diperiksa dan sesuai identitas tamu."
-                className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                className="w-full rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] bg-[var(--ks-paper-deep)] px-3 py-1.5 text-xs text-[var(--ks-ink)] placeholder:text-[var(--ks-text-faint)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)] outline-hidden"
               />
             </div>
 
@@ -946,7 +957,7 @@ export function ReceptionClient({
                 type="button"
                 onClick={() => setVerifyingVisit(null)}
                 disabled={isCheckingIn}
-                className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer"
+                className="rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] bg-[var(--ks-paper-deep)] px-4 py-2 text-xs font-semibold text-[var(--ks-ink)] hover:border-[var(--ks-edge)] cursor-pointer"
               >
                 Batal
               </button>
@@ -954,7 +965,7 @@ export function ReceptionClient({
                 type="button"
                 onClick={handleConfirmCheckIn}
                 disabled={isCheckingIn}
-                className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50 cursor-pointer"
+                className="ks-btn inline-flex items-center justify-center rounded-[var(--ks-radius-sm)] bg-[var(--ks-ink)] px-5 py-2 text-xs font-semibold text-[var(--ks-paper-raised)] shadow-xs hover:bg-[var(--ks-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ks-patina-deep)] disabled:opacity-50 cursor-pointer"
               >
                 {isCheckingIn ? "Memproses Masuk..." : "Konfirmasi & Proses Masuk"}
               </button>
@@ -966,17 +977,18 @@ export function ReceptionClient({
       {/* Walk-in Registration Modal */}
       {isWalkInModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-xs overflow-y-auto"
+          ref={walkInModalRef}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ks-ink)]/60 p-4 backdrop-blur-xs overflow-y-auto"
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-2xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl my-8">
-            <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+          <div className="w-full max-w-2xl rounded-2xl border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-6 shadow-2xl my-8 text-[var(--ks-text)]">
+            <div className="flex items-center justify-between border-b border-[var(--ks-rule-subtle)] pb-3">
               <div>
-                <h3 className="text-base font-bold text-neutral-900">
+                <h3 className="text-base font-bold text-[var(--ks-ink)]">
                   Pendaftaran Tamu Datang Langsung (Walk-in)
                 </h3>
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-[var(--ks-muted)]">
                   Pendaftaran kilat dan pengaktifan hak akses pintu untuk tamu lobi tanpa janji temu sebelumnya.
                 </p>
               </div>
@@ -986,14 +998,14 @@ export function ReceptionClient({
                   setIsWalkInModalOpen(false);
                   handleStopCamera();
                 }}
-                className="text-neutral-400 hover:text-neutral-600 cursor-pointer text-lg"
+                className="text-[var(--ks-muted)] hover:text-[var(--ks-ink)] cursor-pointer text-lg"
               >
                 &times;
               </button>
             </div>
 
             {walkInError && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
+              <div className="mt-3 rounded-lg border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/10 p-3 text-xs text-[var(--ks-vermilion)]">
                 {walkInError}
               </div>
             )}
@@ -1002,13 +1014,13 @@ export function ReceptionClient({
               {/* Facility & Host row */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Gedung Fasilitas *
                   </label>
                   <select
                     value={walkInFacilityId}
                     onChange={(e) => setWalkInFacilityId(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                   >
                     {facilities.map((f) => (
                       <option key={f.id} value={f.id}>
@@ -1018,7 +1030,7 @@ export function ReceptionClient({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Karyawan Tuan Rumah *
                   </label>
                   <select
@@ -1028,7 +1040,7 @@ export function ReceptionClient({
                       const option = e.target.options[e.target.selectedIndex];
                       setWalkInHostName(option.text);
                     }}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                   >
                     <option value="emp-host-01">Budi Santoso (Engineering Manager)</option>
                     <option value="emp-host-02">Siti Rahma (Operations Lead)</option>
@@ -1041,7 +1053,7 @@ export function ReceptionClient({
               {/* Names row */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Nama Depan *
                   </label>
                   <input
@@ -1050,11 +1062,11 @@ export function ReceptionClient({
                     value={walkInGivenName}
                     onChange={(e) => setWalkInGivenName(e.target.value)}
                     placeholder="Contoh: Hendra"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Nama Belakang / Marga *
                   </label>
                   <input
@@ -1063,7 +1075,7 @@ export function ReceptionClient({
                     value={walkInFamilyName}
                     onChange={(e) => setWalkInFamilyName(e.target.value)}
                     placeholder="Contoh: Gunawan"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                   />
                 </div>
               </div>
@@ -1071,7 +1083,7 @@ export function ReceptionClient({
               {/* Contact row */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Nomor Telepon / WhatsApp
                   </label>
                   <input
@@ -1079,11 +1091,11 @@ export function ReceptionClient({
                     value={walkInPhone}
                     onChange={(e) => setWalkInPhone(e.target.value)}
                     placeholder="+628..."
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Alamat Email (Opsional)
                   </label>
                   <input
@@ -1091,7 +1103,7 @@ export function ReceptionClient({
                     value={walkInEmail}
                     onChange={(e) => setWalkInEmail(e.target.value)}
                     placeholder="tamu@instansi.com"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                   />
                 </div>
               </div>
@@ -1099,13 +1111,13 @@ export function ReceptionClient({
               {/* Certificate row */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Jenis Kartu Identitas
                   </label>
                   <select
                     value={walkInCertType}
                     onChange={(e) => setWalkInCertType(Number(e.target.value) as CertificateType)}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                   >
                     {CERTIFICATE_TYPES.map((ct) => (
                       <option key={ct} value={ct}>
@@ -1115,7 +1127,7 @@ export function ReceptionClient({
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="walk-in-cert-no" className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label htmlFor="walk-in-cert-no" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Nomor Dokumen Identitas (NIK/Paspor)
                   </label>
                   <div className="relative">
@@ -1132,10 +1144,10 @@ export function ReceptionClient({
                         if (walkInReturningProfile) setWalkInReturningProfile(null);
                       }}
                       placeholder="Contoh: 3171010101010001"
-                      className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 font-mono focus:border-emerald-600 focus:ring-emerald-600"
+                      className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] font-mono focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                     />
                     {isLookingUpWalkIn && (
-                      <span className="absolute right-2 top-1.5 text-[11px] text-neutral-400">
+                      <span className="absolute right-2 top-1.5 text-[11px] text-[var(--ks-muted)]">
                         Mencari data...
                       </span>
                     )}
@@ -1145,7 +1157,7 @@ export function ReceptionClient({
 
               {/* Returning Visitor Recognized Banner */}
               {walkInReturningProfile && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="rounded-lg border border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/10 p-3 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-3">
                     {walkInReturningProfile.facePhoto ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -1154,18 +1166,18 @@ export function ReceptionClient({
                         alt="Foto Wajah Tersimpan"
                         width={36}
                         height={36}
-                        className="h-9 w-9 rounded-full object-cover border border-emerald-200"
+                        className="h-9 w-9 rounded-full object-cover border border-[var(--ks-patina)]/40"
                       />
                     ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-200 text-xs font-bold text-emerald-900">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ks-patina)]/20 text-xs font-bold text-[var(--ks-patina)]">
                         {walkInReturningProfile.givenName?.[0]}
                       </div>
                     )}
                     <div>
-                      <p className="text-xs font-semibold text-emerald-950">
+                      <p className="text-xs font-semibold text-[var(--ks-ink)]">
                         Tamu Sebelumnya Ditemukan!
                       </p>
-                      <p className="text-[11px] text-emerald-800">
+                      <p className="text-[11px] text-[var(--ks-muted)]">
                         {walkInReturningProfile.fullName ||
                           `${walkInReturningProfile.givenName} ${walkInReturningProfile.familyName}`}{" "}
                         &bull; Profil tersimpan &amp; foto biometrik siap digunakan
@@ -1177,7 +1189,7 @@ export function ReceptionClient({
                     onClick={() =>
                       applyReturningWalkInProfile(walkInReturningProfile)
                     }
-                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
+                    className="rounded-md bg-[var(--ks-patina)] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:brightness-110 transition cursor-pointer"
                   >
                     Isi Otomatis Data &amp; Foto
                   </button>
@@ -1187,13 +1199,13 @@ export function ReceptionClient({
               {/* Purpose row */}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Keperluan Kunjungan *
                   </label>
                   <select
                     value={walkInReasonType}
                     onChange={(e) => setWalkInReasonType(Number(e.target.value) as VisitReasonType)}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                   >
                     {VISIT_REASON_TYPES.map((rt) => (
                       <option key={rt} value={rt}>
@@ -1203,7 +1215,7 @@ export function ReceptionClient({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
+                  <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                     Rincian Keperluan {walkInReasonType === 4 ? "*" : "(opsional)"}
                   </label>
                   <input
@@ -1212,18 +1224,18 @@ export function ReceptionClient({
                     value={walkInReasonDetail}
                     onChange={(e) => setWalkInReasonDetail(e.target.value)}
                     placeholder="Contoh: Pemeliharaan perangkat server vendor"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
+                    className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
                   />
                 </div>
               </div>
 
               {/* Access Levels selection */}
               <div>
-                <label className="block text-xs font-semibold text-neutral-900 mb-1.5">
+                <label className="block text-xs font-semibold text-[var(--ks-ink)] mb-1.5">
                   Hak Akses Pintu Fisik (Khusus Gedung Terpilih):
                 </label>
                 {availableAccessLevels.length === 0 ? (
-                  <p className="text-xs text-neutral-500 italic">
+                  <p className="text-xs text-[var(--ks-muted)] italic">
                     Belum ada kelompok hak akses yang terdaftar untuk fasilitas ini.
                   </p>
                 ) : (
@@ -1231,10 +1243,10 @@ export function ReceptionClient({
                     {availableAccessLevels.map((al) => (
                       <label
                         key={al.id}
-                        className={`flex items-start gap-2 rounded-lg border p-2 text-xs cursor-pointer ${
+                        className={`flex items-start gap-2 rounded-lg border p-2 text-xs cursor-pointer transition-colors ${
                           walkInAccessLevelIds.includes(al.id)
-                            ? "border-emerald-600 bg-emerald-50 text-emerald-900"
-                            : "border-neutral-200 text-neutral-700"
+                            ? "border-[var(--ks-kinpaku)] bg-[var(--ks-kinpaku)]/10 text-[var(--ks-ink)] shadow-xs"
+                            : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] text-[var(--ks-muted)] hover:border-[var(--ks-rule)]"
                         }`}
                       >
                         <input
@@ -1247,11 +1259,11 @@ export function ReceptionClient({
                               setWalkInAccessLevelIds(walkInAccessLevelIds.filter((id) => id !== al.id));
                             }
                           }}
-                          className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
+                          className="mt-0.5 accent-[var(--ks-kinpaku)]"
                         />
                         <div>
-                          <div className="font-medium">{al.name}</div>
-                          {al.description && <div className="text-3xs text-neutral-500">{al.description}</div>}
+                          <div className="font-medium text-[var(--ks-ink)]">{al.name}</div>
+                          {al.description && <div className="text-3xs text-[var(--ks-muted)]">{al.description}</div>}
                         </div>
                       </label>
                     ))}
@@ -1260,8 +1272,8 @@ export function ReceptionClient({
               </div>
 
               {/* Tap Quota Configuration */}
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-                <span className="block text-xs font-semibold text-neutral-900 mb-2">
+              <div className="rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] p-3">
+                <span className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-ink)] mb-2">
                   Door Tap Quota Enforcement:
                 </span>
                 <div className="flex items-center gap-4 text-xs">
@@ -1272,9 +1284,9 @@ export function ReceptionClient({
                       value="limited"
                       checked={walkInTapQuotaMode === "limited"}
                       onChange={() => setWalkInTapQuotaMode("limited")}
-                      className="text-emerald-600 focus:ring-emerald-500"
+                      className="accent-[var(--ks-kinpaku)]"
                     />
-                    <span>Limited Taps:</span>
+                    <span className="text-[var(--ks-text)]">Limited Taps:</span>
                   </label>
                   {walkInTapQuotaMode === "limited" && (
                     <input
@@ -1283,7 +1295,7 @@ export function ReceptionClient({
                       max={100}
                       value={walkInMaxTaps}
                       onChange={(e) => setWalkInMaxTaps(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-16 rounded border border-neutral-300 px-2 py-1 text-xs font-mono"
+                      className="w-16 rounded border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-2 py-1 text-xs font-mono text-[var(--ks-ink)]"
                     />
                   )}
                   <label className="flex items-center gap-1.5 cursor-pointer ml-3">
@@ -1293,25 +1305,25 @@ export function ReceptionClient({
                       value="unlimited"
                       checked={walkInTapQuotaMode === "unlimited"}
                       onChange={() => setWalkInTapQuotaMode("unlimited")}
-                      className="text-emerald-600 focus:ring-emerald-500"
+                      className="accent-[var(--ks-kinpaku)]"
                     />
-                    <span>Unlimited during visiting hours</span>
+                    <span className="text-[var(--ks-text)]">Unlimited during visiting hours</span>
                   </label>
                 </div>
               </div>
 
               {/* Photo Enrollment (Webcam or Upload) */}
-              <div className="rounded-lg border border-neutral-200 p-3">
+              <div className="rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-neutral-900">
+                  <span className="text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-ink)]">
                     Biometric Face Photo (MinMoe Terminal Enrollment)
                   </span>
                   {walkInFacePhoto && (
                     <span
-                      className={`text-3xs font-semibold px-2 py-0.5 rounded-full ${
+                      className={`text-3xs font-semibold px-2 py-0.5 rounded-full border ${
                         isFacePhotoSizeValid(walkInFaceByteSize)
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-red-100 text-red-800"
+                          ? "border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/15 text-[var(--ks-patina)]"
+                          : "border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/15 text-[var(--ks-vermilion)]"
                       }`}
                     >
                       {formatFacePhotoSize(walkInFaceByteSize)} (10–100 KB)
@@ -1327,14 +1339,14 @@ export function ReceptionClient({
                         type="button"
                         onClick={handleCaptureSelfie}
                         disabled={isNormalizing}
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-emerald-700 cursor-pointer"
+                        className="rounded-lg bg-[var(--ks-patina)] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:brightness-110 cursor-pointer"
                       >
                         {isNormalizing ? "Processing..." : "Capture Photo"}
                       </button>
                       <button
                         type="button"
                         onClick={handleStopCamera}
-                        className="rounded-lg bg-neutral-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 cursor-pointer"
+                        className="rounded-lg bg-[var(--ks-ink)] px-3 py-1.5 text-xs font-semibold text-[var(--ks-paper-raised)] hover:bg-black cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -1346,16 +1358,16 @@ export function ReceptionClient({
                     <img
                       src={walkInFacePhoto}
                       alt="Enrolled Face"
-                      className="h-20 w-20 rounded-lg object-cover border border-neutral-300"
+                      className="h-20 w-20 rounded-lg object-cover border border-[var(--ks-rule-subtle)]"
                     />
                     <div className="space-y-1">
-                      <p className="text-xs text-neutral-600">
+                      <p className="text-xs text-[var(--ks-muted)]">
                         Normalized Base64 JPEG photo ready for physical terminal distribution.
                       </p>
                       <button
                         type="button"
                         onClick={handleClearPhoto}
-                        className="text-xs text-red-600 hover:text-red-800 underline cursor-pointer"
+                        className="text-xs text-[var(--ks-vermilion)] hover:underline cursor-pointer"
                       >
                         Remove Photo
                       </button>
@@ -1366,26 +1378,26 @@ export function ReceptionClient({
                     <button
                       type="button"
                       onClick={handleStartCamera}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-3 py-1.5 text-xs font-medium text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] cursor-pointer"
                     >
-                      <svg className="h-4 w-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="h-4 w-4 text-[var(--ks-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                       Buka Kamera Resepsionis
                     </button>
-                    <label className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer">
+                    <label className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-3 py-1.5 text-xs font-medium text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] cursor-pointer">
                       <span>Unggah Berkas Foto</span>
                       <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                     </label>
                   </div>
                 )}
-                {cameraError && <p className="mt-2 text-xs text-red-600">{cameraError}</p>}
-                {faceError && <p className="mt-2 text-xs text-red-600">{faceError}</p>}
+                {cameraError && <p className="mt-2 text-xs text-[var(--ks-vermilion)]">{cameraError}</p>}
+                {faceError && <p className="mt-2 text-xs text-[var(--ks-vermilion)]">{faceError}</p>}
               </div>
 
               {/* Form submit footer */}
-              <div className="mt-6 flex justify-end gap-2.5 border-t border-neutral-200 pt-4">
+              <div className="mt-6 flex justify-end gap-2.5 border-t border-[var(--ks-rule-subtle)] pt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -1393,14 +1405,14 @@ export function ReceptionClient({
                     handleStopCamera();
                   }}
                   disabled={isSubmittingWalkIn}
-                  className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer"
+                  className="rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-4 py-2 text-xs font-semibold text-[var(--ks-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmittingWalkIn || isNormalizing}
-                  className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
+                  className="inline-flex items-center justify-center rounded-lg bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] border border-[var(--ks-ink)] px-5 py-2 text-xs font-bold uppercase tracking-[0.08em] shadow-sm hover:brightness-110 disabled:opacity-50 cursor-pointer"
                 >
                   {isSubmittingWalkIn ? "Mendaftarkan & Memproses Masuk..." : "Daftarkan & Berikan Izin Masuk"}
                 </button>
@@ -1413,25 +1425,26 @@ export function ReceptionClient({
       {/* Check-in Pass Modal (QR & Digital Badge) */}
       {issuedPass && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-xs"
+          ref={issuedPassModalRef}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ks-ink)]/60 p-4 backdrop-blur-xs"
           role="dialog"
           aria-modal="true"
         >
-          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-6 shadow-2xl text-[var(--ks-text)] animate-in fade-in zoom-in-95 duration-150">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
+            <div className="flex items-center justify-between border-b border-[var(--ks-rule-subtle)] pb-3">
               <div>
-                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-3xs font-bold uppercase tracking-wider text-emerald-800">
+                <span className="rounded-full border border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/15 px-2.5 py-0.5 text-3xs font-bold uppercase tracking-wider text-[var(--ks-patina)]">
                   Lencana Masuk Aktif
                 </span>
-                <h3 className="text-base font-bold text-neutral-900 mt-1">
+                <h3 className="text-base font-bold text-[var(--ks-ink)] mt-1">
                   {issuedPass.facilityName || "Lencana Kunjungan Tamu"}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIssuedPass(null)}
-                className="text-neutral-400 hover:text-neutral-600 cursor-pointer text-lg"
+                className="text-[var(--ks-muted)] hover:text-[var(--ks-ink)] cursor-pointer text-lg"
               >
                 &times;
               </button>
@@ -1440,7 +1453,7 @@ export function ReceptionClient({
             {/* Pass Body */}
             <div className="mt-4 flex flex-col items-center text-center">
               {/* QR Code Pass */}
-              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 shadow-inner">
+              <div className="rounded-xl border border-[var(--ks-rule-subtle)] bg-white p-4 shadow-sm">
                 {issuedPass.qrCodeImage ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
@@ -1449,7 +1462,7 @@ export function ReceptionClient({
                     className="h-44 w-44 object-contain"
                   />
                 ) : (
-                  <div className="flex h-44 w-44 items-center justify-center rounded-lg bg-neutral-200 text-neutral-500 font-mono text-xs">
+                  <div className="flex h-44 w-44 items-center justify-center rounded-lg bg-[var(--ks-paper-deep)] text-[var(--ks-muted)] font-mono text-xs">
                     Lencana QR Aktif
                   </div>
                 )}
@@ -1457,52 +1470,52 @@ export function ReceptionClient({
 
               {/* PIN Code */}
               {issuedPass.pinCode && (
-                <div className="mt-3 w-full rounded-xl bg-neutral-900 py-2 text-white">
-                  <span className="block text-3xs uppercase tracking-wider text-neutral-400">
+                <div className="mt-3 w-full rounded-xl bg-[var(--ks-ink)] py-2.5 text-[var(--ks-paper-raised)] border border-black">
+                  <span className="block text-3xs uppercase tracking-widest text-[var(--ks-muted)] font-mono">
                     Kode PIN Masuk Terminal Pintu
                   </span>
-                  <span className="font-mono text-xl font-extrabold tracking-widest text-emerald-400">
+                  <span className="font-mono text-2xl font-bold tracking-widest text-[var(--ks-kinpaku)]">
                     {issuedPass.pinCode}
                   </span>
                 </div>
               )}
 
               {/* Visitor Details */}
-              <div className="mt-4 w-full space-y-1.5 text-left text-xs text-neutral-700 bg-neutral-50 p-3.5 rounded-xl border border-neutral-200">
+              <div className="mt-4 w-full space-y-1.5 text-left text-xs bg-[var(--ks-paper-deep)] p-3.5 rounded-xl border border-[var(--ks-rule-subtle)]">
                 <div className="flex justify-between">
-                  <span className="text-neutral-600 dark:text-slate-400">Nama Tamu:</span>
-                  <span className="font-bold text-neutral-900">{issuedPass.visitorName}</span>
+                  <span className="text-[var(--ks-muted)]">Nama Tamu:</span>
+                  <span className="font-bold text-[var(--ks-ink)]">{issuedPass.visitorName}</span>
                 </div>
                 {issuedPass.hostName && (
                   <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-slate-400">Tuan Rumah:</span>
-                    <span className="font-medium text-neutral-800">{issuedPass.hostName}</span>
+                    <span className="text-[var(--ks-muted)]">Tuan Rumah:</span>
+                    <span className="font-medium text-[var(--ks-ink)]">{issuedPass.hostName}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-neutral-600 dark:text-slate-400">Jam Kunjungan:</span>
-                  <span className="font-mono text-neutral-800">
+                  <span className="text-[var(--ks-muted)]">Jam Kunjungan:</span>
+                  <span className="font-mono text-[var(--ks-ink)]">
                     {issuedPass.scheduledStartTime.split("T")[1]?.substring(0, 5)} - {issuedPass.scheduledEndTime.split("T")[1]?.substring(0, 5)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-neutral-600 dark:text-slate-400">Waktu Masuk:</span>
-                  <span className="font-mono text-blue-700 font-medium">
+                  <span className="text-[var(--ks-muted)]">Waktu Masuk:</span>
+                  <span className="font-mono text-[var(--ks-patina)] font-medium">
                     {new Date(issuedPass.actualCheckInTimeUtc).toLocaleTimeString()}
                   </span>
                 </div>
 
                 {/* Credential Sync Status */}
-                <div className="flex items-center justify-between pt-2 border-t border-neutral-200">
-                  <span className="text-neutral-500 font-medium">Sinkronisasi Terminal:</span>
+                <div className="flex items-center justify-between pt-2 border-t border-[var(--ks-rule-subtle)]">
+                  <span className="text-[var(--ks-muted)] font-medium">Sinkronisasi Terminal:</span>
                   <div className="flex items-center gap-2">
                     <span
-                      className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${
+                      className={`rounded-full px-2 py-0.5 text-2xs font-semibold border ${
                         issuedPass.credentialSyncStatus === "Applied"
-                          ? "bg-emerald-100 text-emerald-800"
+                          ? "border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/15 text-[var(--ks-patina)]"
                           : issuedPass.credentialSyncStatus === "Failed"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-amber-100 text-amber-800"
+                            ? "border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/15 text-[var(--ks-vermilion)]"
+                            : "border-[var(--ks-kinpaku)]/30 bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)]"
                       }`}
                     >
                       {issuedPass.credentialSyncStatus}
@@ -1514,14 +1527,14 @@ export function ReceptionClient({
                         type="button"
                         onClick={handleRetrySync}
                         disabled={isRetryingSync}
-                        className="rounded bg-neutral-200 px-2 py-0.5 text-3xs font-medium text-neutral-800 hover:bg-neutral-300 cursor-pointer"
+                        className="rounded border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-2 py-0.5 text-3xs font-medium text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] cursor-pointer"
                       >
                         {isRetryingSync ? "Mengulang..." : "Kirim Ulang"}
                       </button>
                     )}
                   </div>
                 </div>
-                {syncFeedback && <p className="text-3xs text-emerald-700 pt-1">{syncFeedback}</p>}
+                {syncFeedback && <p className="text-3xs text-[var(--ks-patina)] pt-1">{syncFeedback}</p>}
               </div>
             </div>
 
@@ -1530,9 +1543,9 @@ export function ReceptionClient({
               <button
                 type="button"
                 onClick={() => window.print()}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-neutral-300 bg-white py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 cursor-pointer"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] py-2 text-xs font-semibold text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] cursor-pointer"
               >
-                <svg className="h-4 w-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-4 w-4 text-[var(--ks-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                 </svg>
                 Cetak Lencana Tamu
@@ -1540,7 +1553,7 @@ export function ReceptionClient({
               <button
                 type="button"
                 onClick={() => setIssuedPass(null)}
-                className="flex-1 rounded-lg bg-neutral-900 py-2 text-xs font-semibold text-white hover:bg-neutral-800 cursor-pointer"
+                className="flex-1 rounded-lg bg-[var(--ks-ink)] py-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--ks-paper-raised)] hover:brightness-110 cursor-pointer"
               >
                 Selesai
               </button>

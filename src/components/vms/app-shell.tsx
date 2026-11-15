@@ -41,8 +41,8 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
-      {/* Sidebar Navigation (Desktop + Mobile Drawer) */}
+    <div className="min-h-screen bg-[var(--ks-paper)] text-[var(--ks-text)] flex antialiased">
+      {/* Sidebar Navigation (Desktop Rail/Drawer + Mobile Drawer) */}
       <Sidebar
         currentPath={currentPath}
         collapsed={collapsed}
@@ -70,4 +70,3 @@ export function AppShell({
     </div>
   );
 }
-
