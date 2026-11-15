@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { ActiveMonitoringClient } from "./active-monitoring-client";
 import type { Facility } from "@/lib/vms/vms-contract";
 import type {
@@ -8,6 +9,7 @@ import type {
   FacilityDoor,
   EmergencyAccessGrant,
 } from "@/lib/vms/checkout-contract";
+import { renderWithVmsProviders, createTestQueryClient } from "@/test/test-utils";
 
 describe("ActiveMonitoringClient Component", () => {
   const mockFacilities: Facility[] = [
@@ -432,6 +434,130 @@ describe("ActiveMonitoringClient Component", () => {
       for (const hrs of supportedDurations) {
         expect(hrs).toBeGreaterThan(0);
       }
+    });
+  });
+
+  describe("UiDataTable Migration & TanStack Query Polling", () => {
+    it("renders tabular structure powered by UiDataTable with column headers", () => {
+      const { html } = renderWithVmsProviders(
+        <ActiveMonitoringClient
+          facilities={mockFacilities}
+          initialVisits={[baseVisit]}
+          doors={mockDoors}
+        />,
+      );
+
+      expect(html).toContain("<table");
+      expect(html).toContain("Nama Tamu");
+      expect(html).toContain("Gedung &amp; Tuan Rumah");
+      expect(html).toContain("Status &amp; Waktu");
+      expect(html).toContain("Telemetri Pintu &amp; Akses");
+      expect(html).toContain("Aksi Operator");
+      expect(html).toContain("Budi Santoso");
+    });
+
+    it("renders canonical UiKpiGrid and UiKpiCard primitives with tabular counters", () => {
+      const { html } = renderWithVmsProviders(
+        <ActiveMonitoringClient
+          facilities={mockFacilities}
+          initialVisits={[baseVisit]}
+          doors={mockDoors}
+        />,
+      );
+
+      expect(html).toContain("tabular-nums");
+      expect(html).toContain("font-mono");
+      expect(html).toContain("Total Tamu di Gedung");
+      expect(html).toContain("Status Normal");
+      expect(html).toContain("Peringatan Overstay");
+      expect(html).toContain("Peringatan Kuota Tap");
+    });
+
+    it("renders pagination controls and tabular page counters in table footer", () => {
+      const { html } = renderWithVmsProviders(
+        <ActiveMonitoringClient
+          facilities={mockFacilities}
+          initialVisits={[baseVisit]}
+          doors={mockDoors}
+        />,
+      );
+
+      expect(html).toContain("Halaman");
+      expect(html).toContain("dari");
+      expect(html).toContain("Sebelumnya");
+      expect(html).toContain("Selanjutnya");
+    });
+
+    it("populates initial visits in QueryClient cache and renders without errors", () => {
+      const queryClient = createTestQueryClient();
+      const { html } = renderWithVmsProviders(
+        <ActiveMonitoringClient
+          facilities={mockFacilities}
+          initialVisits={[baseVisit]}
+          doors={mockDoors}
+        />,
+        { queryClient },
+      );
+
+      expect(html).toContain("Budi Santoso");
+      expect(html).toContain("Jakarta Corporate HQ");
+      expect(queryClient.getQueryData(["active-visits", "all"])).toEqual([
+        baseVisit,
+      ]);
+      expect(queryClient.getQueryData(["doors", "all"])).toEqual(mockDoors);
+    });
+
+    it("filters active visits table matching search query from URL search params (?q=...)", () => {
+      const { html } = renderWithVmsProviders(
+        <NuqsTestingAdapter searchParams={{ q: "Budi" }}>
+          <ActiveMonitoringClient
+            facilities={mockFacilities}
+            initialVisits={[baseVisit]}
+            doors={mockDoors}
+          />
+        </NuqsTestingAdapter>,
+      );
+
+      expect(html).toContain("Budi Santoso");
+      expect(html).toContain("ID-12345");
+    });
+
+    it("renders custom empty state when search query matches zero records", () => {
+      const { html } = renderWithVmsProviders(
+        <NuqsTestingAdapter searchParams={{ q: "ZzzUnknown" }}>
+          <ActiveMonitoringClient
+            facilities={mockFacilities}
+            initialVisits={[baseVisit]}
+            doors={mockDoors}
+          />
+        </NuqsTestingAdapter>,
+      );
+
+      expect(html).toContain("Tidak Ada Tamu Aktif Sesuai Saringan");
+      expect(html).toContain("Coba sesuaikan kata kunci pencarian");
+    });
+
+    it("filters active visits by overstay status tab (?tab=overstay)", () => {
+      const overstayVisit: ActiveVisitSummary = {
+        ...baseVisit,
+        visitId: "visit-overstay-99",
+        isOverstay: true,
+        overstayMinutes: 45,
+        status: "OVERSTAY",
+      };
+
+      const { html } = renderWithVmsProviders(
+        <NuqsTestingAdapter searchParams={{ tab: "overstay" }}>
+          <ActiveMonitoringClient
+            facilities={mockFacilities}
+            initialVisits={[baseVisit, overstayVisit]}
+            doors={mockDoors}
+          />
+        </NuqsTestingAdapter>,
+      );
+
+      expect(html).toContain("45m Overstay");
+      expect(html).toContain("visit-overstay-99");
     });
   });
 });
