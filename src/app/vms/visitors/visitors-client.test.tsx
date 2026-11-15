@@ -181,6 +181,23 @@ describe("Visitors UI Localization & Canonical Component Migration", () => {
       expect(sitiIdx).toBeGreaterThan(rianIdx);
     });
 
+    it("sorts visitor records by registration date (createdAtUtc)", () => {
+      const html = renderToStaticMarkup(
+        <NuqsTestingAdapter
+          searchParams={{ sort: "createdAtUtc", order: "desc" }}
+        >
+          <VisitorsClient initialProfiles={dummyProfiles} />
+        </NuqsTestingAdapter>,
+      );
+
+      expect(html).toContain("Tanggal Registrasi");
+      expect(html).toContain('aria-sort="descending"');
+      // Bambang registered on 2026-01-02, Rian on 2026-01-01
+      const bambangIdx = html.indexOf("Bambang Wijaya");
+      const rianIdx = html.indexOf("Rian Pratama");
+      expect(bambangIdx).toBeLessThan(rianIdx);
+    });
+
     it("renders empty state with reset button when search query has zero matches", () => {
       const html = renderToStaticMarkup(
         <NuqsTestingAdapter searchParams={{ q: "ZzzUnknown" }}>

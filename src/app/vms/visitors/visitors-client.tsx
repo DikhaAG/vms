@@ -9,6 +9,7 @@ import {
   useTableUrlState,
   UiButton,
 } from "@/components/vms/ui";
+import { useQueryState, parseAsBoolean } from "nuqs";
 import { createVisitorColumns, type Visitor } from "./columns";
 import { SoftDeleteModal } from "./soft-delete-modal";
 import { VisitorDetailsModal } from "./visitor-details-modal";
@@ -19,7 +20,10 @@ export interface VisitorsClientProps {
 
 export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
   const [profiles, setProfiles] = useState<VisitorProfile[]>(initialProfiles);
-  const [showDeleted, setShowDeleted] = useState(true);
+  const [showDeleted, setShowDeleted] = useQueryState(
+    "showDeleted",
+    parseAsBoolean.withDefault(true)
+  );
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{
     type: "success" | "error";
@@ -233,6 +237,7 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
 
       {/* Soft-Delete Modal */}
       <SoftDeleteModal
+        key={`delete-${selectedForDelete?.id ?? "none"}-${Boolean(selectedForDelete)}`}
         isOpen={Boolean(selectedForDelete)}
         profile={selectedForDelete}
         isLoading={loadingId === selectedForDelete?.id}
@@ -246,6 +251,7 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
 
       {/* Visitor Details & Inspection Modal */}
       <VisitorDetailsModal
+        key={`inspect-${inspectedProfile?.id ?? "none"}-${Boolean(inspectedProfile)}`}
         isOpen={Boolean(inspectedProfile)}
         profile={inspectedProfile}
         onClose={() => setInspectedProfile(null)}

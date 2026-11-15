@@ -14,6 +14,15 @@ import { idDict } from "@/lib/vms/i18n/id";
 
 export type Visitor = VisitorProfile;
 
+export function getCertificateTypeLabel(type?: number): string {
+  if (!type) return "Identitas";
+  return (
+    idDict.certificateTypes[type as CertificateType] ??
+    CERTIFICATE_TYPE_LABELS[type as CertificateType] ??
+    "Identitas"
+  );
+}
+
 export interface VisitorColumnOptions {
   loadingId?: string | null;
   onSoftDelete: (profile: Visitor) => void;
@@ -79,14 +88,7 @@ export function createVisitorColumns({
         return (
           <div>
             <p className="text-xs font-semibold text-[var(--ks-ink)]">
-              {profile.certificateType
-                ? (idDict.certificateTypes[
-                    profile.certificateType as CertificateType
-                  ] ??
-                  CERTIFICATE_TYPE_LABELS[
-                    profile.certificateType as CertificateType
-                  ])
-                : "Identitas"}
+              {getCertificateTypeLabel(profile.certificateType)}
             </p>
             <p className="font-mono text-xs text-[var(--ks-muted)]">
               {profile.certificateNo}
@@ -134,6 +136,26 @@ export function createVisitorColumns({
           </span>
         </div>
       ),
+    }),
+
+    columnHelper.accessor("createdAtUtc", {
+      id: "createdAtUtc",
+      header: "Tanggal Registrasi",
+      enableSorting: true,
+      cell: (info) => {
+        const dateStr = info.getValue();
+        return (
+          <span className="font-mono text-xs text-[var(--ks-muted)] tabular-nums">
+            {dateStr
+              ? new Date(dateStr).toLocaleDateString("id-ID", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })
+              : "-"}
+          </span>
+        );
+      },
     }),
 
     columnHelper.accessor("isDeleted", {

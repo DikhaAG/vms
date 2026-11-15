@@ -3,12 +3,8 @@
 import React from "react";
 import Image from "next/image";
 import type { VisitorProfile } from "@/lib/vms/group-contract";
-import {
-  CERTIFICATE_TYPE_LABELS,
-  type CertificateType,
-} from "@/lib/vms/vms-contract";
-import { idDict } from "@/lib/vms/i18n/id";
 import { UiModal, UiButton, UiBadge } from "@/components/vms/ui";
+import { getCertificateTypeLabel } from "./columns";
 
 export interface VisitorDetailsModalProps {
   isOpen: boolean;
@@ -27,10 +23,7 @@ export function VisitorDetailsModal({
 }: VisitorDetailsModalProps) {
   if (!profile) return null;
 
-  const certLabel = profile.certificateType
-    ? (idDict.certificateTypes[profile.certificateType as CertificateType] ??
-      CERTIFICATE_TYPE_LABELS[profile.certificateType as CertificateType])
-    : "Identitas";
+  const certLabel = getCertificateTypeLabel(profile.certificateType);
 
   return (
     <UiModal
