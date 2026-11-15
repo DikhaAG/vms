@@ -66,9 +66,9 @@ export function PreRegistrationForm({
       return defaults.length > 0
         ? defaults.map((d) => d.id)
         : (initialAccessLevels ?? [])
-            .filter((al) => al.facilityId === initialFacilityId)
-            .slice(0, 1)
-            .map((d) => d.id);
+          .filter((al) => al.facilityId === initialFacilityId)
+          .slice(0, 1)
+          .map((d) => d.id);
     },
   );
   const [tapQuotaMode, setTapQuotaMode] = useState<TapQuotaMode>("unlimited");
@@ -387,7 +387,7 @@ export function PreRegistrationForm({
         }
         setGlobalError(
           data.error?.message ??
-            `Gagal membuat tautan pendaftaran mandiri (${res.status}).`,
+          `Gagal membuat tautan pendaftaran mandiri (${res.status}).`,
         );
         return;
       }
@@ -462,7 +462,7 @@ export function PreRegistrationForm({
         }
         setGlobalError(
           data.error?.message ??
-            `Pendaftaran tamu gagal diproses (${response.status}).`,
+          `Pendaftaran tamu gagal diproses (${response.status}).`,
         );
         return;
       }
@@ -507,11 +507,10 @@ export function PreRegistrationForm({
                   className="block cursor-pointer"
                 >
                   <UiCard
-                    className={`flex flex-col justify-between p-3.5 transition-colors ${
-                      checked
-                        ? "border-[var(--ks-ink)] bg-[var(--ks-paper)] ring-1 ring-[var(--ks-ink)]"
-                        : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
-                    }`}
+                    className={`flex flex-col justify-between p-3.5 transition-colors ${checked
+                      ? "border-[var(--ks-ink)] bg-[var(--ks-paper)] ring-1 ring-[var(--ks-ink)]"
+                      : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                      }`}
                   >
                     <div>
                       <div className="flex items-center justify-between">
@@ -568,11 +567,10 @@ export function PreRegistrationForm({
                 autoCapitalize="none"
                 spellCheck={false}
                 placeholder="Nama Depan Tamu"
-                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${
-                  fieldErrors.visitorGivenName
-                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
-                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
-                }`}
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${fieldErrors.visitorGivenName
+                  ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                  : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
+                  }`}
               />
               {fieldErrors.visitorGivenName ? (
                 <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
@@ -598,11 +596,10 @@ export function PreRegistrationForm({
                 autoCapitalize="none"
                 spellCheck={false}
                 placeholder="Nama Belakang Tamu"
-                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${
-                  fieldErrors.visitorFamilyName
-                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
-                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
-                }`}
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${fieldErrors.visitorFamilyName
+                  ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                  : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
+                  }`}
               />
               {fieldErrors.visitorFamilyName ? (
                 <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
@@ -644,11 +641,10 @@ export function PreRegistrationForm({
                 autoCapitalize="none"
                 spellCheck={false}
                 placeholder="rian.pratama@example.com"
-                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${
-                  fieldErrors.visitorEmail
-                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
-                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
-                }`}
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${fieldErrors.visitorEmail
+                  ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                  : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
+                  }`}
               />
               {fieldErrors.visitorEmail ? (
                 <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
@@ -908,11 +904,10 @@ export function PreRegistrationForm({
                 required
                 value={scheduledStartTime}
                 onChange={(e) => setScheduledStartTime(e.target.value)}
-                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors focus:outline-hidden ${
-                  fieldErrors.scheduledStartTime
-                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
-                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
-                }`}
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors focus:outline-hidden ${fieldErrors.scheduledStartTime
+                  ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                  : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
+                  }`}
               />
               {fieldErrors.scheduledStartTime ? (
                 <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
@@ -938,11 +933,10 @@ export function PreRegistrationForm({
                 required
                 value={scheduledEndTime}
                 onChange={(e) => setScheduledEndTime(e.target.value)}
-                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors focus:outline-hidden ${
-                  fieldErrors.scheduledEndTime
-                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
-                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
-                }`}
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors focus:outline-hidden ${fieldErrors.scheduledEndTime
+                  ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                  : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
+                  }`}
               />
               {fieldErrors.scheduledEndTime ? (
                 <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
@@ -991,11 +985,10 @@ export function PreRegistrationForm({
                     ? "Wajib diisi untuk keperluan 'Lainnya'..."
                     : "cth. Pertemuan kerja sama bisnis vendor Q4"
                 }
-                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${
-                  fieldErrors.visitReasonDetail
-                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
-                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
-                }`}
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${fieldErrors.visitReasonDetail
+                  ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                  : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
+                  }`}
               />
               {fieldErrors.visitReasonDetail ? (
                 <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
@@ -1097,11 +1090,10 @@ export function PreRegistrationForm({
                       >
                         <span className="sr-only">{lvl.name}</span>
                         <UiCard
-                          className={`p-3 text-xs transition-colors flex items-start gap-3 ${
-                            isChecked
-                              ? "border-[var(--ks-ink)] bg-[var(--ks-paper)] ring-1 ring-[var(--ks-ink)]"
-                              : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
-                          }`}
+                          className={`p-3 text-xs transition-colors flex items-start gap-3 ${isChecked
+                            ? "border-[var(--ks-ink)] bg-[var(--ks-paper)] ring-1 ring-[var(--ks-ink)]"
+                            : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                            }`}
                         >
                           <input
                             id={`access-level-${lvl.id}`}
@@ -1163,11 +1155,10 @@ export function PreRegistrationForm({
               <label htmlFor="tap-quota-unlimited" className="block cursor-pointer">
                 <span className="sr-only">{idDict.tapQuotaModes.unlimited.label}</span>
                 <UiCard
-                  className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${
-                    tapQuotaMode === "unlimited"
-                      ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
-                      : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
-                  }`}
+                  className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${tapQuotaMode === "unlimited"
+                    ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
+                    : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                    }`}
                 >
                   <input
                     id="tap-quota-unlimited"
@@ -1192,11 +1183,10 @@ export function PreRegistrationForm({
               <label htmlFor="tap-quota-limited" className="block cursor-pointer">
                 <span className="sr-only">{idDict.tapQuotaModes.limited.label}</span>
                 <UiCard
-                  className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${
-                    tapQuotaMode === "limited"
-                      ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
-                      : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
-                  }`}
+                  className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${tapQuotaMode === "limited"
+                    ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
+                    : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                    }`}
                 >
                   <input
                     id="tap-quota-limited"

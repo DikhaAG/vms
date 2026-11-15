@@ -203,14 +203,14 @@ export function GroupRegistrationClient({
           prev.map((row, i) =>
             i === index
               ? {
-                  ...row,
-                  isLookingUp: false,
-                  lookupResult: {
-                    checked: true,
-                    found: true,
-                    profile: data.profile,
-                  },
-                }
+                ...row,
+                isLookingUp: false,
+                lookupResult: {
+                  checked: true,
+                  found: true,
+                  profile: data.profile,
+                },
+              }
               : row,
           ),
         );
@@ -219,10 +219,10 @@ export function GroupRegistrationClient({
           prev.map((row, i) =>
             i === index
               ? {
-                  ...row,
-                  isLookingUp: false,
-                  lookupResult: { checked: true, found: false },
-                }
+                ...row,
+                isLookingUp: false,
+                lookupResult: { checked: true, found: false },
+              }
               : row,
           ),
         );
@@ -232,10 +232,10 @@ export function GroupRegistrationClient({
         prev.map((row, i) =>
           i === index
             ? {
-                ...row,
-                isLookingUp: false,
-                lookupResult: { checked: true, found: false },
-              }
+              ...row,
+              isLookingUp: false,
+              lookupResult: { checked: true, found: false },
+            }
             : row,
         ),
       );
@@ -247,15 +247,15 @@ export function GroupRegistrationClient({
       prev.map((row, i) =>
         i === index
           ? {
-              ...row,
-              visitorGivenName: profile.givenName ?? row.visitorGivenName,
-              visitorFamilyName: profile.familyName ?? row.visitorFamilyName,
-              visitorPhone: profile.phone || row.visitorPhone,
-              visitorEmail: profile.email || row.visitorEmail,
-              certificateType: profile.certificateType || row.certificateType,
-              facePhoto: profile.facePhoto || row.facePhoto,
-              lookupResult: undefined,
-            }
+            ...row,
+            visitorGivenName: profile.givenName ?? row.visitorGivenName,
+            visitorFamilyName: profile.familyName ?? row.visitorFamilyName,
+            visitorPhone: profile.phone || row.visitorPhone,
+            visitorEmail: profile.email || row.visitorEmail,
+            certificateType: profile.certificateType || row.certificateType,
+            facePhoto: profile.facePhoto || row.facePhoto,
+            lookupResult: undefined,
+          }
           : row,
       ),
     );
@@ -675,11 +675,10 @@ export function GroupRegistrationClient({
                   return (
                     <label
                       key={al.id}
-                      className={`flex items-start gap-3 rounded-[var(--ks-radius-md)] border p-3 cursor-pointer transition ${
-                        isChecked
-                          ? "border-[var(--ks-ink)] bg-[var(--ks-paper)]"
-                          : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:bg-[var(--ks-paper)]"
-                      }`}
+                      className={`flex items-start gap-3 rounded-[var(--ks-radius-md)] border p-3 cursor-pointer transition ${isChecked
+                        ? "border-[var(--ks-ink)] bg-[var(--ks-paper)]"
+                        : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:bg-[var(--ks-paper)]"
+                        }`}
                     >
                       <input
                         type="checkbox"
@@ -933,10 +932,10 @@ export function GroupRegistrationClient({
                           prev.map((r, i) =>
                             i === idx
                               ? {
-                                  ...r,
-                                  certificateNo: val,
-                                  lookupResult: undefined,
-                                }
+                                ...r,
+                                certificateNo: val,
+                                lookupResult: undefined,
+                              }
                               : r,
                           ),
                         );

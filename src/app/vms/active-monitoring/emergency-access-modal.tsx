@@ -240,11 +240,10 @@ export function EmergencyAccessModal({
                       return (
                         <label
                           key={door.doorIndexCode}
-                          className={`flex items-center justify-between rounded-md p-2 text-xs cursor-pointer transition ${
-                            isSelected
-                              ? "bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)] font-semibold border border-[var(--ks-kinpaku)]/30"
-                              : "hover:bg-[var(--ks-paper-deep)] text-[var(--ks-text)] border border-transparent"
-                          }`}
+                          className={`flex items-center justify-between rounded-md p-2 text-xs cursor-pointer transition ${isSelected
+                            ? "bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)] font-semibold border border-[var(--ks-kinpaku)]/30"
+                            : "hover:bg-[var(--ks-paper-deep)] text-[var(--ks-text)] border border-transparent"
+                            }`}
                         >
                           <div className="flex items-center gap-2">
                             <input
