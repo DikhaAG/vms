@@ -15,3 +15,32 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({}),
 }));
 
+// Default fallback mock for nuqs useQueryState when components are rendered in static test assertions without NuqsAdapter or outside App Router
+vi.mock("nuqs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("nuqs")>();
+  return {
+    ...actual,
+    useQueryState: (key: string, parser?: { defaultValue?: unknown }) => {
+      try {
+        return (
+          actual.useQueryState as unknown as (
+            k: string,
+            p?: { defaultValue?: unknown }
+          ) => unknown
+        )(key, parser);
+      } catch (err: unknown) {
+        const error = err as Error | undefined;
+        if (
+          error?.message?.includes("nuqs requires an adapter") ||
+          error?.message?.includes("expected app router to be mounted")
+        ) {
+          const defaultValue = parser?.defaultValue ?? "";
+          return [defaultValue, vi.fn()];
+        }
+        throw err;
+      }
+    },
+  };
+});
+
+
