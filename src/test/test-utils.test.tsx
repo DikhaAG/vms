@@ -3,7 +3,6 @@ import React from "react";
 import {
   createTestQueryClient,
   createTestTrpcClient,
-  TestVmsProviders,
   renderWithVmsProviders,
 } from "./test-utils";
 
@@ -36,16 +35,6 @@ describe("Test Utils & VmsProviders Test Harness", () => {
     expect(result.html).toContain("aria-live=\"polite\"");
     expect(result.queryClient).toBeDefined();
     expect(result.trpcClient).toBeDefined();
-  });
-
-  it("renders with TestVmsProviders directly", () => {
-    const qc = createTestQueryClient();
-    const result = renderWithVmsProviders(
-      <TestVmsProviders queryClient={qc}>
-        <div>Komponen Langsung</div>
-      </TestVmsProviders>
-    );
-    expect(result.html).toContain("Komponen Langsung");
   });
 
   it("allows passing a custom pre-seeded QueryClient", async () => {

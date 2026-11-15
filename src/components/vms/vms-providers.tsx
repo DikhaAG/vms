@@ -7,19 +7,20 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
 import { trpc } from "@/lib/trpc/client";
 
-function getBaseUrl() {
-  if (typeof window !== "undefined") {
-    return "";
-  }
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  return `http://localhost:${process.env.PORT ?? 3000}`;
+export interface VmsProvidersProps {
+  children: React.ReactNode;
+  queryClient?: QueryClient;
+  trpcClient?: ReturnType<typeof trpc.createClient>;
 }
 
-export function VmsProviders({ children }: { children: React.ReactNode }) {
+export function VmsProviders({
+  children,
+  queryClient: customQueryClient,
+  trpcClient: customTrpcClient,
+}: VmsProvidersProps) {
   const [queryClient] = useState(
     () =>
+      customQueryClient ??
       new QueryClient({
         defaultOptions: {
           queries: {
@@ -30,14 +31,16 @@ export function VmsProviders({ children }: { children: React.ReactNode }) {
       })
   );
 
-  const [trpcClient] = useState(() =>
-    trpc.createClient({
-      links: [
-        httpBatchLink({
-          url: `${getBaseUrl()}/api/trpc`,
-        }),
-      ],
-    })
+  const [trpcClient] = useState(
+    () =>
+      customTrpcClient ??
+      trpc.createClient({
+        links: [
+          httpBatchLink({
+            url: "/api/trpc",
+          }),
+        ],
+      })
   );
 
   return (
@@ -51,4 +54,3 @@ export function VmsProviders({ children }: { children: React.ReactNode }) {
     </trpc.Provider>
   );
 }
-
