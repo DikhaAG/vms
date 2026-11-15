@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: Canonical Reusable UI Component Primitives, 02: Responsive Shell & Ergonomic Bottom Dock Sidebar Toggle
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `src/app/vms/group-registration/page.tsx` updated to use `PageHeader`.
 - [ ] Group details card and schedule inputs refactored with `UiCard`.

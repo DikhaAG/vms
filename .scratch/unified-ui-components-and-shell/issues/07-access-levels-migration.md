@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: Canonical Reusable UI Component Primitives, 02: Responsive Shell & Ergonomic Bottom Dock Sidebar Toggle
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `src/app/vms/access-levels/page.tsx` updated to use `PageHeader`.
 - [ ] Facility filter dropdown and action buttons (Door Sync & Add Access Level) refactored with `UiButton` and `UiFilterToolbar`.

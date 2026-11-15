@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: Canonical Reusable UI Component Primitives, 02: Responsive Shell & Ergonomic Bottom Dock Sidebar Toggle
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `src/app/vms/visitors/page.tsx` updated to use `PageHeader`.
 - [ ] Metric summary cards (Total Basis Data, Profil Aktif, Arsip PDP) refactored with `UiKpiGrid` and `UiKpiCard`.

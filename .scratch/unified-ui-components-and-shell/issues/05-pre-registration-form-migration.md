@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: Canonical Reusable UI Component Primitives, 02: Responsive Shell & Ergonomic Bottom Dock Sidebar Toggle
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `src/app/vms/pre-registration/page.tsx` updated to use `PageHeader`.
 - [ ] Section 1 (Facility selection & timezones) refactored with `UiCard` and standardized radio selection states.

@@ -4,7 +4,7 @@
 
 **Blocked by:** 01: Canonical Reusable UI Component Primitives, 02: Responsive Shell & Ergonomic Bottom Dock Sidebar Toggle
 
-**Status:** ready-for-agent
+**Status:** claimed
 
 - [ ] `src/app/vms/reception/page.tsx` updated to use `PageHeader`.
 - [ ] Status filter buttons ("Semua", "Normal", "Overstay", "Kuota") updated to use `UiButton` or `UiKpiCard` with uniform Kinpaku active states and border radius.
