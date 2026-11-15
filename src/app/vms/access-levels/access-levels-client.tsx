@@ -9,6 +9,12 @@ import {
 } from "@/lib/vms/access-level-contract";
 import { idDict } from "@/lib/vms/i18n/id";
 import {
+  UiButton,
+  UiCard,
+  UiBadge,
+  UiFilterToolbar,
+} from "@/components/vms/ui";
+import {
   AccessLevelFormModal,
   type AccessLevelFormData,
 } from "./access-level-form-modal";
@@ -231,143 +237,187 @@ export function AccessLevelsClient({
       {statusMessage ? (
         <div
           role="status"
-          className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 p-4 text-xs font-medium text-emerald-800 dark:text-emerald-300"
+          className="flex items-start justify-between rounded-[var(--ks-radius-md)] border border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/10 p-4 text-xs font-medium text-[var(--ks-ink)]"
         >
-          {statusMessage}
+          <span>{statusMessage}</span>
+          <button
+            type="button"
+            onClick={() => setStatusMessage(null)}
+            className="p-1 text-[var(--ks-muted)] hover:text-[var(--ks-ink)] rounded-[var(--ks-radius-sm)] cursor-pointer transition-colors"
+            aria-label="Tutup notifikasi"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
       ) : null}
 
       {errorMessage ? (
         <div
           role="alert"
-          className="rounded-lg border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-950/30 p-4 text-xs font-medium text-rose-800 dark:text-rose-300"
+          className="flex items-start justify-between rounded-[var(--ks-radius-md)] border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/10 p-4 text-xs font-medium text-[var(--ks-vermilion)]"
         >
-          {errorMessage}
+          <span>{errorMessage}</span>
+          <button
+            type="button"
+            onClick={() => setErrorMessage(null)}
+            className="p-1 text-[var(--ks-muted)] hover:text-[var(--ks-ink)] rounded-[var(--ks-radius-sm)] cursor-pointer transition-colors"
+            aria-label="Tutup pesan kesalahan"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
       ) : null}
 
       {/* Control Bar: Facility Filter, Door Sync, and Create Button */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <label
-            htmlFor={`${formId}-facility-filter`}
-            className="text-xs font-medium text-neutral-700 dark:text-slate-300"
-          >
-            Lokasi Gedung:
-          </label>
-          <select
-            id={`${formId}-facility-filter`}
-            value={selectedFacilityId}
-            onChange={(e) => setSelectedFacilityId(e.target.value)}
-            className="rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-neutral-800 dark:text-slate-200 shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
-          >
-            <option value="all">
-              Semua Lokasi Fasilitas ({accessLevels.length})
-            </option>
-            {facilities.map((fac) => {
-              const count = accessLevels.filter(
-                (l) => l.facilityId === fac.id,
-              ).length;
-              return (
-                <option key={fac.id} value={fac.id}>
-                  {fac.name} ({count})
-                </option>
-              );
-            })}
-          </select>
-        </div>
+      <UiFilterToolbar
+        facilitySlot={
+          <div className="flex flex-wrap items-center gap-2">
+            <label
+              htmlFor={`${formId}-facility-filter`}
+              className="text-xs font-medium text-[var(--ks-muted)]"
+            >
+              Lokasi Gedung:
+            </label>
+            <select
+              id={`${formId}-facility-filter`}
+              value={selectedFacilityId}
+              onChange={(e) => setSelectedFacilityId(e.target.value)}
+              className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs font-medium text-[var(--ks-ink)] shadow-xs focus:border-[var(--ks-kinpaku)] focus:outline-hidden"
+            >
+              <option value="all">
+                Semua Lokasi Fasilitas ({accessLevels.length})
+              </option>
+              {facilities.map((fac) => {
+                const count = accessLevels.filter(
+                  (l) => l.facilityId === fac.id,
+                ).length;
+                return (
+                  <option key={fac.id} value={fac.id}>
+                    {fac.name} ({count})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        }
+        actionsSlot={
+          <div className="flex flex-wrap items-center gap-2">
+            <UiButton
+              type="button"
+              variant="secondary"
+              onClick={handleSyncDoors}
+              disabled={isSyncingDoors}
+              isLoading={isSyncingDoors}
+            >
+              <span aria-hidden="true">🔄</span>
+              <span>Sinkronkan Pintu dari Server HikCentral</span>
+            </UiButton>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleSyncDoors}
-            disabled={isSyncingDoors}
-            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-neutral-800 dark:text-slate-200 shadow-xs transition hover:bg-neutral-50 dark:hover:bg-slate-700 disabled:opacity-50"
-          >
-            <span aria-hidden="true">{isSyncingDoors ? "⏳" : "🔄"}</span>
-            {isSyncingDoors
-              ? "Menyinkronkan Pintu..."
-              : "Sinkronkan Pintu dari Server HikCentral"}
-          </button>
-
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 dark:bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-neutral-800 dark:hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900"
-          >
-            + Tambah Hak Akses Pintu
-          </button>
-        </div>
-      </div>
+            <UiButton
+              type="button"
+              variant="primary"
+              onClick={openCreateModal}
+            >
+              + Tambah Hak Akses Pintu
+            </UiButton>
+          </div>
+        }
+      />
 
       {/* Access Level Card List */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filteredLevels.length === 0 ? (
-          <div className="col-span-full rounded-xl border border-dashed border-neutral-300 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-900/40 p-10 text-center">
-            <p className="text-sm font-semibold text-neutral-800 dark:text-slate-200">
+          <div className="col-span-full rounded-[var(--ks-radius-md)] border border-dashed border-[var(--ks-rule)] bg-[var(--ks-paper)]/50 p-10 text-center">
+            <p className="text-sm font-semibold text-[var(--ks-ink)]">
               {availableDoors.length === 0
                 ? "Belum Ada Pintu Fisik yang Terdaftar"
                 : "Tidak ada kelompok hak akses yang ditemukan"}
             </p>
-            <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400 max-w-md mx-auto">
+            <p className="mt-1 text-xs text-[var(--ks-muted)] max-w-md mx-auto">
               {availableDoors.length === 0
                 ? "Klik tombol 'Sinkronkan Pintu dari Server HikCentral' untuk menarik data pintu dari gateway gedung."
                 : "Buat kelompok hak akses untuk menggabungkan izin pintu dan template jadwal waktu kunjungan."}
             </p>
-            <button
+            <UiButton
               type="button"
+              variant="primary"
+              size="sm"
               onClick={openCreateModal}
-              className="mt-4 inline-flex min-h-9 items-center justify-center rounded-lg bg-neutral-900 dark:bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-neutral-800 dark:hover:bg-blue-700"
+              className="mt-4"
             >
               + Buat Hak Akses Pertama
-            </button>
+            </UiButton>
           </div>
         ) : (
           filteredLevels.map((level) => {
             const fac = facilities.find((f) => f.id === level.facilityId);
             return (
-              <div
+              <UiCard
                 key={level.id}
-                className="flex flex-col justify-between rounded-xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs transition hover:border-neutral-300 dark:hover:border-slate-700"
+                className="flex flex-col justify-between p-5 hover:border-[var(--ks-rule)] transition"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <h2 className="text-sm font-bold text-neutral-900 dark:text-white">
+                    <h2 className="text-sm font-bold text-[var(--ks-ink)]">
                       {level.name}
                     </h2>
                     {level.isDefault ? (
-                      <span className="rounded-full bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                      <UiBadge variant="normal" showDot={false}>
                         Standar
-                      </span>
+                      </UiBadge>
                     ) : null}
                   </div>
 
-                  <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
+                  <p className="mt-1 text-xs text-[var(--ks-muted)]">
                     {fac?.name ?? level.facilityId}
                   </p>
 
-                  <p className="mt-2 text-xs text-neutral-600 dark:text-slate-300 line-clamp-2">
+                  <p className="mt-2 text-xs text-[var(--ks-text)] line-clamp-2">
                     {level.description || "Tidak ada deskripsi tambahan."}
                   </p>
 
-                  <div className="mt-4 space-y-3 border-t border-neutral-100 dark:border-slate-800 pt-3">
+                  <div className="mt-4 space-y-3 border-t border-[var(--ks-rule-subtle)] pt-3">
                     <div>
-                      <span className="text-[11px] font-medium text-neutral-500 dark:text-slate-400">
+                      <span className="text-2xs font-medium text-[var(--ks-muted)]">
                         Jadwal Waktu Akses:
                       </span>
-                      <p className="text-xs font-semibold text-neutral-800 dark:text-slate-200">
+                      <p className="text-xs font-semibold text-[var(--ks-ink)]">
                         {idDict.timeSchedules[level.timeScheduleId] ??
                           TIME_SCHEDULE_LABELS[level.timeScheduleId]}
                       </p>
                     </div>
 
                     <div>
-                      <span className="text-[11px] font-medium text-neutral-500 dark:text-slate-400">
+                      <span className="text-2xs font-medium text-[var(--ks-muted)]">
                         Pintu Diberikan ({level.doors.length}):
                       </span>
                       <div className="mt-1 flex flex-wrap gap-1">
                         {level.doors.length === 0 ? (
-                          <span className="text-xs text-neutral-400 italic">
+                          <span className="text-xs text-[var(--ks-muted)] italic">
                             Tidak ada pintu terdaftar
                           </span>
                         ) : (
@@ -383,11 +433,11 @@ export function AccessLevelsClient({
                             return (
                               <span
                                 key={doorCode}
-                                className="inline-flex items-center gap-1 rounded-md bg-neutral-100 dark:bg-slate-800 px-2 py-0.5 text-[11px] font-medium text-neutral-800 dark:text-slate-300"
+                                className="inline-flex items-center gap-1 rounded-[var(--ks-radius-sm)] bg-[var(--ks-paper-deep)] border border-[var(--ks-rule-subtle)] px-2 py-0.5 text-2xs font-medium text-[var(--ks-ink)]"
                               >
                                 <span>{displayName}</span>
                                 {doorObj ? (
-                                  <span className="text-[9px] text-neutral-400">
+                                  <span className="text-[9px] text-[var(--ks-muted)]">
                                     #{doorObj.doorIndexCode}
                                   </span>
                                 ) : null}
@@ -400,14 +450,14 @@ export function AccessLevelsClient({
 
                     {level.floors && level.floors.length > 0 ? (
                       <div>
-                        <span className="text-[11px] font-medium text-neutral-500 dark:text-slate-400">
+                        <span className="text-2xs font-medium text-[var(--ks-muted)]">
                           Akses Lantai Lift ({level.floors.length}):
                         </span>
                         <div className="mt-1 flex flex-wrap gap-1">
                           {level.floors.map((floor) => (
                             <span
                               key={floor}
-                              className="inline-flex rounded-md bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-blue-300"
+                              className="inline-flex rounded-[var(--ks-radius-sm)] bg-[var(--ks-kinpaku)]/15 border border-[var(--ks-kinpaku)]/30 px-2 py-0.5 text-2xs font-semibold text-[var(--ks-ink)]"
                             >
                               {floor}
                             </span>
@@ -418,23 +468,25 @@ export function AccessLevelsClient({
                   </div>
                 </div>
 
-                <div className="mt-5 flex items-center justify-end gap-2 border-t border-neutral-100 dark:border-slate-800 pt-3">
-                  <button
+                <div className="mt-5 flex items-center justify-end gap-2 border-t border-[var(--ks-rule-subtle)] pt-3">
+                  <UiButton
                     type="button"
+                    variant="secondary"
+                    size="sm"
                     onClick={() => openEditModal(level)}
-                    className="rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-neutral-700 dark:text-slate-200 transition hover:bg-neutral-50 dark:hover:bg-slate-700"
                   >
                     Ubah
-                  </button>
-                  <button
+                  </UiButton>
+                  <UiButton
                     type="button"
+                    variant="danger"
+                    size="sm"
                     onClick={() => handleDelete(level.id, level.name)}
-                    className="rounded-lg border border-rose-200 dark:border-rose-900 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs font-medium text-rose-700 dark:text-rose-400 transition hover:bg-rose-50 dark:hover:bg-rose-950/30"
                   >
                     Hapus
-                  </button>
+                  </UiButton>
                 </div>
-              </div>
+              </UiCard>
             );
           })
         )}

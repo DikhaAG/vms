@@ -1,12 +1,13 @@
 import React from "react";
 import { PageGuideModal } from "@/components/vms/page-guide-modal";
-import type { PageKey } from "@/lib/vms/i18n/id";
+import { idDict, type PageKey } from "@/lib/vms/i18n/id";
 
 export interface PageHeaderProps {
-  title: React.ReactNode;
+  title?: React.ReactNode;
   subtitle?: React.ReactNode;
   badge?: React.ReactNode;
   guidePageKey?: PageKey;
+  pageKey?: PageKey;
   guideSlot?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
@@ -17,10 +18,17 @@ export function PageHeader({
   subtitle,
   badge,
   guidePageKey,
+  pageKey,
   guideSlot,
   actions,
   className = "",
 }: PageHeaderProps) {
+  const resolvedGuideKey = guidePageKey ?? pageKey;
+  const resolvedTitle =
+    title ?? (pageKey ? idDict.pages[pageKey]?.title : undefined);
+  const resolvedSubtitle =
+    subtitle ?? (pageKey ? idDict.pages[pageKey]?.subtitle : undefined);
+
   return (
     <div
       className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--ks-rule-subtle)] ${className}`.trim()}
@@ -28,7 +36,7 @@ export function PageHeader({
       <div>
         <div className="flex items-center gap-3">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ks-ink)]">
-            {title}
+            {resolvedTitle}
           </h1>
           {badge &&
             (typeof badge === "string" ? (
@@ -39,19 +47,19 @@ export function PageHeader({
               badge
             ))}
         </div>
-        {subtitle && (
+        {resolvedSubtitle && (
           <p className="mt-1 text-xs sm:text-sm text-[var(--ks-muted)] max-w-3xl">
-            {subtitle}
+            {resolvedSubtitle}
           </p>
         )}
       </div>
 
-      {(guidePageKey || guideSlot || actions) && (
+      {(resolvedGuideKey || guideSlot || actions) && (
         <div className="flex items-center gap-2">
           {actions}
           {guideSlot}
-          {guidePageKey && !guideSlot && (
-            <PageGuideModal pageKey={guidePageKey} />
+          {resolvedGuideKey && !guideSlot && (
+            <PageGuideModal pageKey={resolvedGuideKey} />
           )}
         </div>
       )}
