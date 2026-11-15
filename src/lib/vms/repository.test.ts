@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { InMemoryVmsRepository } from "./repository";
+import { InMemoryVmsRepository, DEFAULT_DOORS, TEST_FIXTURE_DOORS } from "./repository";
 import type { Facility, Visit, EmergencyAccessGrant } from "./vms-contract";
 
 describe("InMemoryVmsRepository", () => {
@@ -887,7 +887,14 @@ describe("InMemoryVmsRepository", () => {
   });
 
   describe("door topology metadata operations (Ticket 01)", () => {
-    it("has pre-seeded default doors across facilities", async () => {
+    it("fresh boot starts empty (DEFAULT_DOORS = []), eliminating hardcoded demo doors", async () => {
+      expect(DEFAULT_DOORS).toEqual([]);
+      const doors = await repo.listDoors();
+      expect(doors).toEqual([]);
+    });
+
+    it("populates doors and allows filtering across facilities", async () => {
+      await repo.saveDoors(TEST_FIXTURE_DOORS);
       const doors = await repo.listDoors();
       expect(doors.length).toBeGreaterThan(0);
 
@@ -907,6 +914,7 @@ describe("InMemoryVmsRepository", () => {
     });
 
     it("getDoor retrieves door by doorIndexCode", async () => {
+      await repo.saveDoors(TEST_FIXTURE_DOORS);
       const door = await repo.getDoor("door-turnstile-1");
       expect(door).toBeDefined();
       expect(door?.doorName).toBe("Lobby Main SpeedGate A");
@@ -918,6 +926,7 @@ describe("InMemoryVmsRepository", () => {
     });
 
     it("getDoorByName retrieves door case-insensitively and filters by facility", async () => {
+      await repo.saveDoors(TEST_FIXTURE_DOORS);
       const door = await repo.getDoorByName("dc server room 01", "fac-jakarta");
       expect(door).toBeDefined();
       expect(door?.doorIndexCode).toBe("door-jkt-dc-01");
@@ -928,6 +937,7 @@ describe("InMemoryVmsRepository", () => {
     });
 
     it("findDoor resolves by either doorIndexCode or doorName", async () => {
+      await repo.saveDoors(TEST_FIXTURE_DOORS);
       const byCode = await repo.findDoor("door-jkt-dc-01");
       expect(byCode).toBeDefined();
       expect(byCode?.doorName).toBe("DC Server Room 01");
@@ -970,6 +980,7 @@ describe("InMemoryVmsRepository", () => {
     });
 
     it("recordDoorTap enriches metadata, sets inAndOutType, updates lastSeenDoor, and handles implicit taps", async () => {
+      await repo.saveDoors(TEST_FIXTURE_DOORS);
       await repo.saveVisit({
         id: "vis-topo-1",
         facilityId: "fac-jakarta",
@@ -1147,6 +1158,7 @@ describe("InMemoryVmsRepository", () => {
 
   describe("autoCheckInVisit and hostNotifications", () => {
     it("atomically performs auto check-in, initializes tapCount to 1, logs tap event, and stores host notification", async () => {
+      await repo.saveDoors(TEST_FIXTURE_DOORS);
       const approvedVisit: Visit = {
         id: "vis-auto-chk-1",
         facilityId: "fac-jakarta",

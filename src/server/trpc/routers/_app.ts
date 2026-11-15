@@ -4,6 +4,7 @@ import { approvalRouter } from "./approval";
 import { accessLevelRouter } from "./access-level";
 import { monitoringRouter } from "./monitoring";
 import { settingsRouter } from "./settings";
+import { doorsRouter } from "./doors";
 
 export const appRouter = router({
   visitor: visitorRouter,
@@ -11,6 +12,7 @@ export const appRouter = router({
   accessLevel: accessLevelRouter,
   monitoring: monitoringRouter,
   settings: settingsRouter,
+  doors: doorsRouter,
 });
 
 export type AppRouter = typeof appRouter;

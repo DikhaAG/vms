@@ -4,10 +4,10 @@
 
 **Blocked by:** 01: Expand Phase — System Settings Schema, Repository Contracts & Non-Breaking Types
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Initial door seed data on fresh boot starts empty (`DEFAULT_DOORS = []`), eliminating hardcoded demo doors.
-- [ ] Door synchronization endpoint (`POST /api/vms/sync/doors`) and tRPC `syncDoors` procedure fetch live access points directly from HikCentral OpenAPI (`/artemis/api/resource/v1/acsDoor/acsDoorList`).
-- [ ] Synchronized doors preserve native `regionIndexCode`, `doorIndexCode`, `doorName`, and online channel state in the flat door repository without assigning synthetic facility IDs.
-- [ ] Synchronized doors are immediately queryable via `GET /api/vms/doors` and the `doors` tRPC router.
-- [ ] Tests verify that door synchronization populates an empty repository and handles hardware offline/unreachable conditions gracefully.
+- [x] Initial door seed data on fresh boot starts empty (`DEFAULT_DOORS = []`), eliminating hardcoded demo doors.
+- [x] Door synchronization endpoint (`POST /api/vms/sync/doors`) and tRPC `syncDoors` procedure fetch live access points directly from HikCentral OpenAPI (`/artemis/api/resource/v1/acsDoor/acsDoorList`).
+- [x] Synchronized doors preserve native `regionIndexCode`, `doorIndexCode`, `doorName`, and online channel state in the flat door repository without assigning synthetic facility IDs.
+- [x] Synchronized doors are immediately queryable via `GET /api/vms/doors` and the `doors` tRPC router.
+- [x] Tests verify that door synchronization populates an empty repository and handles hardware offline/unreachable conditions gracefully.

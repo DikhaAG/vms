@@ -41,11 +41,13 @@ export async function POST(request: Request): Promise<NextResponse> {
     typeof body.facilityId === "string" ? body.facilityId : undefined;
   const pageNo = typeof body.pageNo === "number" ? body.pageNo : undefined;
   const pageSize = typeof body.pageSize === "number" ? body.pageSize : undefined;
+  const userId = typeof body.userId === "string" ? body.userId : undefined;
 
   const result = await syncHikCentralDoors({
     facilityId,
     pageNo,
     pageSize,
+    userId,
   });
 
   if (!result.ok) {

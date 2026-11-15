@@ -316,7 +316,7 @@ export const DEFAULT_HOSTS: HostEmployee[] = [
   },
 ];
 
-export const DEFAULT_DOORS: FacilityDoor[] = [
+export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   // Jakarta Corporate HQ
   {
     id: "door-jkt-turnstile-1",
@@ -422,6 +422,8 @@ export const DEFAULT_DOORS: FacilityDoor[] = [
     isPerimeter: false,
   },
 ];
+
+export const DEFAULT_DOORS: FacilityDoor[] = [];
 
 export class InMemoryVmsRepository implements IVmsRepository {
   private facilities = new Map<string, Facility>();

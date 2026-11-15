@@ -38,6 +38,11 @@ export const facilityDoorSchema = z.object({
   regionIndexCode: z.string().trim().optional(),
   doorIndexCode: z.string().trim().min(1, "Door index code is required."),
   doorName: z.string().trim().min(1, "Door name is required."),
+  channelNo: z.union([z.string(), z.number()]).optional(),
+  doorState: z.number().int().optional(),
+  doorOutState: z.number().int().optional(),
+  acsDevIndexCode: z.string().trim().optional(),
+  isOnline: z.boolean().optional(),
   accessType: doorAccessTypeSchema.default("DUAL_DIRECTION"),
   isPerimeter: z.boolean().default(false),
   roomTimeoutMinutes: z

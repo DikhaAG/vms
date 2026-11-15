@@ -1,10 +1,15 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { InMemoryVmsRepository } from "@/lib/vms/repository";
 import { createContext } from "@/server/trpc/context";
 import { createCaller, type AppCaller } from "@/server/trpc/routers/_app";
 import type { Visit } from "@/lib/vms/vms-contract";
 import type { FacilityDoor } from "@/lib/vms/checkout-contract";
 import { TRPCError } from "@trpc/server";
+import { syncHikCentralDoors } from "@/lib/vms/hikcentral-door-adapter";
+
+vi.mock("@/lib/vms/hikcentral-door-adapter", () => ({
+  syncHikCentralDoors: vi.fn(),
+}));
 
 describe("tRPC End-to-End Type-Safe Routers", () => {
   let repository: InMemoryVmsRepository;
@@ -322,6 +327,88 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
           timezone: "Invalid/Not_A_Real_Timezone",
         }),
       ).rejects.toThrow();
+    });
+  });
+
+  describe("doorsRouter", () => {
+    it("starts with empty doors on fresh repository boot", async () => {
+      const doors = await caller.doors.list();
+      expect(Array.isArray(doors)).toBe(true);
+      expect(doors).toHaveLength(0);
+    });
+
+    it("synchronizes doors via syncDoors procedure and makes them immediately queryable", async () => {
+      const mockDoors: FacilityDoor[] = [
+        {
+          id: "door-turnstile-01",
+          doorIndexCode: "door-turnstile-01",
+          doorName: "Main Entrance SpeedGate",
+          regionIndexCode: "reg-lobby",
+          channelNo: "1",
+          doorState: 1,
+          isOnline: true,
+          accessType: "DUAL_DIRECTION",
+          isPerimeter: true,
+        },
+      ];
+      vi.mocked(syncHikCentralDoors).mockImplementationOnce(async (opts) => {
+        const repo = opts?.repository;
+        await repo?.saveDoors(mockDoors);
+        return {
+          ok: true,
+          totalSynced: mockDoors.length,
+          doors: mockDoors,
+        };
+      });
+
+      const syncResult = await caller.doors.syncDoors({});
+      expect(syncResult.ok).toBe(true);
+      expect(syncResult.totalSynced).toBe(1);
+
+      const doors = await caller.doors.list();
+      expect(doors.length).toBe(1);
+      expect(doors[0].doorIndexCode).toBe("door-turnstile-01");
+      expect(doors[0].regionIndexCode).toBe("reg-lobby");
+      expect(doors[0].isOnline).toBe(true);
+
+      const fetchedDoor = await caller.doors.get({ doorIndexCode: "door-turnstile-01" });
+      expect(fetchedDoor).toBeDefined();
+      expect(fetchedDoor.doorName).toBe("Main Entrance SpeedGate");
+    });
+
+    it("throws NOT_FOUND when getting non-existent door", async () => {
+      await expect(
+        caller.doors.get({ doorIndexCode: "door-ghost" }),
+      ).rejects.toThrow(TRPCError);
+    });
+
+    it("handles hardware offline / unreachable conditions by throwing BAD_GATEWAY", async () => {
+      vi.mocked(syncHikCentralDoors).mockResolvedValueOnce({
+        ok: false,
+        totalSynced: 0,
+        doors: [],
+        error: {
+          kind: "upstream",
+          message: "HikCentral gateway unreachable: connection timed out",
+          code: "ETIMEDOUT",
+        },
+      });
+
+      await expect(caller.doors.syncDoors({})).rejects.toThrow(TRPCError);
+    });
+
+    it("handles configuration errors by throwing INTERNAL_SERVER_ERROR", async () => {
+      vi.mocked(syncHikCentralDoors).mockResolvedValueOnce({
+        ok: false,
+        totalSynced: 0,
+        doors: [],
+        error: {
+          kind: "config",
+          message: "Missing HIKCENTRAL_APP_KEY",
+        },
+      });
+
+      await expect(caller.doors.syncDoors({})).rejects.toThrow(TRPCError);
     });
   });
 });

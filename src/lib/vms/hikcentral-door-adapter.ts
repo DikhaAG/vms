@@ -32,6 +32,7 @@ export interface RawHikCentralDoorItem {
   acsDevIndexCode?: string;
   regionIndexCode?: string;
   doorNo?: string;
+  channelNo?: string | number;
   doorName?: string;
   doorState?: number;
   doorOutState?: number;
@@ -83,7 +84,7 @@ export function deduceDoorAccessType(doorOutState?: number): DoorAccessType {
 /**
  * Synchronizes physical doors and access points from HikCentral OpenAPI using
  * POST /artemis/api/resource/v1/acsDoor/acsDoorList (Ch. 5.4.3)
- * and stores them in the internal facility door directory.
+ * and stores them in the flat door repository.
  */
 export async function syncHikCentralDoors(
   options: SyncHikCentralDoorsOptions = {},
@@ -111,50 +112,68 @@ export async function syncHikCentralDoors(
     }
   }
 
-  const wirePayload = {
-    pageNo: options.pageNo ?? 1,
-    pageSize: options.pageSize ?? 500,
-  };
+  const requestedPageSize = options.pageSize ?? 500;
+  const isSinglePage = options.pageNo !== undefined;
+  let currentPage = options.pageNo ?? 1;
+
+  const allRawList: RawHikCentralDoorItem[] = [];
 
   try {
-    const response = await client.post<unknown>(
-      "/artemis/api/resource/v1/acsDoor/acsDoorList",
-      wirePayload,
-      {
-        userId: options.userId ?? "admin",
-      },
-    );
-
-    if (response.code !== "0") {
-      return {
-        ok: false,
-        totalSynced: 0,
-        doors: [],
-        error: {
-          kind: "upstream",
-          message: `HikCentral acsDoor sync error ${response.code}: ${response.msg || "Unknown error"}`,
-          code: response.code,
+    let hasMorePages = true;
+    while (hasMorePages) {
+      const response = await client.post<unknown>(
+        "/artemis/api/resource/v1/acsDoor/acsDoorList",
+        {
+          pageNo: currentPage,
+          pageSize: requestedPageSize,
         },
-      };
+        {
+          userId: options.userId ?? "admin",
+        },
+      );
+
+      if (response.code !== "0") {
+        return {
+          ok: false,
+          totalSynced: 0,
+          doors: [],
+          error: {
+            kind: "upstream",
+            message: `HikCentral acsDoor sync error ${response.code}: ${response.msg || "Unknown error"}`,
+            code: response.code,
+          },
+        };
+      }
+
+      if (!isDoorListResponseData(response.data)) {
+        return {
+          ok: false,
+          totalSynced: 0,
+          doors: [],
+          error: {
+            kind: "upstream",
+            message: "HikCentral door list response data is missing or malformed.",
+            code: response.code,
+          },
+        };
+      }
+
+      const pageList = response.data.list ?? [];
+      allRawList.push(...pageList);
+
+      if (isSinglePage) {
+        hasMorePages = false;
+      } else {
+        const total = response.data.total ?? allRawList.length;
+        if (allRawList.length >= total || pageList.length < requestedPageSize) {
+          hasMorePages = false;
+        } else {
+          currentPage += 1;
+        }
+      }
     }
 
-    if (!isDoorListResponseData(response.data)) {
-      return {
-        ok: false,
-        totalSynced: 0,
-        doors: [],
-        error: {
-          kind: "upstream",
-          message: "HikCentral door list response data is missing or malformed.",
-          code: response.code,
-        },
-      };
-    }
-
-    const rawList = response.data.list ?? [];
-    const facilityId = options.facilityId ?? "fac-main-01";
-
-    const mappedDoors: FacilityDoor[] = rawList
+    const mappedDoors: FacilityDoor[] = allRawList
       .filter(
         (item): item is RawHikCentralDoorItem & { doorIndexCode: string } =>
           typeof item.doorIndexCode === "string" &&
@@ -170,11 +189,30 @@ export async function syncHikCentralDoors(
         const accessType = deduceDoorAccessType(item.doorOutState);
         const isPerimeter = isPerimeterDoor(doorName);
 
+        const channelNo =
+          item.channelNo !== undefined
+            ? (typeof item.channelNo === "number" ? item.channelNo : String(item.channelNo).trim())
+            : item.doorNo !== undefined
+              ? (typeof item.doorNo === "number" ? item.doorNo : String(item.doorNo).trim())
+              : undefined;
+
+        const isOffline = item.doorState === 4 || item.doorOutState === 4;
+        const isOnline =
+          typeof item.doorState === "number" || typeof item.doorOutState === "number"
+            ? !isOffline
+            : undefined;
+
         return {
           id: `door-${doorIndexCode}`,
-          facilityId,
+          ...(options.facilityId ? { facilityId: options.facilityId } : {}),
+          regionIndexCode: item.regionIndexCode ? String(item.regionIndexCode).trim() : undefined,
           doorIndexCode,
           doorName,
+          channelNo,
+          doorState: typeof item.doorState === "number" ? item.doorState : undefined,
+          doorOutState: typeof item.doorOutState === "number" ? item.doorOutState : undefined,
+          acsDevIndexCode: typeof item.acsDevIndexCode === "string" ? item.acsDevIndexCode.trim() : undefined,
+          isOnline,
           accessType,
           isPerimeter,
         };
@@ -215,4 +253,3 @@ export async function syncHikCentralDoors(
     };
   }
 }
-

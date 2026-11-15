@@ -5,7 +5,7 @@ import { POST as postDoorTap } from "@/app/api/vms/active-visits/[visitId]/tap/r
 import { POST as postEmergencyAccess } from "@/app/api/vms/active-visits/[visitId]/emergency-access/route";
 import { POST as postCheckOut } from "@/app/api/vms/active-visits/[visitId]/check-out/route";
 import { GET as getActiveVisits } from "@/app/api/vms/active-visits/route";
-import { defaultVmsRepository } from "@/lib/vms/repository";
+import { defaultVmsRepository, TEST_FIXTURE_DOORS } from "@/lib/vms/repository";
 import {
   createSampleFaceJpegDataUri,
   normalizeFaceImage,
@@ -14,7 +14,8 @@ import type { PreRegistrationResult } from "@/lib/vms/vms-contract";
 
 describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience", () => {
   beforeEach(async () => {
-    // Ensure default access levels and facilities are in known state
+    // Ensure default test doors, access levels, and facilities are in known state
+    await defaultVmsRepository.saveDoors(TEST_FIXTURE_DOORS);
     const jktLobby = await defaultVmsRepository.getAccessLevel("acc-jkt-lobby");
     if (jktLobby) {
       await defaultVmsRepository.saveAccessLevel({

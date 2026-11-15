@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { POST } from "./route";
-import { defaultVmsRepository } from "@/lib/vms/repository";
+import { defaultVmsRepository, TEST_FIXTURE_DOORS } from "@/lib/vms/repository";
 import type { Visit } from "@/lib/vms/vms-contract";
 
 describe("POST /api/vms/active-visits/[visitId]/tap", () => {
   const visitId = "vis-api-tap-1";
 
   beforeEach(async () => {
+    await defaultVmsRepository.saveDoors(TEST_FIXTURE_DOORS);
     const activeVisit: Visit = {
       id: visitId,
       facilityId: "fac-jakarta",

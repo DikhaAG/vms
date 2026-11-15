@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { InMemoryVmsRepository } from "./repository";
+import { InMemoryVmsRepository, TEST_FIXTURE_DOORS } from "./repository";
 import { ActiveMonitoringService } from "./active-monitoring-service";
 import type { Visit } from "./vms-contract";
 
@@ -9,6 +9,7 @@ describe("ActiveMonitoringService", () => {
 
   beforeEach(async () => {
     repo = new InMemoryVmsRepository();
+    await repo.saveDoors(TEST_FIXTURE_DOORS);
     service = new ActiveMonitoringService(repo);
 
     // Seed test visits
