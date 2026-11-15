@@ -34,6 +34,7 @@ import {
   type AccessLevel,
   type TapQuotaMode,
 } from "@/lib/vms/access-level-contract";
+import { UiBadge, UiButton, UiCard } from "@/components/vms/ui";
 import { idDict } from "@/lib/vms/i18n/id";
 
 interface PreRegistrationFormProps {
@@ -210,9 +211,10 @@ export function PreRegistrationForm({
   );
   const [copiedInvite, setCopiedInvite] = useState(false);
 
-  // Camera Refs
+  // Camera and File Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const stopCameraStream = useCallback(() => {
     if (mediaStreamRef.current) {
@@ -484,14 +486,14 @@ export function PreRegistrationForm({
       <form
         noValidate
         onSubmit={handleSubmit}
-        className="space-y-8 rounded-xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xs"
+        className="space-y-8 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-6 shadow-xs"
       >
         {/* Section 1: Facility Selection */}
         <fieldset className="space-y-3">
-          <legend className="text-sm font-semibold text-neutral-900 dark:text-white">
+          <legend className="text-sm font-semibold text-[var(--ks-ink)]">
             1. Pilih Gedung & Zona Waktu Fasilitas
           </legend>
-          <p className="text-xs text-neutral-600 dark:text-slate-400">
+          <p className="text-xs text-[var(--ks-muted)]">
             Setiap lokasi gedung beroperasi berdasarkan zona waktu lokal IANA masing-masing.
           </p>
 
@@ -502,36 +504,40 @@ export function PreRegistrationForm({
                 <label
                   key={fac.id}
                   htmlFor={`${formId}-fac-${fac.id}`}
-                  className={`flex cursor-pointer flex-col justify-between rounded-lg border p-3.5 transition ${
-                    checked
-                      ? "border-neutral-900 dark:border-blue-500 bg-neutral-50 dark:bg-blue-950/20 ring-1 ring-neutral-900 dark:ring-blue-500"
-                      : "border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-neutral-300 dark:hover:border-slate-700"
-                  }`}
+                  className="block cursor-pointer"
                 >
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-neutral-900 dark:text-white">
-                        {fac.name}
+                  <UiCard
+                    className={`flex flex-col justify-between p-3.5 transition-colors ${
+                      checked
+                        ? "border-[var(--ks-ink)] bg-[var(--ks-paper)] ring-1 ring-[var(--ks-ink)]"
+                        : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-[var(--ks-ink)]">
+                          {fac.name}
+                        </span>
+                        <input
+                          id={`${formId}-fac-${fac.id}`}
+                          type="radio"
+                          name="facility"
+                          value={fac.id}
+                          checked={checked}
+                          onChange={() => setSelectedFacilityId(fac.id)}
+                          className="h-4 w-4 accent-[var(--ks-ink)]"
+                        />
+                      </div>
+                      <span className="mt-1 inline-block rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--ks-ink)]">
+                        {fac.timezone}
                       </span>
-                      <input
-                        id={`${formId}-fac-${fac.id}`}
-                        type="radio"
-                        name="facility"
-                        value={fac.id}
-                        checked={checked}
-                        onChange={() => setSelectedFacilityId(fac.id)}
-                        className="h-4 w-4 text-neutral-900 focus:ring-neutral-900"
-                      />
+                      {fac.address ? (
+                        <p className="mt-2 text-[11px] text-[var(--ks-muted)] line-clamp-2">
+                          {fac.address}
+                        </p>
+                      ) : null}
                     </div>
-                    <span className="mt-1 inline-block rounded bg-neutral-200/70 dark:bg-slate-800 px-1.5 py-0.5 font-mono text-[11px] text-neutral-800 dark:text-slate-300">
-                      {fac.timezone}
-                    </span>
-                    {fac.address ? (
-                      <p className="mt-2 text-[11px] text-neutral-500 dark:text-slate-400 line-clamp-2">
-                        {fac.address}
-                      </p>
-                    ) : null}
-                  </div>
+                  </UiCard>
                 </label>
               );
             })}
@@ -539,8 +545,8 @@ export function PreRegistrationForm({
         </fieldset>
 
         {/* Section 2: Visitor Details */}
-        <fieldset className="space-y-4 border-t border-neutral-100 dark:border-slate-800 pt-6">
-          <legend className="text-sm font-semibold text-neutral-900 dark:text-white">
+        <fieldset className="space-y-4 border-t border-[var(--ks-rule-subtle)] pt-6">
+          <legend className="text-sm font-semibold text-[var(--ks-ink)]">
             2. Data Identitas Tamu
           </legend>
 
@@ -548,7 +554,7 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-given-name`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Nama Depan *
               </label>
@@ -562,14 +568,14 @@ export function PreRegistrationForm({
                 autoCapitalize="none"
                 spellCheck={false}
                 placeholder="Nama Depan Tamu"
-                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-none focus:ring-2 ${
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${
                   fieldErrors.visitorGivenName
-                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                    : "border-neutral-300 dark:border-slate-700 focus:border-neutral-900 dark:focus:border-blue-500 focus:ring-neutral-900/15"
+                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
                 }`}
               />
               {fieldErrors.visitorGivenName ? (
-                <p className="mt-1 text-xs text-rose-600">
+                <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
                   {fieldErrors.visitorGivenName}
                 </p>
               ) : null}
@@ -578,7 +584,7 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-family-name`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Nama Belakang / Marga *
               </label>
@@ -592,14 +598,14 @@ export function PreRegistrationForm({
                 autoCapitalize="none"
                 spellCheck={false}
                 placeholder="Nama Belakang Tamu"
-                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-none focus:ring-2 ${
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${
                   fieldErrors.visitorFamilyName
-                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                    : "border-neutral-300 dark:border-slate-700 focus:border-neutral-900 dark:focus:border-blue-500 focus:ring-neutral-900/15"
+                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
                 }`}
               />
               {fieldErrors.visitorFamilyName ? (
-                <p className="mt-1 text-xs text-rose-600">
+                <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
                   {fieldErrors.visitorFamilyName}
                 </p>
               ) : null}
@@ -608,7 +614,7 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-phone`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Nomor Telepon / WhatsApp (cth. +62...)
               </label>
@@ -618,14 +624,14 @@ export function PreRegistrationForm({
                 value={visitorPhone}
                 onChange={(e) => setVisitorPhone(e.target.value)}
                 placeholder="+628123456789"
-                className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                className="mt-1 block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-edge)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-edge)]"
               />
             </div>
 
             <div>
               <label
                 htmlFor={`${formId}-email`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Alamat Email Tamu
               </label>
@@ -638,14 +644,14 @@ export function PreRegistrationForm({
                 autoCapitalize="none"
                 spellCheck={false}
                 placeholder="rian.pratama@example.com"
-                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-none focus:ring-2 ${
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${
                   fieldErrors.visitorEmail
-                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                    : "border-neutral-300 dark:border-slate-700 focus:border-neutral-900 dark:focus:border-blue-500 focus:ring-neutral-900/15"
+                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
                 }`}
               />
               {fieldErrors.visitorEmail ? (
-                <p className="mt-1 text-xs text-rose-600">
+                <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
                   {fieldErrors.visitorEmail}
                 </p>
               ) : null}
@@ -654,7 +660,7 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-cert-type`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Jenis Tanda Pengenal
               </label>
@@ -664,7 +670,7 @@ export function PreRegistrationForm({
                 onChange={(e) =>
                   setCertificateType(Number(e.target.value) as CertificateType)
                 }
-                className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                className="mt-1 block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs transition-colors focus:border-[var(--ks-edge)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-edge)]"
               >
                 {CERTIFICATE_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -677,7 +683,7 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-cert-no`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Nomor Identitas (NIK KTP / No. Paspor)
               </label>
@@ -695,10 +701,10 @@ export function PreRegistrationForm({
                   autoCapitalize="none"
                   spellCheck={false}
                   placeholder="3171..."
-                  className="block w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                  className="block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-edge)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-edge)]"
                 />
                 {isLookingUpVisitor && (
-                  <span className="absolute right-2.5 top-2.5 text-xs text-neutral-400">
+                  <span className="absolute right-2.5 top-2.5 text-xs text-[var(--ks-muted)]">
                     Mencari data...
                   </span>
                 )}
@@ -707,7 +713,7 @@ export function PreRegistrationForm({
           </div>
 
           {returningVisitorProfile && (
-            <div className="mt-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/80 dark:bg-blue-950/30 p-3 flex flex-wrap items-center justify-between gap-2">
+            <UiCard className="mt-3 border-[var(--ks-kinpaku)]/40 bg-[var(--ks-kinpaku)]/10 p-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 {returningVisitorProfile.facePhoto ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -716,103 +722,105 @@ export function PreRegistrationForm({
                     alt="Foto Wajah Tersimpan"
                     width={36}
                     height={36}
-                    className="h-9 w-9 rounded-full object-cover border border-blue-200"
+                    className="h-9 w-9 rounded-full object-cover border border-[var(--ks-kinpaku)]/40"
                   />
                 ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-200 text-xs font-bold text-blue-900">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ks-kinpaku)]/20 text-xs font-bold text-[var(--ks-ink)]">
                     {returningVisitorProfile.givenName?.[0]}
                   </div>
                 )}
                 <div>
-                  <p className="text-xs font-semibold text-blue-950 dark:text-blue-200">
+                  <p className="text-xs font-semibold text-[var(--ks-ink)]">
                     Tamu Pernah Berkunjung Ditemukan!
                   </p>
-                  <p className="text-[11px] text-blue-800 dark:text-blue-300">
+                  <p className="text-[11px] text-[var(--ks-text)]">
                     {returningVisitorProfile.fullName ||
                       `${returningVisitorProfile.givenName} ${returningVisitorProfile.familyName}`}{" "}
                     &bull; Profil tersimpan & foto biometrik wajah terenkripsi siap digunakan
                   </p>
                 </div>
               </div>
-              <button
+              <UiButton
                 type="button"
+                size="sm"
+                variant="primary"
                 onClick={() => applyReturningProfile(returningVisitorProfile)}
-                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 transition cursor-pointer"
               >
                 Isi Otomatis Data & Foto
-              </button>
-            </div>
+              </UiButton>
+            </UiCard>
           )}
         </fieldset>
 
         {/* Section 3: Biometric Face Photo Capture & Verification */}
-        <fieldset className="space-y-4 border-t border-neutral-100 dark:border-slate-800 pt-6">
+        <fieldset className="space-y-4 border-t border-[var(--ks-rule-subtle)] pt-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <legend className="text-sm font-semibold text-neutral-900 dark:text-white">
+              <legend className="text-sm font-semibold text-[var(--ks-ink)]">
                 3. Pengambilan & Verifikasi Foto Biometrik Wajah
               </legend>
-              <p className="text-xs text-neutral-600 dark:text-slate-400">
+              <p className="text-xs text-[var(--ks-muted)]">
                 Terminal pintu MinMoe mewajibkan foto format JPEG dengan ukuran antara 10 KB hingga 100 KB.
               </p>
             </div>
             {facePhoto && faceByteSize ? (
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  isFacePhotoSizeValid(faceByteSize)
-                    ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
-                    : "bg-rose-100 text-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
-                }`}
-              >
+              <UiBadge variant={isFacePhotoSizeValid(faceByteSize) ? "normal" : "danger"}>
                 {formatFacePhotoSize(faceByteSize)} (
                 {isFacePhotoSizeValid(faceByteSize)
                   ? "Sesuai Standar 10–100 KB"
                   : "Di Luar Batas Standar"}
                 )
-              </span>
+              </UiBadge>
             ) : null}
           </div>
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-3">
-            <label
-              htmlFor={`${formId}-face-file`}
-              className="inline-flex cursor-pointer items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-neutral-800 dark:text-slate-200 transition hover:bg-neutral-50 dark:hover:bg-slate-700 shadow-2xs"
-            >
-              <span>{isNormalizing ? "Memproses..." : "Unggah Berkas Foto"}</span>
-              <input
-                id={`${formId}-face-file`}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleFileUpload}
-                disabled={isNormalizing}
-                className="sr-only"
-              />
-            </label>
-
-            <button
+            <UiButton
               type="button"
+              variant="secondary"
+              size="md"
+              disabled={isNormalizing}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {isNormalizing ? "Memproses..." : "Unggah Berkas Foto"}
+            </UiButton>
+            <input
+              ref={fileInputRef}
+              id={`${formId}-face-file`}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileUpload}
+              disabled={isNormalizing}
+              className="sr-only"
+            />
+
+            <UiButton
+              type="button"
+              variant="secondary"
+              size="md"
               onClick={isCameraActive ? stopCameraStream : handleStartCamera}
-              className="inline-flex items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-medium text-neutral-800 dark:text-slate-200 transition hover:bg-neutral-50 dark:hover:bg-slate-700 shadow-2xs"
             >
               {isCameraActive ? "Tutup Kamera" : "Ambil Foto via Kamera"}
-            </button>
+            </UiButton>
 
             {facePhoto ? (
-              <button
+              <UiButton
                 type="button"
+                variant="ghost"
+                size="md"
                 onClick={handleRemovePhoto}
-                className="inline-flex items-center justify-center rounded-lg text-xs font-medium text-rose-600 hover:text-rose-800"
+                className="text-[var(--ks-vermilion)] hover:text-[var(--ks-vermilion)] hover:bg-[var(--ks-vermilion)]/10"
               >
                 Hapus Foto
-              </button>
+              </UiButton>
             ) : null}
           </div>
 
           {/* Webcam Viewfinder if active */}
           {isCameraActive ? (
-            <div className="overflow-hidden rounded-xl border border-neutral-300 bg-neutral-900 p-3 text-center">
-              <div className="relative mx-auto aspect-4/3 max-w-sm overflow-hidden rounded-lg bg-black">
+            <UiCard className="overflow-hidden bg-[var(--ks-ink)] p-4 text-center">
+              <div className="relative mx-auto aspect-4/3 max-w-sm overflow-hidden rounded-[var(--ks-radius-md)] border border-[var(--ks-edge)] bg-black">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -820,31 +828,33 @@ export function PreRegistrationForm({
                   muted
                   className="h-full w-full object-cover"
                 />
-                <div className="pointer-events-none absolute inset-6 rounded-2xl border-2 border-dashed border-white/60" />
+                <div className="pointer-events-none absolute inset-6 rounded-[var(--ks-radius-md)] border-2 border-dashed border-white/60" />
               </div>
               <div className="mt-3 flex justify-center gap-3">
-                <button
+                <UiButton
                   type="button"
+                  variant="primary"
+                  size="sm"
                   onClick={handleCaptureCamera}
-                  className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 shadow-xs"
                 >
                   Bidik Foto Wajah
-                </button>
-                <button
+                </UiButton>
+                <UiButton
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={stopCameraStream}
-                  className="rounded-lg bg-neutral-700 px-4 py-1.5 text-xs font-semibold text-neutral-200 hover:bg-neutral-600"
                 >
                   Batal
-                </button>
+                </UiButton>
               </div>
-            </div>
+            </UiCard>
           ) : null}
 
           {/* Instant Photo Preview */}
           {facePhoto ? (
-            <div className="flex items-center gap-4 rounded-lg border border-neutral-200 dark:border-slate-800 bg-neutral-50/70 dark:bg-slate-800/50 p-3">
-              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-neutral-300 dark:border-slate-700 bg-white shadow-2xs">
+            <UiCard className="flex items-center gap-4 bg-[var(--ks-paper)] p-3">
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] shadow-xs">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={facePhoto}
@@ -853,30 +863,30 @@ export function PreRegistrationForm({
                 />
               </div>
               <div className="space-y-1 text-xs">
-                <p className="font-semibold text-neutral-900 dark:text-white">
+                <p className="font-semibold text-[var(--ks-ink)]">
                   Foto Wajah Biometrik Terverifikasi
                 </p>
-                <p className="text-neutral-600 dark:text-slate-400">
-                  Format: <span className="font-mono">JPEG</span> &bull; Ukuran:{" "}
-                  <span className="font-mono font-medium">
+                <p className="text-[var(--ks-muted)]">
+                  Format: <span className="font-mono text-[var(--ks-ink)]">JPEG</span> &bull; Ukuran:{" "}
+                  <span className="font-mono font-medium text-[var(--ks-ink)]">
                     {formatFacePhotoSize(faceByteSize)}
                   </span>
                 </p>
-                <p className="text-emerald-700 dark:text-emerald-400">
+                <p className="text-[var(--ks-patina-deep)] font-medium">
                   Memenuhi standar batas ukuran terminal pintu (10 KB - 100 KB)
                 </p>
               </div>
-            </div>
+            </UiCard>
           ) : null}
 
           {faceError ? (
-            <p className="text-xs font-medium text-rose-600">{faceError}</p>
+            <p className="text-xs font-medium text-[var(--ks-vermilion)]">{faceError}</p>
           ) : null}
         </fieldset>
 
         {/* Section 4: Visit Schedule & Reason */}
-        <fieldset className="space-y-4 border-t border-neutral-100 dark:border-slate-800 pt-6">
-          <legend className="text-sm font-semibold text-neutral-900 dark:text-white">
+        <fieldset className="space-y-4 border-t border-[var(--ks-rule-subtle)] pt-6">
+          <legend className="text-sm font-semibold text-[var(--ks-ink)]">
             4. Jadwal Kunjungan & Keperluan
           </legend>
 
@@ -884,10 +894,10 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-start-time`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Waktu Mulai Kunjungan (
-                <span className="font-semibold text-neutral-900 dark:text-white">
+                <span className="font-semibold text-[var(--ks-ink)]">
                   {selectedFacility?.timezone}
                 </span>
                 ) *
@@ -898,14 +908,14 @@ export function PreRegistrationForm({
                 required
                 value={scheduledStartTime}
                 onChange={(e) => setScheduledStartTime(e.target.value)}
-                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-none focus:ring-2 ${
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors focus:outline-hidden ${
                   fieldErrors.scheduledStartTime
-                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                    : "border-neutral-300 dark:border-slate-700 focus:border-neutral-900 dark:focus:border-blue-500 focus:ring-neutral-900/15"
+                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
                 }`}
               />
               {fieldErrors.scheduledStartTime ? (
-                <p className="mt-1 text-xs text-rose-600">
+                <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
                   {fieldErrors.scheduledStartTime}
                 </p>
               ) : null}
@@ -914,10 +924,10 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-end-time`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Waktu Selesai Kunjungan (
-                <span className="font-semibold text-neutral-900 dark:text-white">
+                <span className="font-semibold text-[var(--ks-ink)]">
                   {selectedFacility?.timezone}
                 </span>
                 ) *
@@ -928,14 +938,14 @@ export function PreRegistrationForm({
                 required
                 value={scheduledEndTime}
                 onChange={(e) => setScheduledEndTime(e.target.value)}
-                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-none focus:ring-2 ${
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors focus:outline-hidden ${
                   fieldErrors.scheduledEndTime
-                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                    : "border-neutral-300 dark:border-slate-700 focus:border-neutral-900 dark:focus:border-blue-500 focus:ring-neutral-900/15"
+                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
                 }`}
               />
               {fieldErrors.scheduledEndTime ? (
-                <p className="mt-1 text-xs text-rose-600">
+                <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
                   {fieldErrors.scheduledEndTime}
                 </p>
               ) : null}
@@ -944,7 +954,7 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-reason-type`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Keperluan Kunjungan *
               </label>
@@ -954,7 +964,7 @@ export function PreRegistrationForm({
                 onChange={(e) =>
                   setVisitReasonType(Number(e.target.value) as VisitReasonType)
                 }
-                className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                className="mt-1 block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs transition-colors focus:border-[var(--ks-edge)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-edge)]"
               >
                 {VISIT_REASON_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -967,7 +977,7 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-reason-detail`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Rincian Keperluan {visitReasonType === 4 ? "*" : "(Opsional)"}
               </label>
@@ -981,14 +991,14 @@ export function PreRegistrationForm({
                     ? "Wajib diisi untuk keperluan 'Lainnya'..."
                     : "cth. Pertemuan kerja sama bisnis vendor Q4"
                 }
-                className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-none focus:ring-2 ${
+                className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm bg-[var(--ks-paper)] text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:outline-hidden ${
                   fieldErrors.visitReasonDetail
-                    ? "border-rose-300 focus:border-rose-500 focus:ring-rose-500/20"
-                    : "border-neutral-300 dark:border-slate-700 focus:border-neutral-900 dark:focus:border-blue-500 focus:ring-neutral-900/15"
+                    ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-1 focus:ring-[var(--ks-vermilion)]"
+                    : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-edge)] focus:ring-1 focus:ring-[var(--ks-edge)]"
                 }`}
               />
               {fieldErrors.visitReasonDetail ? (
-                <p className="mt-1 text-xs text-rose-600">
+                <p className="mt-1 text-xs text-[var(--ks-vermilion)]">
                   {fieldErrors.visitReasonDetail}
                 </p>
               ) : null}
@@ -997,11 +1007,11 @@ export function PreRegistrationForm({
         </fieldset>
 
         {/* Section 5: Internal Host Sponsorship */}
-        <fieldset className="space-y-4 border-t border-neutral-100 dark:border-slate-800 pt-6">
-          <legend className="text-sm font-semibold text-neutral-900 dark:text-white">
+        <fieldset className="space-y-4 border-t border-[var(--ks-rule-subtle)] pt-6">
+          <legend className="text-sm font-semibold text-[var(--ks-ink)]">
             5. Karyawan Tuan Rumah Internal
           </legend>
-          <p className="text-xs text-neutral-600 dark:text-slate-400">
+          <p className="text-xs text-[var(--ks-muted)]">
             Karyawan internal penanggung jawab yang mengundang atau menerima kedatangan tamu.
           </p>
 
@@ -1009,7 +1019,7 @@ export function PreRegistrationForm({
             <div>
               <label
                 htmlFor={`${formId}-host-name`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 Nama Karyawan Tuan Rumah
               </label>
@@ -1019,14 +1029,14 @@ export function PreRegistrationForm({
                 value={hostName}
                 onChange={(e) => setHostName(e.target.value)}
                 placeholder="Nama Karyawan Tuan Rumah"
-                className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                className="mt-1 block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-edge)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-edge)]"
               />
             </div>
 
             <div>
               <label
                 htmlFor={`${formId}-host-id`}
-                className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+                className="block text-xs font-medium text-[var(--ks-text)]"
               >
                 ID Karyawan Tuan Rumah
               </label>
@@ -1039,28 +1049,28 @@ export function PreRegistrationForm({
                 autoCapitalize="none"
                 spellCheck={false}
                 placeholder="emp-host-01"
-                className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 dark:bg-slate-800 dark:text-white px-3 py-2 text-sm text-neutral-900 shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-neutral-900/15"
+                className="mt-1 block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs transition-colors placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-edge)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-edge)]"
               />
             </div>
           </div>
         </fieldset>
 
         {/* Section 6: Dynamic Access Levels & Tap Quota */}
-        <fieldset className="space-y-4 border-t border-neutral-100 dark:border-slate-800 pt-6">
+        <fieldset className="space-y-4 border-t border-[var(--ks-rule-subtle)] pt-6">
           <div className="flex items-center justify-between">
-            <legend className="text-sm font-semibold text-neutral-900 dark:text-white">
+            <legend className="text-sm font-semibold text-[var(--ks-ink)]">
               6. Kelompok Hak Akses Pintu & Batas Tap
             </legend>
-            <span className="rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold">
+            <UiBadge variant="normal" showDot={false}>
               Keamanan Terpadu
-            </span>
+            </UiBadge>
           </div>
-          <p className="text-xs text-neutral-600 dark:text-slate-400">
+          <p className="text-xs text-[var(--ks-muted)]">
             Pilih area akses pintu fisik untuk kunjungan ini dan atur batas tap pintu putar.
           </p>
 
           <div className="space-y-3">
-            <span className="block text-xs font-medium text-neutral-700 dark:text-slate-300">
+            <span className="block text-xs font-medium text-[var(--ks-text)]">
               Kelompok Hak Akses Tersedia untuk Gedung Terpilih
             </span>
 
@@ -1070,7 +1080,7 @@ export function PreRegistrationForm({
               );
               if (facilityLevels.length === 0) {
                 return (
-                  <p className="text-xs text-neutral-500 italic">
+                  <p className="text-xs text-[var(--ks-muted)] italic">
                     Belum ada kelompok hak akses khusus untuk gedung ini. Tamu akan menggunakan akses lobi standar.
                   </p>
                 );
@@ -1082,49 +1092,53 @@ export function PreRegistrationForm({
                     return (
                       <label
                         key={lvl.id}
-                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-xs transition ${
-                          isChecked
-                            ? "border-neutral-900 dark:border-blue-500 bg-neutral-50/80 dark:bg-blue-950/30 ring-1 ring-neutral-900 dark:ring-blue-500"
-                            : "border-neutral-200 dark:border-slate-800 hover:border-neutral-300 bg-white dark:bg-slate-900"
-                        }`}
+                        className="block cursor-pointer"
                       >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedAccessLevelIds((prev) => [...prev, lvl.id]);
-                            } else {
-                              setSelectedAccessLevelIds((prev) =>
-                                prev.filter((id) => id !== lvl.id),
-                              );
-                            }
-                          }}
-                          className="mt-0.5 h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-neutral-900 dark:text-white">
-                              {lvl.name}
-                            </span>
-                            {lvl.isDefault ? (
-                              <span className="rounded bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.2 text-[9px] font-bold text-emerald-800 dark:text-emerald-300">
-                                Standar
+                        <UiCard
+                          className={`p-3 text-xs transition-colors flex items-start gap-3 ${
+                            isChecked
+                              ? "border-[var(--ks-ink)] bg-[var(--ks-paper)] ring-1 ring-[var(--ks-ink)]"
+                              : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedAccessLevelIds((prev) => [...prev, lvl.id]);
+                              } else {
+                                setSelectedAccessLevelIds((prev) =>
+                                  prev.filter((id) => id !== lvl.id),
+                                );
+                              }
+                            }}
+                            className="mt-0.5 h-4 w-4 rounded-[var(--ks-radius-sm)] accent-[var(--ks-ink)]"
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-[var(--ks-ink)]">
+                                {lvl.name}
                               </span>
-                            ) : null}
+                              {lvl.isDefault ? (
+                                <UiBadge variant="normal" showDot={false}>
+                                  Standar
+                                </UiBadge>
+                              ) : null}
+                            </div>
+                            <p className="mt-0.5 text-[var(--ks-muted)] line-clamp-1">
+                              {lvl.description || "Hak akses fisik pintu"}
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <span className="rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-1.5 py-0.5 text-[10px] text-[var(--ks-muted)]">
+                                {idDict.timeSchedules[lvl.timeScheduleId] ?? TIME_SCHEDULE_LABELS[lvl.timeScheduleId] ?? `Jadwal ${lvl.timeScheduleId}`}
+                              </span>
+                              <span className="rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-1.5 py-0.5 text-[10px] text-[var(--ks-muted)] font-mono">
+                                {lvl.doors.length} pintu
+                              </span>
+                            </div>
                           </div>
-                          <p className="mt-0.5 text-neutral-500 dark:text-slate-400 line-clamp-1">
-                            {lvl.description || "Hak akses fisik pintu"}
-                          </p>
-                          <div className="mt-1 flex flex-wrap gap-1">
-                            <span className="rounded bg-neutral-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:text-slate-300">
-                              {idDict.timeSchedules[lvl.timeScheduleId] ?? TIME_SCHEDULE_LABELS[lvl.timeScheduleId] ?? `Jadwal ${lvl.timeScheduleId}`}
-                            </span>
-                            <span className="rounded bg-neutral-100 dark:bg-slate-800 px-1.5 py-0.5 text-[10px] text-neutral-600 dark:text-slate-300 font-mono">
-                              {lvl.doors.length} pintu
-                            </span>
-                          </div>
-                        </div>
+                        </UiCard>
                       </label>
                     );
                   })}
@@ -1134,143 +1148,148 @@ export function PreRegistrationForm({
           </div>
 
           {/* Tap Quota Selection */}
-          <div className="mt-4 rounded-lg border border-neutral-200 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-800/40 p-4">
-            <span className="block text-xs font-semibold text-neutral-800 dark:text-slate-200">
+          <UiCard className="mt-4 p-4 bg-[var(--ks-paper)]">
+            <span className="block text-xs font-semibold text-[var(--ks-ink)]">
               Batas Buka Pintu / Kuota Tap Pintu Putar
             </span>
-            <p className="mt-0.5 text-xs text-neutral-500 dark:text-slate-400">
+            <p className="mt-0.5 text-xs text-[var(--ks-muted)]">
               Batasi frekuensi buka pintu putar atau pintu akses fisik untuk tiket QR yang diterbitkan.
             </p>
 
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label
-                className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-xs transition ${
-                  tapQuotaMode === "unlimited"
-                    ? "border-neutral-900 dark:border-blue-500 bg-white dark:bg-slate-900 ring-1 ring-neutral-900 dark:ring-blue-500"
-                    : "border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-neutral-300"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="tap-quota-mode"
-                  value="unlimited"
-                  checked={tapQuotaMode === "unlimited"}
-                  onChange={() => setTapQuotaMode("unlimited")}
-                  className="mt-0.5 h-4 w-4 text-neutral-900 focus:ring-neutral-900"
-                />
-                <div>
-                  <span className="font-semibold text-neutral-900 dark:text-white">
-                    {idDict.tapQuotaModes.unlimited.label}
-                  </span>
-                  <p className="mt-0.5 text-neutral-500 dark:text-slate-400">
-                    {idDict.tapQuotaModes.unlimited.description}
-                  </p>
-                </div>
+              <label className="block cursor-pointer">
+                <UiCard
+                  className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${
+                    tapQuotaMode === "unlimited"
+                      ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
+                      : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="tap-quota-mode"
+                    value="unlimited"
+                    checked={tapQuotaMode === "unlimited"}
+                    onChange={() => setTapQuotaMode("unlimited")}
+                    className="mt-0.5 h-4 w-4 accent-[var(--ks-ink)]"
+                  />
+                  <div>
+                    <span className="font-semibold text-[var(--ks-ink)]">
+                      {idDict.tapQuotaModes.unlimited.label}
+                    </span>
+                    <p className="mt-0.5 text-[var(--ks-muted)]">
+                      {idDict.tapQuotaModes.unlimited.description}
+                    </p>
+                  </div>
+                </UiCard>
               </label>
 
-              <label
-                className={`flex cursor-pointer items-start gap-2.5 rounded-lg border p-3 text-xs transition ${
-                  tapQuotaMode === "limited"
-                    ? "border-neutral-900 dark:border-blue-500 bg-white dark:bg-slate-900 ring-1 ring-neutral-900 dark:ring-blue-500"
-                    : "border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-neutral-300"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="tap-quota-mode"
-                  value="limited"
-                  checked={tapQuotaMode === "limited"}
-                  onChange={() => setTapQuotaMode("limited")}
-                  className="mt-0.5 h-4 w-4 text-neutral-900 focus:ring-neutral-900"
-                />
-                <div className="flex-1">
-                  <span className="font-semibold text-neutral-900 dark:text-white">
-                    {idDict.tapQuotaModes.limited.label}
-                  </span>
-                  <p className="mt-0.5 text-neutral-500 dark:text-slate-400">
-                    {idDict.tapQuotaModes.limited.description}
-                  </p>
-                  {tapQuotaMode === "limited" ? (
-                    <div className="mt-2 flex items-center gap-2">
-                      <input
-                        type="number"
-                        min={1}
-                        max={1000}
-                        value={maxTaps}
-                        onChange={(e) => setMaxTaps(Math.max(1, Math.min(1000, Number(e.target.value))))}
-                        className="w-24 rounded border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-xs font-semibold text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 focus:outline-hidden"
-                      />
-                      <span className="text-xs text-neutral-600 dark:text-slate-400">kali masuk</span>
-                    </div>
-                  ) : null}
-                </div>
+              <label className="block cursor-pointer">
+                <UiCard
+                  className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${
+                    tapQuotaMode === "limited"
+                      ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
+                      : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="tap-quota-mode"
+                    value="limited"
+                    checked={tapQuotaMode === "limited"}
+                    onChange={() => setTapQuotaMode("limited")}
+                    className="mt-0.5 h-4 w-4 accent-[var(--ks-ink)]"
+                  />
+                  <div className="flex-1">
+                    <span className="font-semibold text-[var(--ks-ink)]">
+                      {idDict.tapQuotaModes.limited.label}
+                    </span>
+                    <p className="mt-0.5 text-[var(--ks-muted)]">
+                      {idDict.tapQuotaModes.limited.description}
+                    </p>
+                    {tapQuotaMode === "limited" ? (
+                      <div className="mt-2 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={1}
+                          max={1000}
+                          value={maxTaps}
+                          onChange={(e) => setMaxTaps(Math.max(1, Math.min(1000, Number(e.target.value))))}
+                          className="w-24 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-2 py-1 text-xs font-semibold text-[var(--ks-ink)] shadow-xs focus:border-[var(--ks-edge)] focus:outline-hidden"
+                        />
+                        <span className="text-xs text-[var(--ks-muted)]">kali masuk</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </UiCard>
               </label>
             </div>
-          </div>
+          </UiCard>
         </fieldset>
-
 
         {globalError ? (
           <div
             role="alert"
-            className="rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 p-4 text-xs text-rose-800 dark:text-rose-300"
+            className="rounded-[var(--ks-radius-md)] border border-[var(--ks-vermilion)]/40 bg-[var(--ks-vermilion)]/10 p-4 text-xs text-[var(--ks-vermilion)]"
           >
             <p className="font-semibold">Pendaftaran Tamu Gagal Diproses</p>
             <p className="mt-1">{globalError}</p>
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-neutral-100 dark:border-slate-800 pt-4">
-          <p className="text-xs text-neutral-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--ks-rule-subtle)] pt-4">
+          <p className="text-xs text-[var(--ks-muted)]">
             Status awal kunjungan akan ditetapkan sebagai{" "}
-            <span className="font-semibold text-neutral-800 dark:text-slate-200">
+            <span className="font-semibold text-[var(--ks-ink)]">
               MENUNGGU PERSETUJUAN
             </span>{" "}
-            (atau <span className="font-semibold text-neutral-800 dark:text-slate-200">DRAFT</span> untuk tautan undangan mandiri).
+            (atau <span className="font-semibold text-[var(--ks-ink)]">DRAFT</span> untuk tautan undangan mandiri).
           </p>
           <div className="flex flex-wrap items-center gap-2">
-            <button
+            <UiButton
               type="button"
+              variant="secondary"
+              size="md"
               onClick={handleGenerateInviteLink}
               disabled={isGeneratingInvite || isSubmitting}
-              className="inline-flex min-h-10 items-center justify-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-neutral-800 dark:text-slate-200 shadow-xs transition hover:bg-neutral-50 dark:hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isGeneratingInvite ? "Membuat Tautan..." : "Buat Tautan Pendaftaran Mandiri"}
-            </button>
-            <button
+            </UiButton>
+            <UiButton
               type="submit"
+              variant="primary"
+              size="md"
               disabled={isSubmitting || isNormalizing}
-              className="inline-flex min-h-10 items-center justify-center rounded-lg bg-neutral-900 dark:bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 dark:hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Mengirim Janji Temu..." : "Kirim Janji Temu Tamu"}
-            </button>
+            </UiButton>
           </div>
         </div>
       </form>
 
       {/* Generated Invitation Link Card */}
       {generatedInviteUrl ? (
-        <section
+        <UiCard
           aria-label="Tautan Pendaftaran Mandiri Tamu"
-          className="rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/60 dark:bg-blue-950/30 p-5 shadow-xs"
+          className="border-[var(--ks-kinpaku)]/40 bg-[var(--ks-kinpaku)]/10 p-5 shadow-xs"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--ks-ink)] text-xs font-bold text-[var(--ks-paper-raised)]">
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
               </span>
-              <h2 className="text-sm font-bold text-blue-950 dark:text-blue-200">
+              <h2 className="text-sm font-bold text-[var(--ks-ink)]">
                 Tautan Pendaftaran Mandiri Berhasil Dibuat
               </h2>
             </div>
-            <span className="rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 px-2 py-0.5 text-xs font-semibold">
+            <UiBadge variant="default" showDot={false}>
               Satu Kali Pakai • Memiliki Batas Waktu
-            </span>
+            </UiBadge>
           </div>
 
-          <p className="mt-2 text-xs text-blue-900 dark:text-blue-300">
+          <p className="mt-2 text-xs text-[var(--ks-text)]">
             Bagikan tautan ini kepada tamu Anda. Tamu dapat membukanya melalui smartphone atau laptop
             untuk memeriksa jadwal, mengisi data diri, dan mengunggah foto selfie biometrik sebelum tiba di lokasi.
           </p>
@@ -1280,47 +1299,46 @@ export function PreRegistrationForm({
               type="text"
               readOnly
               value={typeof window !== "undefined" ? `${window.location.origin}${generatedInviteUrl}` : generatedInviteUrl}
-              className="flex-1 rounded-lg border border-blue-300 dark:border-blue-800 bg-white dark:bg-slate-900 px-3 py-2 font-mono text-xs text-neutral-800 dark:text-slate-200 shadow-xs focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+              className="flex-1 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-3 py-2 font-mono text-xs text-[var(--ks-ink)] shadow-xs focus:border-[var(--ks-edge)] focus:outline-hidden"
             />
             <div className="flex gap-2">
-              <button
+              <UiButton
                 type="button"
+                variant="primary"
+                size="sm"
                 onClick={handleCopyInviteLink}
-                className="inline-flex min-h-9 items-center justify-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white shadow-xs transition hover:bg-blue-700 cursor-pointer"
               >
                 {copiedInvite ? "Berhasil Disalin!" : "Salin Tautan"}
-              </button>
+              </UiButton>
               <a
                 href={generatedInviteUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-9 items-center justify-center rounded-lg border border-blue-300 dark:border-blue-800 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-300 shadow-xs transition hover:bg-blue-50 dark:hover:bg-slate-800"
+                className="ks-btn inline-flex items-center justify-center font-semibold rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] px-3.5 py-1.5 text-xs sm:text-sm min-h-9 shadow-xs"
               >
                 Buka Portal
               </a>
             </div>
           </div>
-        </section>
+        </UiCard>
       ) : null}
 
       {/* Result Display Card */}
       {createdVisit ? (
-        <section
+        <UiCard
           aria-label="Detail Kunjungan Terjadwal"
-          className="rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 p-6 shadow-sm"
+          className="border-[var(--ks-patina)]/40 p-6 shadow-xs"
         >
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-100 dark:border-slate-800 pb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ks-rule-subtle)] pb-4">
             <div>
-              <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950/60 px-3 py-1 text-xs font-semibold text-amber-900 dark:text-amber-300">
-                {idDict.statusBadges[createdVisit.status]?.label ?? createdVisit.status}
-              </span>
-              <h2 className="mt-2 text-lg font-bold text-neutral-950 dark:text-white">
+              <UiBadge status={createdVisit.status} />
+              <h2 className="mt-2 text-lg font-bold text-[var(--ks-ink)]">
                 Janji Temu Berhasil Terjadwal
               </h2>
             </div>
             <div className="text-right">
-              <span className="text-xs text-neutral-500 dark:text-slate-400">ID Kunjungan Internal</span>
-              <p className="font-mono text-xs font-semibold text-neutral-800 dark:text-slate-200">
+              <span className="text-xs text-[var(--ks-muted)]">ID Kunjungan Internal</span>
+              <p className="font-mono text-xs font-semibold text-[var(--ks-ink)]">
                 {createdVisit.id}
               </p>
             </div>
@@ -1330,20 +1348,20 @@ export function PreRegistrationForm({
             {/* Left 2 Cols: Details */}
             <div className="space-y-4 md:col-span-2">
               <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-slate-400">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ks-muted)]">
                   Informasi Tamu
                 </h3>
-                <p className="mt-1 text-base font-semibold text-neutral-900 dark:text-white">
+                <p className="mt-1 text-base font-semibold text-[var(--ks-ink)]">
                   {createdVisit.visitorGivenName} {createdVisit.visitorFamilyName}
                 </p>
-                <p className="text-xs text-neutral-600 dark:text-slate-400">
+                <p className="text-xs text-[var(--ks-muted)]">
                   {createdVisit.visitorPhone || "Tanpa nomor telepon"} &bull;{" "}
                   {createdVisit.visitorEmail || "Tanpa email"}
                 </p>
                 {createdVisit.certificateNo ? (
-                  <p className="mt-1 text-xs text-neutral-600 dark:text-slate-400">
+                  <p className="mt-1 text-xs text-[var(--ks-muted)]">
                     No. Identitas:{" "}
-                    <span className="font-mono font-medium text-neutral-800 dark:text-slate-200">
+                    <span className="font-mono font-medium text-[var(--ks-ink)]">
                       {createdVisit.certificateNo}
                     </span>{" "}
                     ({createdVisit.certificateType ? (idDict.certificateTypes[createdVisit.certificateType] ?? `Tipe ${createdVisit.certificateType}`) : ""})
@@ -1351,16 +1369,16 @@ export function PreRegistrationForm({
                 ) : null}
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-slate-800 pt-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-slate-400">
+              <div className="border-t border-[var(--ks-rule-subtle)] pt-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ks-muted)]">
                   Gedung & Jadwal Kunjungan
                 </h3>
-                <p className="mt-1 text-sm font-medium text-neutral-900 dark:text-white">
+                <p className="mt-1 text-sm font-medium text-[var(--ks-ink)]">
                   {createdVisit.facilityName}
                 </p>
-                <div className="mt-1 space-y-1 text-xs text-neutral-700 dark:text-slate-300">
+                <div className="mt-1 space-y-1 text-xs text-[var(--ks-text)]">
                   <p>
-                    <span className="font-medium text-neutral-500 dark:text-slate-400">
+                    <span className="font-medium text-[var(--ks-muted)]">
                       Waktu Lokal Gedung:
                     </span>{" "}
                     <span className="font-mono">
@@ -1369,7 +1387,7 @@ export function PreRegistrationForm({
                     </span>
                   </p>
                   <p>
-                    <span className="font-medium text-neutral-500 dark:text-slate-400">
+                    <span className="font-medium text-[var(--ks-muted)]">
                       Waktu UTC Dinormalisasi:
                     </span>{" "}
                     <span className="font-mono">
@@ -1380,17 +1398,17 @@ export function PreRegistrationForm({
                 </div>
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-slate-800 pt-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-slate-400">
+              <div className="border-t border-[var(--ks-rule-subtle)] pt-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ks-muted)]">
                   Izin Akses Pintu & Batas Tap
                 </h3>
-                <div className="mt-2 space-y-1.5 text-xs text-neutral-700 dark:text-slate-300">
+                <div className="mt-2 space-y-1.5 text-xs text-[var(--ks-text)]">
                   <p>
-                    <span className="font-medium text-neutral-500 dark:text-slate-400">
+                    <span className="font-medium text-[var(--ks-muted)]">
                       Kelompok Hak Akses Diberikan:
                     </span>{" "}
                     {createdVisit.accessLevelIds && createdVisit.accessLevelIds.length > 0 ? (
-                      <span className="font-semibold text-neutral-900 dark:text-white">
+                      <span className="font-semibold text-[var(--ks-ink)]">
                         {createdVisit.accessLevelIds
                           .map(
                             (id) =>
@@ -1399,60 +1417,60 @@ export function PreRegistrationForm({
                           .join(", ")}
                       </span>
                     ) : (
-                      <span className="italic text-neutral-400">
+                      <span className="italic text-[var(--ks-muted)]">
                         Akses Pintu Masuk Lobi Standar
                       </span>
                     )}
                   </p>
                   <p>
-                    <span className="font-medium text-neutral-500 dark:text-slate-400">
+                    <span className="font-medium text-[var(--ks-muted)]">
                       Batas Tap:
                     </span>{" "}
                     {createdVisit.tapQuota?.mode === "limited" ? (
-                      <span className="inline-flex items-center rounded-md bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 font-semibold text-amber-800 dark:text-amber-300">
+                      <UiBadge variant="warning">
                         {createdVisit.tapQuota.maxTaps} kali akses masuk diizinkan
-                      </span>
+                      </UiBadge>
                     ) : (
-                      <span className="inline-flex items-center rounded-md bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 font-semibold text-emerald-800 dark:text-emerald-300">
+                      <UiBadge variant="normal">
                         Bebas akses masuk tanpa batas selama jam kunjungan
-                      </span>
+                      </UiBadge>
                     )}
                   </p>
                 </div>
               </div>
 
-              <div className="border-t border-neutral-100 dark:border-slate-800 pt-3">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500 dark:text-slate-400">
+              <div className="border-t border-[var(--ks-rule-subtle)] pt-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ks-muted)]">
                   Detail Eksekusi OpenAPI HikCentral
                 </h3>
-                <dl className="mt-2 grid grid-cols-2 gap-3 rounded-lg bg-neutral-50 dark:bg-slate-800/60 p-3 font-mono text-xs">
+                <dl className="mt-2 grid grid-cols-2 gap-3 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] p-3 font-mono text-xs">
                   <div>
-                    <dt className="text-[11px] text-neutral-500 dark:text-slate-400">
+                    <dt className="text-[11px] text-[var(--ks-muted)]">
                       appointRecordId
                     </dt>
-                    <dd className="font-semibold text-neutral-900 dark:text-white">
+                    <dd className="font-semibold text-[var(--ks-ink)]">
                       {createdVisit.hikCentral?.appointRecordId ?? "-"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] text-neutral-500 dark:text-slate-400">visitorId</dt>
-                    <dd className="font-semibold text-neutral-900 dark:text-white">
+                    <dt className="text-[11px] text-[var(--ks-muted)]">visitorId</dt>
+                    <dd className="font-semibold text-[var(--ks-ink)]">
                       {createdVisit.hikCentral?.visitorId ?? "-"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] text-neutral-500 dark:text-slate-400">
+                    <dt className="text-[11px] text-[var(--ks-muted)]">
                       appointCode
                     </dt>
-                    <dd className="font-semibold text-neutral-900 dark:text-white">
+                    <dd className="font-semibold text-[var(--ks-ink)]">
                       {createdVisit.hikCentral?.appointCode ?? "-"}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] text-neutral-500 dark:text-slate-400">
+                    <dt className="text-[11px] text-[var(--ks-muted)]">
                       ID Karyawan Tuan Rumah
                     </dt>
-                    <dd className="font-semibold text-neutral-900 dark:text-white">
+                    <dd className="font-semibold text-[var(--ks-ink)]">
                       {createdVisit.hostId ?? "-"}
                     </dd>
                   </div>
@@ -1461,12 +1479,12 @@ export function PreRegistrationForm({
             </div>
 
             {/* Right Col: Biometric Face & QR Pass Preview & Hardware Sync */}
-            <div className="flex flex-col items-center justify-between space-y-4 rounded-xl border border-neutral-200 dark:border-slate-800 bg-neutral-50/50 dark:bg-slate-800/40 p-4 text-center">
+            <div className="flex flex-col items-center justify-between space-y-4 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] p-4 text-center">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500 dark:text-slate-400">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--ks-muted)]">
                   Kredensial Diterbitkan
                 </span>
-                <p className="mt-1 text-xs font-semibold text-neutral-900 dark:text-white">
+                <p className="mt-1 text-xs font-semibold text-[var(--ks-ink)]">
                   {createdVisit.visitorGivenName} {createdVisit.visitorFamilyName}
                 </p>
               </div>
@@ -1474,7 +1492,7 @@ export function PreRegistrationForm({
               {/* Face Photo Preview in Result Card */}
               {createdVisit.facePhoto ? (
                 <div className="flex flex-col items-center">
-                  <div className="relative h-28 w-28 overflow-hidden rounded-xl border-2 border-emerald-400 bg-white shadow-xs">
+                  <div className="relative h-28 w-28 overflow-hidden rounded-[var(--ks-radius-md)] border-2 border-[var(--ks-patina)] bg-[var(--ks-paper-raised)] shadow-xs">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={toJpegDataUri(createdVisit.facePhoto)}
@@ -1482,7 +1500,7 @@ export function PreRegistrationForm({
                       className="h-full w-full object-cover"
                     />
                   </div>
-                  <span className="mt-1 text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+                  <span className="mt-1 text-[11px] font-medium text-[var(--ks-patina-deep)]">
                     Foto Wajah Biometrik Terdaftar
                   </span>
                 </div>
@@ -1490,7 +1508,7 @@ export function PreRegistrationForm({
 
               {/* Digital QR Pass */}
               <div className="flex flex-col items-center">
-                <div className="flex h-32 w-32 items-center justify-center rounded-lg border border-neutral-200 dark:border-slate-700 bg-white p-2 shadow-xs">
+                <div className="flex h-32 w-32 items-center justify-center rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-2 shadow-xs">
                   {createdVisit.hikCentral?.qrCodeImage ? (
                     <Image
                       src={`data:image/png;base64,${createdVisit.hikCentral.qrCodeImage}`}
@@ -1501,51 +1519,52 @@ export function PreRegistrationForm({
                       className="h-full w-full object-contain"
                     />
                   ) : (
-                    <div className="text-xs text-neutral-400">Tanpa Kode QR</div>
+                    <div className="text-xs text-[var(--ks-muted)]">Tanpa Kode QR</div>
                   )}
                 </div>
-                <span className="mt-1 text-[11px] text-neutral-600 dark:text-slate-400">
+                <span className="mt-1 text-[11px] text-[var(--ks-muted)]">
                   Akses Tiket QR Digital
                 </span>
               </div>
 
               {/* Credential Hardware Sync Status Badge & Retry Button */}
-              <div className="w-full rounded-lg border border-neutral-200 dark:border-slate-700 bg-white dark:bg-slate-850 p-3 text-left">
+              <div className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-3 text-left">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-semibold text-neutral-600 dark:text-slate-300">
+                  <span className="text-[11px] font-semibold text-[var(--ks-text)]">
                     Sinkronisasi Terminal:
                   </span>
-                  <span
-                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                  <UiBadge
+                    variant={
                       credentialSyncStatus === "Applied"
-                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300"
+                        ? "normal"
                         : credentialSyncStatus === "Syncing"
-                          ? "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
-                          : "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300"
-                    }`}
-                  >
-                    {idDict.syncStatuses[credentialSyncStatus] ?? credentialSyncStatus}
-                  </span>
+                          ? "warning"
+                          : "danger"
+                    }
+                    label={idDict.syncStatuses[credentialSyncStatus] ?? credentialSyncStatus}
+                  />
                 </div>
 
-                <button
+                <UiButton
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={handleRetrySync}
                   disabled={isRetryingSync}
-                  className="mt-2.5 w-full rounded-md border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 py-1.5 text-xs font-semibold text-neutral-800 dark:text-slate-200 transition hover:bg-neutral-50 dark:hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-neutral-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mt-2.5 w-full"
                 >
                   {isRetryingSync ? "Menyinkronkan..." : "Sinkronkan Ulang"}
-                </button>
+                </UiButton>
 
                 {retrySyncMessage ? (
-                  <p className="mt-1.5 text-[11px] text-neutral-600 dark:text-slate-400">
+                  <p className="mt-1.5 text-[11px] text-[var(--ks-muted)]">
                     {retrySyncMessage}
                   </p>
                 ) : null}
               </div>
             </div>
           </div>
-        </section>
+        </UiCard>
       ) : null}
     </div>
   );
