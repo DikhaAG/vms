@@ -226,9 +226,9 @@ export function EmergencyAccessModal({
 
               {/* Door Selection List */}
               <div>
-                <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1.5">
+                <span className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1.5">
                   Pilih Pintu Fisik yang Dibuka Aksesnya <span className="text-[var(--ks-vermilion)]">*</span>
-                </label>
+                </span>
                 {availableDoors.length === 0 ? (
                   <p className="text-xs text-[var(--ks-muted)] italic">
                     Tidak ada pintu terdaftar untuk fasilitas ini.

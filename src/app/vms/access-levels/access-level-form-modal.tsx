@@ -269,9 +269,9 @@ export function AccessLevelFormModal({
         {/* Authoritative Doors Selection from HikCentral */}
         <div>
           <div className="flex items-center justify-between">
-            <label className="block text-xs font-medium text-[var(--ks-muted)]">
+            <span className="block text-xs font-medium text-[var(--ks-muted)]">
               Daftar Pintu Fisik Server HikCentral * (minimal 1 pintu)
-            </label>
+            </span>
             <button
               type="button"
               onClick={onSyncDoors}
@@ -409,9 +409,9 @@ export function AccessLevelFormModal({
 
         {/* Floors Management */}
         <div>
-          <label className="block text-xs font-medium text-[var(--ks-muted)]">
+          <span className="block text-xs font-medium text-[var(--ks-muted)]">
             Akses Lantai Lift (Opsional)
-          </label>
+          </span>
           <div className="mt-1 flex flex-wrap gap-1">
             {COMMON_FLOOR_PRESETS.map((fl) => {
               const active = floors.includes(fl);

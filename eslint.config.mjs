@@ -23,9 +23,15 @@ const eslintConfig = [
             "Upstream HikCentral 'receptionistId' is restricted to HikCentral adapters. Domain models, UI, and services must use 'hostId'.",
         },
       ],
+      "jsx-a11y/label-has-associated-control": [
+        "error",
+        {
+          assert: "either",
+          depth: 3,
+        },
+      ],
     },
   },
 ];
 
 export default eslintConfig;
-

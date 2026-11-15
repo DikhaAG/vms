@@ -416,7 +416,6 @@ export function GroupRegistrationClient({
                               ? "danger"
                               : undefined
                       }
-                      label={idDict.statusBadges[member.status]?.label ?? member.status}
                     />
                   </div>
 
@@ -517,10 +516,11 @@ export function GroupRegistrationClient({
         <UiCardContent className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+              <label htmlFor="group-visitor-group-name" className="block text-xs font-semibold text-[var(--ks-ink)]">
                 Nama Rombongan Tamu <span className="text-[var(--ks-vermilion)]">*</span>
               </label>
               <input
+                id="group-visitor-group-name"
                 type="text"
                 required
                 placeholder="cth. Delegasi Proyek PT Telkom, Tim Audit Vendor, Tamu Vendor Pelatihan"
@@ -534,10 +534,11 @@ export function GroupRegistrationClient({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+              <label htmlFor="group-facility-id" className="block text-xs font-semibold text-[var(--ks-ink)]">
                 Gedung / Lokasi Tujuan <span className="text-[var(--ks-vermilion)]">*</span>
               </label>
               <select
+                id="group-facility-id"
                 value={facilityId}
                 onChange={(e) => setFacilityId(e.target.value)}
                 className="mt-1.5 w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
@@ -573,10 +574,11 @@ export function GroupRegistrationClient({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+              <label htmlFor="group-host-name" className="block text-xs font-semibold text-[var(--ks-ink)]">
                 Nama Karyawan Tuan Rumah
               </label>
               <input
+                id="group-host-name"
                 type="text"
                 value={hostName}
                 onChange={(e) => setHostName(e.target.value)}
@@ -586,10 +588,11 @@ export function GroupRegistrationClient({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+              <label htmlFor="group-visit-reason-type" className="block text-xs font-semibold text-[var(--ks-ink)]">
                 Keperluan Kunjungan <span className="text-[var(--ks-vermilion)]">*</span>
               </label>
               <select
+                id="group-visit-reason-type"
                 value={visitReasonType}
                 onChange={(e) => setVisitReasonType(Number(e.target.value))}
                 className="mt-1.5 w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
@@ -604,10 +607,11 @@ export function GroupRegistrationClient({
 
             {visitReasonType === 4 && (
               <div>
-                <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+                <label htmlFor="group-visit-reason-detail" className="block text-xs font-semibold text-[var(--ks-ink)]">
                   Rincian Keperluan <span className="text-[var(--ks-vermilion)]">*</span>
                 </label>
                 <input
+                  id="group-visit-reason-detail"
                   type="text"
                   required
                   value={visitReasonDetail}
@@ -619,10 +623,11 @@ export function GroupRegistrationClient({
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+              <label htmlFor="group-scheduled-start-time" className="block text-xs font-semibold text-[var(--ks-ink)]">
                 Waktu Mulai Kunjungan (Waktu Lokal) <span className="text-[var(--ks-vermilion)]">*</span>
               </label>
               <input
+                id="group-scheduled-start-time"
                 type="datetime-local"
                 required
                 value={scheduledStartTime}
@@ -632,10 +637,11 @@ export function GroupRegistrationClient({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+              <label htmlFor="group-scheduled-end-time" className="block text-xs font-semibold text-[var(--ks-ink)]">
                 Waktu Selesai Kunjungan (Waktu Lokal) <span className="text-[var(--ks-vermilion)]">*</span>
               </label>
               <input
+                id="group-scheduled-end-time"
                 type="datetime-local"
                 required
                 value={scheduledEndTime}
@@ -655,9 +661,9 @@ export function GroupRegistrationClient({
         />
         <UiCardContent className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[var(--ks-ink)] mb-2">
+            <span className="block text-xs font-semibold text-[var(--ks-ink)] mb-2">
               Pilih Kelompok Hak Akses Pintu untuk Rombongan
-            </label>
+            </span>
             {availableAccessLevels.length === 0 ? (
               <p className="text-xs text-[var(--ks-muted)]">
                 Belum ada kelompok hak akses khusus untuk gedung ini. Akses pintu putar lobi standar akan digunakan.
@@ -698,10 +704,11 @@ export function GroupRegistrationClient({
 
           <div className="pt-2 grid gap-4 sm:grid-cols-2 border-t border-[var(--ks-rule-subtle)]">
             <div>
-              <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+              <label htmlFor="group-tap-quota-mode" className="block text-xs font-semibold text-[var(--ks-ink)]">
                 Mode Kuota Tap Pintu Putar
               </label>
               <select
+                id="group-tap-quota-mode"
                 value={tapQuotaMode}
                 onChange={(e) =>
                   setTapQuotaMode(e.target.value as "unlimited" | "limited")
@@ -715,10 +722,11 @@ export function GroupRegistrationClient({
 
             {tapQuotaMode === "limited" && (
               <div>
-                <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+                <label htmlFor="group-max-taps" className="block text-xs font-semibold text-[var(--ks-ink)]">
                   Maksimal Jumlah Tap per Anggota Tamu
                 </label>
                 <input
+                  id="group-max-taps"
                   type="number"
                   min={1}
                   max={50}
@@ -836,10 +844,11 @@ export function GroupRegistrationClient({
 
               <div className="grid gap-3 sm:grid-cols-3">
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+                  <label htmlFor={`group-given-name-${idx}`} className="block text-xs font-semibold text-[var(--ks-ink)]">
                     Nama Depan <span className="text-[var(--ks-vermilion)]">*</span>
                   </label>
                   <input
+                    id={`group-given-name-${idx}`}
                     type="text"
                     required
                     value={visitor.visitorGivenName}
@@ -857,10 +866,11 @@ export function GroupRegistrationClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+                  <label htmlFor={`group-family-name-${idx}`} className="block text-xs font-semibold text-[var(--ks-ink)]">
                     Nama Belakang / Marga <span className="text-[var(--ks-vermilion)]">*</span>
                   </label>
                   <input
+                    id={`group-family-name-${idx}`}
                     type="text"
                     required
                     value={visitor.visitorFamilyName}
@@ -878,10 +888,11 @@ export function GroupRegistrationClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+                  <label htmlFor={`group-cert-type-${idx}`} className="block text-xs font-semibold text-[var(--ks-ink)]">
                     Jenis Tanda Pengenal
                   </label>
                   <select
+                    id={`group-cert-type-${idx}`}
                     value={visitor.certificateType}
                     onChange={(e) => {
                       const val = Number(e.target.value);
@@ -942,10 +953,11 @@ export function GroupRegistrationClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+                  <label htmlFor={`group-phone-${idx}`} className="block text-xs font-semibold text-[var(--ks-ink)]">
                     Nomor Telepon / WhatsApp
                   </label>
                   <input
+                    id={`group-phone-${idx}`}
                     type="tel"
                     value={visitor.visitorPhone}
                     onChange={(e) => {
@@ -962,10 +974,11 @@ export function GroupRegistrationClient({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+                  <label htmlFor={`group-email-${idx}`} className="block text-xs font-semibold text-[var(--ks-ink)]">
                     Alamat Email
                   </label>
                   <input
+                    id={`group-email-${idx}`}
                     type="email"
                     value={visitor.visitorEmail}
                     onChange={(e) => {
@@ -982,11 +995,12 @@ export function GroupRegistrationClient({
                 </div>
 
                 <div className="sm:col-span-3">
-                  <label className="block text-xs font-semibold text-[var(--ks-ink)]">
+                  <label htmlFor={`group-photo-${idx}`} className="block text-xs font-semibold text-[var(--ks-ink)]">
                     Foto Wajah Biometrik (Opsional)
                   </label>
                   <div className="mt-1 flex items-center gap-3">
                     <input
+                      id={`group-photo-${idx}`}
                       type="file"
                       accept="image/jpeg,image/png"
                       onChange={(e) => handlePhotoUpload(idx, e)}

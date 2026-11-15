@@ -12,15 +12,26 @@ export type UiBadgeVariant =
   | (typeof UI_BADGE_VARIANTS)[number]
   | "default";
 
-export interface UiBadgeProps {
-  status?: string;
+interface UiBadgeCommonProps {
   variant?: UiBadgeVariant;
-  label?: string;
   dotColor?: string;
   showDot?: boolean;
   className?: string;
-  children?: React.ReactNode;
 }
+
+export type UiBadgeStatusProps = UiBadgeCommonProps & {
+  status: string;
+  label?: never;
+  children?: never;
+};
+
+export type UiBadgeCustomProps = UiBadgeCommonProps & {
+  status?: never;
+  label?: React.ReactNode;
+  children?: React.ReactNode;
+};
+
+export type UiBadgeProps = UiBadgeStatusProps | UiBadgeCustomProps;
 
 const variantStyles: Record<UiBadgeVariant, { badge: string; dot: string }> = {
   normal: {

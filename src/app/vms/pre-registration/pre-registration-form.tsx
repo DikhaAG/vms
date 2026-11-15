@@ -1092,8 +1092,10 @@ export function PreRegistrationForm({
                     return (
                       <label
                         key={lvl.id}
+                        htmlFor={`access-level-${lvl.id}`}
                         className="block cursor-pointer"
                       >
+                        <span className="sr-only">{lvl.name}</span>
                         <UiCard
                           className={`p-3 text-xs transition-colors flex items-start gap-3 ${
                             isChecked
@@ -1102,6 +1104,7 @@ export function PreRegistrationForm({
                           }`}
                         >
                           <input
+                            id={`access-level-${lvl.id}`}
                             type="checkbox"
                             checked={isChecked}
                             onChange={(e) => {
@@ -1157,7 +1160,8 @@ export function PreRegistrationForm({
             </p>
 
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <label className="block cursor-pointer">
+              <label htmlFor="tap-quota-unlimited" className="block cursor-pointer">
+                <span className="sr-only">{idDict.tapQuotaModes.unlimited.label}</span>
                 <UiCard
                   className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${
                     tapQuotaMode === "unlimited"
@@ -1166,6 +1170,7 @@ export function PreRegistrationForm({
                   }`}
                 >
                   <input
+                    id="tap-quota-unlimited"
                     type="radio"
                     name="tap-quota-mode"
                     value="unlimited"
@@ -1184,7 +1189,8 @@ export function PreRegistrationForm({
                 </UiCard>
               </label>
 
-              <label className="block cursor-pointer">
+              <label htmlFor="tap-quota-limited" className="block cursor-pointer">
+                <span className="sr-only">{idDict.tapQuotaModes.limited.label}</span>
                 <UiCard
                   className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${
                     tapQuotaMode === "limited"
@@ -1193,6 +1199,7 @@ export function PreRegistrationForm({
                   }`}
                 >
                   <input
+                    id="tap-quota-limited"
                     type="radio"
                     name="tap-quota-mode"
                     value="limited"

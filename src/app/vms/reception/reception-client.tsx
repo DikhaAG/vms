@@ -892,9 +892,9 @@ export function ReceptionClient({
 
             {/* Verification Method Radio Selection */}
             <div className="mt-5 border-t border-[var(--ks-rule-subtle)] pt-4">
-              <label className="block text-xs font-bold text-[var(--ks-ink)] mb-2">
+              <span className="block text-xs font-bold text-[var(--ks-ink)] mb-2">
                 Metode Verifikasi yang Diterapkan:
-              </label>
+              </span>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {VERIFICATION_METHODS.map((m) => {
                   const methodLabels: Record<string, string> = {
@@ -929,10 +929,11 @@ export function ReceptionClient({
 
             {/* Receptionist Notes */}
             <div className="mt-3">
-              <label className="block text-xs font-semibold text-[var(--ks-text)] mb-1">
+              <label htmlFor="checkInNotes" className="block text-xs font-semibold text-[var(--ks-text)] mb-1">
                 Catatan Resepsionis (Opsional):
               </label>
               <input
+                id="checkInNotes"
                 type="text"
                 value={checkInNotes}
                 onChange={(e) => setCheckInNotes(e.target.value)}
@@ -1020,10 +1021,11 @@ export function ReceptionClient({
           {/* Facility & Host row */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label htmlFor="walkInFacilityId" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                 Gedung Fasilitas *
               </label>
               <select
+                id="walkInFacilityId"
                 value={walkInFacilityId}
                 onChange={(e) => setWalkInFacilityId(e.target.value)}
                 className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
@@ -1036,10 +1038,11 @@ export function ReceptionClient({
               </select>
             </div>
             <div>
-              <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label htmlFor="walkInHostId" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                 Karyawan Tuan Rumah *
               </label>
               <select
+                id="walkInHostId"
                 value={walkInHostId}
                 onChange={(e) => {
                   setWalkInHostId(e.target.value);
@@ -1133,10 +1136,11 @@ export function ReceptionClient({
           {/* Certificate row */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label htmlFor="walkInCertType" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                 Jenis Kartu Identitas
               </label>
               <select
+                id="walkInCertType"
                 value={walkInCertType}
                 onChange={(e) => setWalkInCertType(Number(e.target.value) as CertificateType)}
                 className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
@@ -1222,10 +1226,11 @@ export function ReceptionClient({
           {/* Purpose row */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label htmlFor="walkInReasonType" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                 Keperluan Kunjungan *
               </label>
               <select
+                id="walkInReasonType"
                 value={walkInReasonType}
                 onChange={(e) => setWalkInReasonType(Number(e.target.value) as VisitReasonType)}
                 className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
@@ -1258,9 +1263,9 @@ export function ReceptionClient({
 
           {/* Access Levels selection */}
           <div>
-            <label className="block text-xs font-semibold text-[var(--ks-ink)] mb-1.5">
+            <span className="block text-xs font-semibold text-[var(--ks-ink)] mb-1.5">
               Hak Akses Pintu Fisik (Khusus Gedung Terpilih):
-            </label>
+            </span>
             {availableAccessLevels.length === 0 ? (
               <p className="text-xs text-[var(--ks-muted)] italic">
                 Belum ada kelompok hak akses yang terdaftar untuk fasilitas ini.
