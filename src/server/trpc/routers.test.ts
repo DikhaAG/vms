@@ -181,15 +181,13 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
   });
 
   describe("accessLevelRouter", () => {
-    it("lists access levels for a facility", async () => {
-      const res = await caller.accessLevel.list({ facilityId: "fac-jakarta" });
-      expect(Array.isArray(res)).toBe(true);
-      expect(res.length).toBeGreaterThanOrEqual(1);
+    it("starts with empty access levels on fresh boot", async () => {
+      const emptyList = await caller.accessLevel.list();
+      expect(emptyList).toEqual([]);
     });
 
-    it("creates a new access level", async () => {
+    it("creates and lists flat access levels without facility parameters", async () => {
       const res = await caller.accessLevel.create({
-        facilityId: "fac-jakarta",
         name: "Lantai 3 Executive Lounge",
         description: "Area eksekutif lantai 3",
         doors: ["Door 301", "Door 302"],
@@ -201,12 +199,28 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
       expect(res).toBeDefined();
       expect(res.name).toBe("Lantai 3 Executive Lounge");
       expect(res.doors).toEqual(["Door 301", "Door 302"]);
+      expect(res.facilityId).toBeUndefined();
+
+      const list = await caller.accessLevel.list();
+      expect(list.length).toBe(1);
+      expect(list[0].name).toBe("Lantai 3 Executive Lounge");
+    });
+
+    it("supports optional facilityId for backward-compatibility", async () => {
+      await caller.accessLevel.create({
+        facilityId: "fac-jakarta",
+        name: "Jakarta Legacy Level",
+        doors: ["Door JKT 01"],
+        timeScheduleId: 2,
+      });
+
+      const res = await caller.accessLevel.list({ facilityId: "fac-jakarta" });
+      expect(res.some((l) => l.name === "Jakarta Legacy Level")).toBe(true);
     });
 
     it("throws BAD_REQUEST when creating access level with invalid fields", async () => {
       await expect(
         caller.accessLevel.create({
-          facilityId: "fac-jakarta",
           name: "", // empty name violates validation
           doors: [],
         } as unknown as Parameters<typeof caller.accessLevel.create>[0]),

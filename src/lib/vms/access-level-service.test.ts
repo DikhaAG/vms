@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { InMemoryVmsRepository } from "./repository";
+import { InMemoryVmsRepository, TEST_FIXTURE_ACCESS_LEVELS } from "./repository";
 import {
   listAccessLevelsService,
   getAccessLevelService,
@@ -11,11 +11,18 @@ import {
 describe("access-level-service", () => {
   let repository: InMemoryVmsRepository;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     repository = new InMemoryVmsRepository();
+    await repository.saveAccessLevels(TEST_FIXTURE_ACCESS_LEVELS);
   });
 
   describe("listAccessLevelsService", () => {
+    it("starts with empty access levels on a fresh repository without fixtures", async () => {
+      const emptyRepo = new InMemoryVmsRepository();
+      const levels = await listAccessLevelsService({}, { repository: emptyRepo });
+      expect(levels).toEqual([]);
+    });
+
     it("returns pre-seeded access levels filtered by facility", async () => {
       const jakartaLevels = await listAccessLevelsService(
         { facilityId: "fac-jakarta" },
@@ -45,6 +52,30 @@ describe("access-level-service", () => {
   });
 
   describe("createAccessLevelService", () => {
+    it("validates and creates a flat access level without facilityId", async () => {
+      const result = await createAccessLevelService(
+        {
+          name: "Perimeter Gates Flat",
+          description: "All ground turnstiles",
+          doors: ["Turnstile A", "Turnstile B"],
+          floors: ["1F"],
+          timeScheduleId: 2,
+          isDefault: true,
+        },
+        { repository, mode: "stub" },
+      );
+
+      expect(result.ok).toBe(true);
+      expect(result.accessLevel).toBeDefined();
+      expect(result.accessLevel?.id).toMatch(/^acc-/);
+      expect(result.accessLevel?.facilityId).toBeUndefined();
+      expect(result.accessLevel?.name).toBe("Perimeter Gates Flat");
+
+      const saved = await repository.getAccessLevel(result.accessLevel!.id);
+      expect(saved).toBeDefined();
+      expect(saved?.doors).toEqual(["Turnstile A", "Turnstile B"]);
+    });
+
     it("validates and creates a new dynamic access level", async () => {
       const result = await createAccessLevelService(
         {

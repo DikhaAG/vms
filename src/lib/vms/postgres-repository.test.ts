@@ -4,6 +4,7 @@ import type { VmsDatabase } from "../db/client";
 import { PostgresVmsRepository } from "./postgres-repository";
 import type { Facility, Visit } from "./vms-contract";
 import type { FacilityDoor } from "./checkout-contract";
+import type { AccessLevel } from "./access-level-contract";
 
 describe("PostgresVmsRepository", () => {
   let mockDb: {
@@ -103,6 +104,60 @@ describe("PostgresVmsRepository", () => {
           doorName: "Main SpeedGate",
         }),
       );
+    });
+  });
+
+  describe("accessLevels (Ticket 03)", () => {
+    it("saves and upserts flat access level with nullable facilityId", async () => {
+      const mockOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
+      const mockValues = vi.fn().mockReturnValue({
+        onConflictDoUpdate: mockOnConflictDoUpdate,
+      });
+      mockDb.insert.mockReturnValue({ values: mockValues });
+
+      const level: AccessLevel = {
+        id: "acc-flat-01",
+        name: "Flat Building Access",
+        description: "Entire site access",
+        doors: ["door-01", "door-02"],
+        timeScheduleId: 2,
+        isDefault: false,
+      };
+
+      await repo.saveAccessLevel(level);
+      expect(mockDb.insert).toHaveBeenCalledTimes(1);
+      expect(mockValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "acc-flat-01",
+          facilityId: null,
+          name: "Flat Building Access",
+        }),
+      );
+    });
+
+    it("lists flat access levels across building", async () => {
+      const mockFrom = vi.fn().mockResolvedValue([
+        {
+          id: "acc-flat-01",
+          facilityId: null,
+          name: "Flat Building Access",
+          data: {
+            id: "acc-flat-01",
+            name: "Flat Building Access",
+            description: "Entire site access",
+            doors: ["door-01", "door-02"],
+            timeScheduleId: 2,
+            isDefault: false,
+          },
+        },
+      ]);
+      mockDb.select.mockReturnValue({ from: mockFrom });
+
+      const results = await repo.listAccessLevels();
+      expect(mockDb.select).toHaveBeenCalledTimes(1);
+      expect(results).toHaveLength(1);
+      expect(results[0].name).toBe("Flat Building Access");
+      expect(results[0].facilityId).toBeUndefined();
     });
   });
 

@@ -115,6 +115,7 @@ export interface IVmsRepository {
   listAccessLevels(facilityId?: string): Promise<AccessLevel[]>;
   getAccessLevel(id: string): Promise<AccessLevel | undefined>;
   saveAccessLevel(accessLevel: AccessLevel): Promise<void>;
+  saveAccessLevels(accessLevels: AccessLevel[]): Promise<void>;
   deleteAccessLevel(id: string): Promise<void>;
 
   // Active monitoring, door taps, and check-out
@@ -200,7 +201,9 @@ export const DEFAULT_FACILITIES: Facility[] = [
   },
 ];
 
-export const DEFAULT_ACCESS_LEVELS: AccessLevel[] = [
+export const DEFAULT_ACCESS_LEVELS: AccessLevel[] = [];
+
+export const TEST_FIXTURE_ACCESS_LEVELS: AccessLevel[] = [
   {
     id: "acc-jkt-lobby",
     facilityId: "fac-jakarta",
@@ -686,7 +689,7 @@ export class InMemoryVmsRepository implements IVmsRepository {
   async listAccessLevels(facilityId?: string): Promise<AccessLevel[]> {
     let list = Array.from(this.accessLevels.values());
     if (facilityId) {
-      list = list.filter((al) => al.facilityId === facilityId);
+      list = list.filter((al) => !al.facilityId || al.facilityId === facilityId);
     }
     return list.map((al) => structuredClone(al));
   }
@@ -698,6 +701,12 @@ export class InMemoryVmsRepository implements IVmsRepository {
 
   async saveAccessLevel(accessLevel: AccessLevel): Promise<void> {
     this.accessLevels.set(accessLevel.id, structuredClone(accessLevel));
+  }
+
+  async saveAccessLevels(accessLevels: AccessLevel[]): Promise<void> {
+    for (const al of accessLevels) {
+      this.accessLevels.set(al.id, structuredClone(al));
+    }
   }
 
   async deleteAccessLevel(id: string): Promise<void> {

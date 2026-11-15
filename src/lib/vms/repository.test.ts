@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { InMemoryVmsRepository, DEFAULT_DOORS, TEST_FIXTURE_DOORS } from "./repository";
+import {
+  InMemoryVmsRepository,
+  DEFAULT_DOORS,
+  TEST_FIXTURE_DOORS,
+  DEFAULT_ACCESS_LEVELS,
+  TEST_FIXTURE_ACCESS_LEVELS,
+} from "./repository";
 import type { Facility, Visit, EmergencyAccessGrant } from "./vms-contract";
 
 describe("InMemoryVmsRepository", () => {
@@ -373,8 +379,15 @@ describe("InMemoryVmsRepository", () => {
     });
   });
 
-  describe("access levels", () => {
-    it("has pre-seeded default access levels for facilities", async () => {
+  describe("flat access levels (Ticket 03)", () => {
+    it("fresh boot starts empty (DEFAULT_ACCESS_LEVELS = []), eliminating hardcoded demo levels", async () => {
+      expect(DEFAULT_ACCESS_LEVELS).toEqual([]);
+      const levels = await repo.listAccessLevels();
+      expect(levels).toEqual([]);
+    });
+
+    it("populates and retrieves flat access levels across building", async () => {
+      await repo.saveAccessLevels(TEST_FIXTURE_ACCESS_LEVELS);
       const allLevels = await repo.listAccessLevels();
       expect(allLevels.length).toBeGreaterThanOrEqual(3);
 
@@ -384,35 +397,35 @@ describe("InMemoryVmsRepository", () => {
       expect(jakartaLevels.some((l) => l.isDefault)).toBe(true);
     });
 
-    it("can save, retrieve, update, and delete access levels", async () => {
-      const newLevel = {
-        id: "acc-test-1",
-        facilityId: "fac-jakarta",
-        name: "Server Room B",
-        description: "Restricted rack access",
-        doors: ["Door B1-01", "Door B1-02"],
-        floors: ["B1"],
-        timeScheduleId: 1 as const,
-        isDefault: false,
+    it("can save, retrieve, update, and delete flat access levels without facilityId", async () => {
+      const flatLevel = {
+        id: "acc-flat-1",
+        name: "Building Perimeter All Gates",
+        description: "Standard ground floor turnstile and perimeter gate access",
+        doors: ["Lobby Main SpeedGate A", "Visitor Turnstile 01"],
+        floors: ["1F"],
+        timeScheduleId: 2 as const,
+        isDefault: true,
       };
 
-      await repo.saveAccessLevel(newLevel);
-      const retrieved = await repo.getAccessLevel("acc-test-1");
+      await repo.saveAccessLevel(flatLevel);
+      const retrieved = await repo.getAccessLevel("acc-flat-1");
       expect(retrieved).toBeDefined();
-      expect(retrieved?.name).toBe("Server Room B");
-      expect(retrieved?.doors).toEqual(["Door B1-01", "Door B1-02"]);
+      expect(retrieved?.facilityId).toBeUndefined();
+      expect(retrieved?.name).toBe("Building Perimeter All Gates");
+      expect(retrieved?.doors).toEqual(["Lobby Main SpeedGate A", "Visitor Turnstile 01"]);
 
       // Update
       await repo.saveAccessLevel({
-        ...newLevel,
-        name: "Server Room B Updated",
+        ...flatLevel,
+        name: "Building Perimeter Updated",
       });
-      const updated = await repo.getAccessLevel("acc-test-1");
-      expect(updated?.name).toBe("Server Room B Updated");
+      const updated = await repo.getAccessLevel("acc-flat-1");
+      expect(updated?.name).toBe("Building Perimeter Updated");
 
       // Delete
-      await repo.deleteAccessLevel("acc-test-1");
-      const deleted = await repo.getAccessLevel("acc-test-1");
+      await repo.deleteAccessLevel("acc-flat-1");
+      const deleted = await repo.getAccessLevel("acc-flat-1");
       expect(deleted).toBeUndefined();
     });
   });

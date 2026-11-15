@@ -97,11 +97,14 @@ describe("access-level-contract", () => {
       }
     });
 
-    it("rejects empty or missing facilityId", () => {
-      const result = validateAccessLevelInput({ ...validPayload, facilityId: "" });
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.errors.facilityId).toBeDefined();
+    it("validates access level input without facilityId (flat access levels)", () => {
+      const flatPayload = { ...validPayload };
+      delete (flatPayload as Record<string, unknown>).facilityId;
+      const result = validateAccessLevelInput(flatPayload);
+      expect(result.valid).toBe(true);
+      if (result.valid) {
+        expect(result.input.name).toBe("Lobby Turnstiles");
+        expect(result.input.facilityId).toBeUndefined();
       }
     });
 
@@ -216,6 +219,16 @@ describe("access-level-contract", () => {
         isDefault: true,
       });
       expect(parsed.success).toBe(true);
+
+      const parsedFlat = accessLevelSchema.safeParse({
+        id: "acc-flat-101",
+        name: "Building Perimeter",
+        description: "Flat access level without facilityId",
+        doors: ["d-1", "d-2"],
+        timeScheduleId: 1,
+        isDefault: false,
+      });
+      expect(parsedFlat.success).toBe(true);
     });
 
     it("validates updateAccessLevelSchema directly", () => {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { InMemoryVmsRepository } from "./repository";
+import { InMemoryVmsRepository, TEST_FIXTURE_ACCESS_LEVELS } from "./repository";
 import {
   cancelVisit,
   createPreRegistration,
@@ -13,8 +13,9 @@ import type {
 describe("createPreRegistration", () => {
   let repo: InMemoryVmsRepository;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     repo = new InMemoryVmsRepository();
+    await repo.saveAccessLevels(TEST_FIXTURE_ACCESS_LEVELS);
   });
 
   const baseInput: CreatePreRegistrationInput = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import type { Facility } from "@/lib/vms/vms-contract";
 import type { FacilityDoor } from "@/lib/vms/checkout-contract";
 import {
@@ -20,23 +20,21 @@ import {
 } from "./access-level-form-modal";
 
 interface AccessLevelsClientProps {
-  facilities: Facility[];
+  facilities?: Facility[];
   initialAccessLevels: AccessLevel[];
   initialDoors?: FacilityDoor[];
 }
 
 export function AccessLevelsClient({
-  facilities,
+  facilities = [],
   initialAccessLevels,
   initialDoors = [],
 }: AccessLevelsClientProps) {
-  const formId = useId();
   const [accessLevels, setAccessLevels] =
     useState<AccessLevel[]>(initialAccessLevels);
   const [availableDoors, setAvailableDoors] =
     useState<FacilityDoor[]>(initialDoors);
   const [isSyncingDoors, setIsSyncingDoors] = useState(false);
-  const [selectedFacilityId, setSelectedFacilityId] = useState<string>("all");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -63,12 +61,6 @@ export function AccessLevelsClient({
     }
   }, [availableDoors.length]);
 
-  // Filtered access levels
-  const filteredLevels =
-    selectedFacilityId === "all"
-      ? accessLevels
-      : accessLevels.filter((l) => l.facilityId === selectedFacilityId);
-
   const handleSyncDoors = async () => {
     setIsSyncingDoors(true);
     setErrorMessage(null);
@@ -78,10 +70,7 @@ export function AccessLevelsClient({
       const res = await fetch("/api/vms/sync/doors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          facilityId:
-            selectedFacilityId !== "all" ? selectedFacilityId : undefined,
-        }),
+        body: JSON.stringify({}),
       });
 
       const data = await res.json();
@@ -292,38 +281,8 @@ export function AccessLevelsClient({
         </div>
       ) : null}
 
-      {/* Control Bar: Facility Filter, Door Sync, and Create Button */}
+      {/* Control Bar: Door Sync and Create Button */}
       <UiFilterToolbar
-        facilitySlot={
-          <div className="flex flex-wrap items-center gap-2">
-            <label
-              htmlFor={`${formId}-facility-filter`}
-              className="text-xs font-medium text-[var(--ks-muted)]"
-            >
-              Lokasi Gedung:
-            </label>
-            <select
-              id={`${formId}-facility-filter`}
-              value={selectedFacilityId}
-              onChange={(e) => setSelectedFacilityId(e.target.value)}
-              className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs font-medium text-[var(--ks-ink)] shadow-xs focus:border-[var(--ks-kinpaku)] focus:outline-hidden"
-            >
-              <option value="all">
-                Semua Lokasi Fasilitas ({accessLevels.length})
-              </option>
-              {facilities.map((fac) => {
-                const count = accessLevels.filter(
-                  (l) => l.facilityId === fac.id,
-                ).length;
-                return (
-                  <option key={fac.id} value={fac.id}>
-                    {fac.name} ({count})
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-        }
         actionsSlot={
           <div className="flex flex-wrap items-center gap-2">
             <UiButton
@@ -350,7 +309,7 @@ export function AccessLevelsClient({
 
       {/* Access Level Card List */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredLevels.length === 0 ? (
+        {accessLevels.length === 0 ? (
           <div className="col-span-full rounded-[var(--ks-radius-md)] border border-dashed border-[var(--ks-rule)] bg-[var(--ks-paper)]/50 p-10 text-center">
             <p className="text-sm font-semibold text-[var(--ks-ink)]">
               {availableDoors.length === 0
@@ -373,8 +332,7 @@ export function AccessLevelsClient({
             </UiButton>
           </div>
         ) : (
-          filteredLevels.map((level) => {
-            const fac = facilities.find((f) => f.id === level.facilityId);
+          accessLevels.map((level) => {
             return (
               <UiCard
                 key={level.id}
@@ -391,10 +349,6 @@ export function AccessLevelsClient({
                       </UiBadge>
                     ) : null}
                   </div>
-
-                  <p className="mt-1 text-xs text-[var(--ks-muted)]">
-                    {fac?.name ?? level.facilityId}
-                  </p>
 
                   <p className="mt-2 text-xs text-[var(--ks-text)] line-clamp-2">
                     {level.description || "Tidak ada deskripsi tambahan."}
@@ -499,7 +453,6 @@ export function AccessLevelsClient({
         editingLevel={editingLevel}
         facilities={facilities}
         availableDoors={availableDoors}
-        defaultFacilityId={selectedFacilityId}
         isSyncingDoors={isSyncingDoors}
         isSubmitting={isSubmitting}
         formErrors={formErrors}

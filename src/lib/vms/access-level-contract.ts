@@ -82,7 +82,7 @@ export type TapQuotaConfig = z.infer<typeof tapQuotaSchema>;
 
 export const accessLevelSchema = z.object({
   id: z.string(),
-  facilityId: z.string(),
+  facilityId: z.string().optional(),
   name: z.string(),
   description: z.string(),
   doors: z.array(z.string()),
@@ -97,9 +97,9 @@ export type AccessLevel = z.infer<typeof accessLevelSchema>;
 export const createAccessLevelSchema = z
   .object({
     facilityId: z
-      .string({ error: "Facility is required." })
+      .string()
       .trim()
-      .min(1, "Facility is required."),
+      .optional(),
     name: z
       .string({ error: "Access level name is required." })
       .trim()
@@ -134,7 +134,7 @@ export const createAccessLevelSchema = z
 export type CreateAccessLevelInput = z.infer<typeof createAccessLevelSchema>;
 
 export const updateAccessLevelSchema = z.object({
-  facilityId: z.string().trim().min(1, "Facility ID cannot be empty.").optional(),
+  facilityId: z.string().trim().optional(),
   name: z
     .string()
     .trim()

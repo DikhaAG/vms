@@ -95,16 +95,18 @@ export async function createAccessLevelService(
 
   const input: CreateAccessLevelInput = validation.input;
 
-  // 2. Validate facility existence
-  const facility = await repository.getFacility(input.facilityId);
-  if (!facility) {
-    return {
-      ok: false,
-      error: {
-        kind: "not_found",
-        message: `Facility '${input.facilityId}' not found.`,
-      },
-    };
+  // 2. Validate facility existence only if facilityId is provided
+  if (input.facilityId) {
+    const facility = await repository.getFacility(input.facilityId);
+    if (!facility) {
+      return {
+        ok: false,
+        error: {
+          kind: "not_found",
+          message: `Facility '${input.facilityId}' not found.`,
+        },
+      };
+    }
   }
 
   // 3. Generate ID and prepare access level
@@ -145,7 +147,7 @@ export async function createAccessLevelService(
   // 5. Persist into local repository
   const accessLevel: AccessLevel = {
     id,
-    facilityId: input.facilityId,
+    ...(input.facilityId ? { facilityId: input.facilityId } : {}),
     name: input.name,
     description: input.description ?? "",
     doors: input.doors,

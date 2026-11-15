@@ -250,16 +250,16 @@ describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
       expect(html).toContain("+ Tambah Anggota Tamu");
     });
 
-    it("renders /vms/access-levels with door presets, schedules, and elevator floor bundles", async () => {
+    it("renders /vms/access-levels with flat door presets and schedules without facility selector", async () => {
       const pageComponent = await AccessLevelsPage();
       const html = renderToStaticMarkup(pageComponent);
 
       expect(html).toContain("Hak Akses Pintu &amp; Kuota Tap");
       expect(html).toContain("Master Keamanan");
       expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("Lokasi Gedung:");
+      expect(html).not.toContain("Lokasi Gedung:");
       expect(html).toContain("+ Tambah Hak Akses Pintu");
-      expect(html).toContain("Jadwal Waktu Akses");
+      expect(html).toContain("Sinkronkan Pintu dari Server HikCentral");
     });
 
     it("renders /vms/visitors with PDP soft-delete compliance, biometric archive, and stat cards", async () => {

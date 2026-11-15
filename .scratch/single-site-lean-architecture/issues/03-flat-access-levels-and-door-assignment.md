@@ -4,10 +4,10 @@
 
 **Blocked by:** 01: Expand Phase — System Settings Schema, Repository Contracts & Non-Breaking Types, 02: HikCentral Native Door Synchronization & Zero-Default Seed
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Access levels database schema and repository methods manage access levels as a flat building list without `facilityId`.
-- [ ] Access level API route (`/api/vms/access-levels`) and tRPC router accept and return access level payloads without facility parameters.
-- [ ] Access level configuration UI (`/vms/access-levels`) displays building access levels flatly and allows administrators to assign door permissions from the complete building door checklist without selecting a facility.
-- [ ] Initial access level seed data starts empty (`DEFAULT_ACCESS_LEVELS = []`), allowing administrators to configure clean access levels based on synced doors.
-- [ ] Tests verify end-to-end creation, modification, and retrieval of flat access levels and door associations.
+- [x] Access levels database schema and repository methods manage access levels as a flat building list without `facilityId`.
+- [x] Access level API route (`/api/vms/access-levels`) and tRPC router accept and return access level payloads without facility parameters.
+- [x] Access level configuration UI (`/vms/access-levels`) displays building access levels flatly and allows administrators to assign door permissions from the complete building door checklist without selecting a facility.
+- [x] Initial access level seed data starts empty (`DEFAULT_ACCESS_LEVELS = []`), allowing administrators to configure clean access levels based on synced doors.
+- [x] Tests verify end-to-end creation, modification, and retrieval of flat access levels and door associations.

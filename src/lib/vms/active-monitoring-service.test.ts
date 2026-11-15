@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { InMemoryVmsRepository, TEST_FIXTURE_DOORS } from "./repository";
+import {
+  InMemoryVmsRepository,
+  TEST_FIXTURE_DOORS,
+  TEST_FIXTURE_ACCESS_LEVELS,
+} from "./repository";
 import { ActiveMonitoringService } from "./active-monitoring-service";
 import type { Visit } from "./vms-contract";
 
@@ -10,6 +14,7 @@ describe("ActiveMonitoringService", () => {
   beforeEach(async () => {
     repo = new InMemoryVmsRepository();
     await repo.saveDoors(TEST_FIXTURE_DOORS);
+    await repo.saveAccessLevels(TEST_FIXTURE_ACCESS_LEVELS);
     service = new ActiveMonitoringService(repo);
 
     // Seed test visits

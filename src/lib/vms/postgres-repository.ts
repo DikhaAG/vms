@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or, isNull } from "drizzle-orm";
 import type { VmsDatabase } from "../db/client";
 import { createPostgresClient } from "../db/client";
 import * as s from "../db/schema";
@@ -472,7 +472,12 @@ export class PostgresVmsRepository implements IVmsRepository {
       ? await this.db
           .select()
           .from(s.accessLevels)
-          .where(eq(s.accessLevels.facilityId, facilityId))
+          .where(
+            or(
+              isNull(s.accessLevels.facilityId),
+              eq(s.accessLevels.facilityId, facilityId),
+            ),
+          )
       : await this.db.select().from(s.accessLevels);
 
     return rows.map((r) => structuredClone(r.data));
@@ -492,18 +497,24 @@ export class PostgresVmsRepository implements IVmsRepository {
       .insert(s.accessLevels)
       .values({
         id: cloned.id,
-        facilityId: cloned.facilityId,
+        facilityId: cloned.facilityId ?? null,
         name: cloned.name,
         data: cloned,
       })
       .onConflictDoUpdate({
         target: s.accessLevels.id,
         set: {
-          facilityId: cloned.facilityId,
+          facilityId: cloned.facilityId ?? null,
           name: cloned.name,
           data: cloned,
         },
       });
+  }
+
+  async saveAccessLevels(accessLevels: AccessLevel[]): Promise<void> {
+    for (const al of accessLevels) {
+      await this.saveAccessLevel(al);
+    }
   }
 
   async deleteAccessLevel(id: string): Promise<void> {

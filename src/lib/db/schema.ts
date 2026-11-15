@@ -48,7 +48,7 @@ export const doors = facilityDoors;
 // 3. Access Levels
 export const accessLevels = pgTable("access_levels", {
   id: text("id").primaryKey(),
-  facilityId: text("facility_id").notNull(),
+  facilityId: text("facility_id"),
   name: text("name").notNull(),
   data: jsonb("data").$type<AccessLevel>().notNull(),
 });
@@ -168,7 +168,7 @@ export function getInitSchemaSql(): string {
 
     CREATE TABLE IF NOT EXISTS access_levels (
       id TEXT PRIMARY KEY,
-      facility_id TEXT NOT NULL,
+      facility_id TEXT,
       name TEXT NOT NULL,
       data JSONB NOT NULL
     );
