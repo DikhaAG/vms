@@ -33,6 +33,15 @@ import {
   processBrowserImageFile,
   toJpegDataUri,
 } from "@/lib/vms/face-normalizer";
+import {
+  UiButton,
+  UiCard,
+  UiKpiCard,
+  UiKpiGrid,
+  UiFilterToolbar,
+  UiBadge,
+  UiModal,
+} from "@/components/vms/ui";
 
 interface ReceptionClientProps {
   facilities: Facility[];
@@ -110,29 +119,6 @@ export function ReceptionClient({
     certificateNo?: string;
     facePhoto?: string;
   } | null>(null);
-
-  useEffect(() => {
-    const isAnyModalOpen = Boolean(verifyingVisit || isWalkInModalOpen || issuedPass);
-    if (!isAnyModalOpen) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (verifyingVisit) {
-          setVerifyingVisit(null);
-          setCheckInError(null);
-        } else if (isWalkInModalOpen) {
-          setIsWalkInModalOpen(false);
-          setWalkInError(null);
-        } else if (issuedPass) {
-          setIssuedPass(null);
-          setSyncFeedback(null);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [verifyingVisit, isWalkInModalOpen, issuedPass]);
 
   async function checkReturningWalkInVisitor(cert: string) {
     const trimmed = cert.trim();
@@ -454,89 +440,89 @@ export function ReceptionClient({
   return (
     <div className="space-y-6">
       {/* Top Banner / Operator Identity & Fast Actions */}
-      <div className="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-5 shadow-xs sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 font-semibold text-sm">
-            DF
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-neutral-900">
-                {receptionistUser.name}
-              </span>
-              <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-2xs font-medium text-neutral-600">
-                {receptionistUser.id}
-              </span>
+      <UiCard className="p-4 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] font-bold text-sm border border-[var(--ks-rule)] shadow-2xs">
+              DF
             </div>
-            <p className="text-xs text-neutral-500">
-              Terminal Resepsionis Lobi &bull; {facilities.find((f) => f.id === selectedFacilityId)?.name || "Semua Gedung Fasilitas"}
-            </p>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-[var(--ks-ink)] tracking-tight">
+                  {receptionistUser.name}
+                </span>
+                <span className="rounded-[var(--ks-radius-sm)] bg-[var(--ks-paper-deep)] border border-[var(--ks-rule)] px-2 py-0.5 text-2xs font-mono font-medium text-[var(--ks-ink)]">
+                  {receptionistUser.id}
+                </span>
+              </div>
+              <p className="text-xs text-[var(--ks-muted)] mt-0.5">
+                Terminal Resepsionis Lobi &bull; {facilities.find((f) => f.id === selectedFacilityId)?.name || "Semua Gedung Fasilitas"}
+              </p>
+            </div>
           </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              resetWalkInForm();
-              setIsWalkInModalOpen(true);
-            }}
-            className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-xs transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 cursor-pointer"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          <div className="flex flex-wrap items-center gap-2.5">
+            <UiButton
+              variant="primary"
+              onClick={() => {
+                resetWalkInForm();
+                setIsWalkInModalOpen(true);
+              }}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-            </svg>
-            + Daftarkan Tamu Datang Langsung (Walk-in)
-          </button>
-        </div>
-      </div>
-
-      {/* Search, Filter & Environment Control Bar */}
-      <div className="rounded-xl border border-neutral-200 bg-white p-4 shadow-xs space-y-3">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          {/* Search Input */}
-          <div className="relative flex-1">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-neutral-400">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari tamu berdasarkan nama, nomor telepon, nomor identitas, atau kode QR..."
-              className="w-full rounded-lg border border-neutral-300 bg-white py-2 pl-9 pr-8 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-neutral-400 hover:text-neutral-600"
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                &times;
-              </button>
-            )}
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              </svg>
+              <span>+ Daftarkan Tamu Datang Langsung (Walk-in)</span>
+            </UiButton>
           </div>
+        </div>
+      </UiCard>
 
-          {/* Facility Filter */}
-          <div className="flex items-center gap-2">
-            <label htmlFor={`${formId}-facility`} className="text-xs font-medium text-neutral-600 whitespace-nowrap">
-              Gedung:
+      {/* Summary KPI Cards */}
+      <UiKpiGrid className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <UiKpiCard
+          label="Tamu Diharapkan Hari Ini"
+          value={countExpected}
+          description="Menunggu verifikasi masuk"
+          variant="normal"
+          isSelected={activeTab === "expected"}
+          onClick={() => setActiveTab("expected")}
+        />
+        <UiKpiCard
+          label="Sedang di Gedung"
+          value={countCheckedIn}
+          description="Tamu aktif di dalam"
+          variant="quota"
+          isSelected={activeTab === "checked_in"}
+          onClick={() => setActiveTab("checked_in")}
+        />
+        <UiKpiCard
+          label="Semua Kunjungan"
+          value={countAll}
+          description="Total kedatangan &amp; terjadwal"
+          variant="default"
+          isSelected={activeTab === "all"}
+          onClick={() => setActiveTab("all")}
+        />
+      </UiKpiGrid>
+
+      {/* Facility & Search Filter Toolbar */}
+      <UiFilterToolbar
+        facilitySlot={
+          <div className="min-w-[200px]">
+            <label htmlFor={`${formId}-facility`} className="sr-only">
+              Saring Berdasarkan Gedung
             </label>
             <select
               id={`${formId}-facility`}
               value={selectedFacilityId}
               onChange={(e) => setSelectedFacilityId(e.target.value)}
-              className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-medium text-neutral-800 focus:border-emerald-600 focus:ring-emerald-600"
+              className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
             >
               <option value="all">Semua Gedung Fasilitas</option>
               {facilities.map((f) => (
@@ -546,92 +532,107 @@ export function ReceptionClient({
               ))}
             </select>
           </div>
-        </div>
-
-        {/* Status Tabs */}
-        <div className="flex border-b border-neutral-200 text-xs font-medium">
-          <button
-            type="button"
-            onClick={() => setActiveTab("expected")}
-            className={`pb-2.5 px-3.5 border-b-2 font-medium transition cursor-pointer flex items-center gap-2 ${
-              activeTab === "expected"
-                ? "border-emerald-600 text-emerald-800 font-semibold"
-                : "border-transparent text-neutral-500 hover:text-neutral-800"
-            }`}
-          >
-            <span>Tamu Diharapkan Hari Ini</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-mono font-medium ${
-              activeTab === "expected" ? "bg-emerald-100 text-emerald-800" : "bg-neutral-100 text-neutral-600"
-            }`}>
-              {countExpected}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("checked_in")}
-            className={`pb-2.5 px-3.5 border-b-2 font-medium transition cursor-pointer flex items-center gap-2 ${
-              activeTab === "checked_in"
-                ? "border-blue-600 text-blue-800 font-semibold"
-                : "border-transparent text-neutral-500 hover:text-neutral-800"
-            }`}
-          >
-            <span>Sedang di Gedung</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-mono font-medium ${
-              activeTab === "checked_in" ? "bg-blue-100 text-blue-800" : "bg-neutral-100 text-neutral-600"
-            }`}>
-              {countCheckedIn}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("all")}
-            className={`pb-2.5 px-3.5 border-b-2 font-medium transition cursor-pointer flex items-center gap-2 ${
-              activeTab === "all"
-                ? "border-neutral-900 text-neutral-900 font-semibold"
-                : "border-transparent text-neutral-500 hover:text-neutral-800"
-            }`}
-          >
-            <span>Semua Kunjungan</span>
-            <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs font-mono font-medium text-neutral-600">
-              {countAll}
-            </span>
-          </button>
-        </div>
-      </div>
+        }
+        searchSlot={
+          <div className="relative flex-1 min-w-[240px]">
+            <label htmlFor={`${formId}-search`} className="sr-only">
+              Cari data tamu
+            </label>
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--ks-muted)]">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              id={`${formId}-search`}
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari tamu berdasarkan nama, nomor telepon, nomor identitas, atau kode QR..."
+              className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] py-2 pl-9 pr-8 text-xs text-[var(--ks-ink)] placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-[var(--ks-muted)] hover:text-[var(--ks-ink)] cursor-pointer"
+              >
+                &times;
+              </button>
+            )}
+          </div>
+        }
+        actionsSlot={
+          <div className="flex items-center gap-1 border-t sm:border-t-0 pt-2 sm:pt-0">
+            {[
+              { id: "expected", label: "Tamu Diharapkan Hari Ini", count: countExpected },
+              { id: "checked_in", label: "Sedang di Gedung", count: countCheckedIn },
+              { id: "all", label: "Semua Kunjungan", count: countAll },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                className={`rounded-[var(--ks-radius-md)] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] transition cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === tab.id
+                    ? "bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] shadow-xs"
+                    : "text-[var(--ks-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper)]"
+                }`}
+              >
+                <span>{tab.label}</span>
+                <span
+                  className={`rounded-full px-1.5 py-0.2 text-2xs font-mono font-bold ${
+                    activeTab === tab.id
+                      ? "bg-[var(--ks-paper-raised)]/20 text-[var(--ks-paper-raised)]"
+                      : "bg-[var(--ks-paper-deep)] text-[var(--ks-muted)]"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* Arrival Queue / Visits Display */}
       {isSearching ? (
-        <div className="rounded-xl border border-neutral-200 bg-white p-12 text-center text-sm text-neutral-500 shadow-xs">
+        <UiCard className="p-12 text-center text-sm text-[var(--ks-muted)]">
           Memuat antrean kedatangan tamu...
-        </div>
+        </UiCard>
       ) : filteredVisits.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-neutral-300 bg-white p-12 text-center shadow-xs">
+        <div className="rounded-[var(--ks-radius-md)] border border-dashed border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-12 text-center shadow-xs">
           <svg
-            className="mx-auto h-10 w-10 text-neutral-400"
+            className="mx-auto h-10 w-10 text-[var(--ks-muted)]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
           </svg>
-          <h3 className="mt-3 text-sm font-semibold text-neutral-900">
+          <h3 className="mt-3 text-sm font-bold text-[var(--ks-ink)] tracking-tight">
             {searchQuery ? "Tidak Ada Tamu Ditemukan" : "Belum Ada Kunjungan Terdaftar Hari Ini"}
           </h3>
-          <p className="mt-1 text-xs text-neutral-500 max-w-sm mx-auto">
+          <p className="mt-1 text-xs text-[var(--ks-muted)] max-w-sm mx-auto">
             {searchQuery
               ? `Tidak ada tamu yang cocok dengan "${searchQuery}". Coba gunakan kata kunci lain atau daftarkan tamu datang langsung (walk-in).`
               : "Buat jadwal kunjungan baru melalui menu Pra-Registrasi atau layani tamu datang langsung (Walk-in)."}
           </p>
-          <button
-            type="button"
-            onClick={() => {
-              resetWalkInForm();
-              setIsWalkInModalOpen(true);
-            }}
-            className="mt-4 inline-flex items-center rounded-lg bg-emerald-600 px-3.5 py-2 text-xs font-medium text-white transition hover:bg-emerald-700 cursor-pointer"
-          >
-            Daftarkan Tamu Datang Langsung
-          </button>
+          <div className="mt-4">
+            <UiButton
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                resetWalkInForm();
+                setIsWalkInModalOpen(true);
+              }}
+            >
+              Daftarkan Tamu Datang Langsung
+            </UiButton>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -640,14 +641,14 @@ export function ReceptionClient({
             const isCheckedIn = visit.status === "CHECKED_IN";
 
             return (
-              <div
+              <UiCard
                 key={visit.id}
-                className={`flex flex-col justify-between rounded-xl border bg-white p-5 shadow-xs transition hover:shadow-md ${
+                className={`flex flex-col justify-between p-5 transition hover:border-[var(--ks-rule)] ${
                   isCheckedIn
-                    ? "border-blue-200 bg-blue-50/20"
+                    ? "border-[var(--ks-kinpaku)]/50 ring-1 ring-[var(--ks-kinpaku)]/30"
                     : isApproved
-                      ? "border-emerald-200"
-                      : "border-neutral-200"
+                      ? "border-[var(--ks-patina)]/50 ring-1 ring-[var(--ks-patina)]/20"
+                      : "border-[var(--ks-rule-subtle)]"
                 }`}
               >
                 <div>
@@ -659,19 +660,19 @@ export function ReceptionClient({
                         <img
                           src={toJpegDataUri(visit.facePhoto)}
                           alt={`${visit.visitorGivenName} ${visit.visitorFamilyName}`}
-                          className="h-12 w-12 rounded-full object-cover border border-neutral-200 shadow-2xs"
+                          className="h-12 w-12 rounded-full object-cover border border-[var(--ks-rule-subtle)] shadow-2xs"
                         />
                       ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-neutral-100 text-neutral-600 font-semibold text-sm border border-neutral-200">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--ks-paper-deep)] text-[var(--ks-ink)] font-bold text-sm border border-[var(--ks-rule-subtle)]">
                           {visit.visitorGivenName[0]}
                           {visit.visitorFamilyName[0]}
                         </div>
                       )}
                       <div>
-                        <h4 className="text-sm font-bold text-neutral-900 leading-tight">
+                        <h4 className="text-sm font-bold text-[var(--ks-ink)] leading-tight tracking-tight">
                           {visit.visitorGivenName} {visit.visitorFamilyName}
                         </h4>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-[var(--ks-muted)] font-mono mt-0.5">
                           {visit.certificateType
                             ? CERTIFICATE_TYPE_LABELS[visit.certificateType]
                             : "ID"}
@@ -681,25 +682,15 @@ export function ReceptionClient({
                     </div>
 
                     <div className="flex flex-col items-end gap-1">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${
-                          isCheckedIn
-                            ? "bg-blue-100 text-blue-800"
-                            : isApproved
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-neutral-100 text-neutral-700"
-                        }`}
-                      >
-                        {visit.status.replace("_", " ")}
-                      </span>
+                      <UiBadge status={visit.status} />
                       {visit.credentialSyncStatus && (
                         <span
-                          className={`rounded-full px-2 py-0.2 text-3xs font-medium ${
+                          className={`rounded-full px-2 py-0.5 text-3xs font-mono font-medium border ${
                             visit.credentialSyncStatus === "Applied"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              ? "bg-[var(--ks-patina)]/10 text-[var(--ks-patina-deep)] border-[var(--ks-patina)]/30"
                               : visit.credentialSyncStatus === "Failed"
-                                ? "bg-red-50 text-red-700 border border-red-200"
-                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                                ? "bg-[var(--ks-vermilion)]/10 text-[var(--ks-vermilion)] border-[var(--ks-vermilion)]/30"
+                                : "bg-[var(--ks-amber)]/10 text-[var(--ks-amber-deep)] border-[var(--ks-amber)]/30"
                           }`}
                         >
                           Sync: {visit.credentialSyncStatus}
@@ -709,42 +700,42 @@ export function ReceptionClient({
                   </div>
 
                   {/* Visit Details */}
-                  <div className="mt-4 space-y-1.5 text-xs text-neutral-600">
+                  <div className="mt-4 space-y-1.5 text-xs text-[var(--ks-text)]">
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Karyawan Tuan Rumah:</span>
-                      <span className="font-medium text-neutral-900">
+                      <span className="text-[var(--ks-muted)]">Karyawan Tuan Rumah:</span>
+                      <span className="font-semibold text-[var(--ks-ink)]">
                         {visit.hostName || "Tamu Meja Depan"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Gedung:</span>
-                      <span>{visit.facilityName || visit.facilityId}</span>
+                      <span className="text-[var(--ks-muted)]">Gedung:</span>
+                      <span className="font-medium text-[var(--ks-ink)]">{visit.facilityName || visit.facilityId}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Keperluan:</span>
-                      <span className="font-medium text-neutral-800">
+                      <span className="text-[var(--ks-muted)]">Keperluan:</span>
+                      <span className="font-semibold text-[var(--ks-ink)]">
                         {VISIT_REASON_LABELS[visit.visitReasonType]}
                         {visit.visitReasonDetail ? ` (${visit.visitReasonDetail})` : ""}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-neutral-500">Jadwal:</span>
-                      <span className="font-mono text-neutral-800">
+                      <span className="text-[var(--ks-muted)]">Jadwal:</span>
+                      <span className="font-mono text-[var(--ks-ink)] font-semibold">
                         {visit.scheduledStartTimeFacility.split("T")[1]?.substring(0, 5)} - {visit.scheduledEndTimeFacility.split("T")[1]?.substring(0, 5)}
                       </span>
                     </div>
                     {visit.actualCheckInTimeUtc && (
-                      <div className="flex items-center justify-between text-blue-700">
+                      <div className="flex items-center justify-between text-[var(--ks-patina-deep)]">
                         <span>Waktu Masuk:</span>
-                        <span className="font-mono font-medium">
+                        <span className="font-mono font-semibold">
                           {new Date(visit.actualCheckInTimeUtc).toLocaleTimeString()}
                         </span>
                       </div>
                     )}
                     {visit.hikCentral?.pinCode && (
-                      <div className="flex items-center justify-between bg-neutral-100 rounded px-2 py-1">
-                        <span className="text-neutral-600">Kode PIN:</span>
-                        <span className="font-mono font-bold tracking-wider text-neutral-900">
+                      <div className="flex items-center justify-between bg-[var(--ks-paper-deep)] border border-[var(--ks-rule-subtle)] rounded-[var(--ks-radius-md)] px-2 py-1">
+                        <span className="text-[var(--ks-muted)]">Kode PIN:</span>
+                        <span className="font-mono font-bold tracking-wider text-[var(--ks-ink)]">
                           {visit.hikCentral.pinCode}
                         </span>
                       </div>
@@ -753,23 +744,26 @@ export function ReceptionClient({
                 </div>
 
                 {/* Card Action Buttons */}
-                <div className="mt-4 pt-3 border-t border-neutral-100 flex gap-2">
+                <div className="mt-4 pt-3 border-t border-[var(--ks-rule-subtle)] flex gap-2">
                   {isApproved && (
-                    <button
-                      type="button"
+                    <UiButton
+                      variant="primary"
+                      size="sm"
+                      className="w-full"
                       onClick={() => {
                         setVerifyingVisit(visit);
                         setCheckInError(null);
                         setCheckInNotes("");
                       }}
-                      className="w-full inline-flex min-h-9 items-center justify-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 cursor-pointer"
                     >
                       Verifikasi &amp; Proses Masuk
-                    </button>
+                    </UiButton>
                   )}
                   {isCheckedIn && (
-                    <button
-                      type="button"
+                    <UiButton
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
                       onClick={() => {
                         setIssuedPass({
                           visitId: visit.id,
@@ -793,51 +787,58 @@ export function ReceptionClient({
                         });
                         setSyncFeedback(null);
                       }}
-                      className="w-full inline-flex min-h-9 items-center justify-center rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-800 transition hover:bg-neutral-50 cursor-pointer"
                     >
                       Lihat Lencana Akses
-                    </button>
+                    </UiButton>
                   )}
                 </div>
-              </div>
+              </UiCard>
             );
           })}
         </div>
       )}
 
       {/* Verification & Check-in Modal */}
-      {verifyingVisit && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-xs"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-neutral-900">
-                  Verifikasi Identitas Tamu
-                </h3>
-                <p className="text-xs text-neutral-500">
-                  Periksa kesesuaian foto dan dokumen identitas fisik sebelum mengaktifkan hak akses pintu.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setVerifyingVisit(null)}
-                className="text-neutral-400 hover:text-neutral-600 cursor-pointer text-lg"
-              >
-                &times;
-              </button>
-            </div>
+      <UiModal
+        isOpen={Boolean(verifyingVisit)}
+        onClose={() => {
+          setVerifyingVisit(null);
+          setCheckInError(null);
+        }}
+        title="Verifikasi Identitas Tamu"
+        description="Periksa kesesuaian foto dan dokumen identitas fisik sebelum mengaktifkan hak akses pintu."
+        size="lg"
+        footer={
+          <>
+            <UiButton
+              variant="secondary"
+              onClick={() => {
+                setVerifyingVisit(null);
+                setCheckInError(null);
+              }}
+              disabled={isCheckingIn}
+            >
+              Batal
+            </UiButton>
+            <UiButton
+              variant="primary"
+              onClick={handleConfirmCheckIn}
+              isLoading={isCheckingIn}
+            >
+              Konfirmasi &amp; Proses Masuk
+            </UiButton>
+          </>
+        }
+      >
+        {checkInError && (
+          <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/10 p-3 text-xs text-[var(--ks-vermilion)]">
+            {checkInError}
+          </div>
+        )}
 
-            {checkInError && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                {checkInError}
-              </div>
-            )}
-
-            <div className="mt-4 flex gap-4">
+        {verifyingVisit && (
+          <>
+            <div className="flex gap-4">
               {/* Photo preview */}
               <div className="flex flex-col items-center">
                 {verifyingVisit.facePhoto ? (
@@ -845,29 +846,29 @@ export function ReceptionClient({
                   <img
                     src={toJpegDataUri(verifyingVisit.facePhoto)}
                     alt="Foto Tamu"
-                    className="h-28 w-28 rounded-xl object-cover border-2 border-emerald-500 shadow-sm"
+                    className="h-28 w-28 rounded-[var(--ks-radius-md)] object-cover border-2 border-[var(--ks-patina)] shadow-sm"
                   />
                 ) : (
-                  <div className="flex h-28 w-28 items-center justify-center rounded-xl bg-neutral-100 text-neutral-400 font-medium text-xs border border-neutral-300">
+                  <div className="flex h-28 w-28 items-center justify-center rounded-[var(--ks-radius-md)] bg-[var(--ks-paper-deep)] text-[var(--ks-muted)] font-medium text-xs border border-[var(--ks-rule-subtle)]">
                     Tanpa Foto Wajah
                   </div>
                 )}
-                <span className="mt-1.5 text-3xs font-medium text-neutral-500">
+                <span className="mt-1.5 text-3xs font-medium text-[var(--ks-muted)]">
                   {verifyingVisit.facePhoto ? "Biometrik Wajah Terdaftar" : "Hanya Lencana Fisik / Kartu"}
                 </span>
               </div>
 
               {/* Identity details */}
-              <div className="flex-1 space-y-1.5 text-xs text-neutral-700">
+              <div className="flex-1 space-y-1.5 text-xs text-[var(--ks-text)]">
                 <div>
-                  <span className="text-neutral-400">Nama Lengkap:</span>
-                  <p className="font-bold text-neutral-900 text-sm">
+                  <span className="text-[var(--ks-muted)]">Nama Lengkap:</span>
+                  <p className="font-bold text-[var(--ks-ink)] text-sm tracking-tight">
                     {verifyingVisit.visitorGivenName} {verifyingVisit.visitorFamilyName}
                   </p>
                 </div>
                 <div>
-                  <span className="text-neutral-400">Nomor Identitas:</span>
-                  <p className="font-mono text-neutral-900">
+                  <span className="text-[var(--ks-muted)]">Nomor Identitas:</span>
+                  <p className="font-mono text-[var(--ks-ink)] font-semibold">
                     {verifyingVisit.certificateType
                       ? CERTIFICATE_TYPE_LABELS[verifyingVisit.certificateType]
                       : "ID"}
@@ -875,14 +876,14 @@ export function ReceptionClient({
                   </p>
                 </div>
                 <div>
-                  <span className="text-neutral-400">Tuan Rumah &amp; Fasilitas:</span>
-                  <p className="text-neutral-900 font-medium">
+                  <span className="text-[var(--ks-muted)]">Tuan Rumah &amp; Fasilitas:</span>
+                  <p className="text-[var(--ks-ink)] font-semibold">
                     {verifyingVisit.hostName || "Host"} &bull; {verifyingVisit.facilityName || verifyingVisit.facilityId}
                   </p>
                 </div>
                 <div>
-                  <span className="text-neutral-400">Jam Kunjungan:</span>
-                  <p className="font-mono text-neutral-900">
+                  <span className="text-[var(--ks-muted)]">Jam Kunjungan:</span>
+                  <p className="font-mono text-[var(--ks-ink)] font-semibold">
                     {verifyingVisit.scheduledStartTimeFacility.split("T")[1]?.substring(0, 5)} - {verifyingVisit.scheduledEndTimeFacility.split("T")[1]?.substring(0, 5)}
                   </p>
                 </div>
@@ -890,10 +891,10 @@ export function ReceptionClient({
             </div>
 
             {/* Verification Method Radio Selection */}
-            <div className="mt-5 border-t border-neutral-100 pt-4">
-              <label className="block text-xs font-semibold text-neutral-900 mb-2">
+            <div className="mt-5 border-t border-[var(--ks-rule-subtle)] pt-4">
+              <span className="block text-xs font-bold text-[var(--ks-ink)] mb-2">
                 Metode Verifikasi yang Diterapkan:
-              </label>
+              </span>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 {VERIFICATION_METHODS.map((m) => {
                   const methodLabels: Record<string, string> = {
@@ -905,10 +906,10 @@ export function ReceptionClient({
                   return (
                     <label
                       key={m}
-                      className={`flex items-center gap-2 rounded-lg border p-2 cursor-pointer transition ${
+                      className={`flex items-center gap-2 rounded-[var(--ks-radius-md)] border p-2 cursor-pointer transition ${
                         verificationMethod === m
-                          ? "border-emerald-600 bg-emerald-50 text-emerald-900 font-medium"
-                          : "border-neutral-200 hover:bg-neutral-50 text-neutral-700"
+                          ? "border-[var(--ks-patina-deep)] bg-[var(--ks-patina)]/15 text-[var(--ks-ink)] font-bold shadow-2xs"
+                          : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] hover:border-[var(--ks-rule)] text-[var(--ks-text)]"
                       }`}
                     >
                       <input
@@ -917,7 +918,7 @@ export function ReceptionClient({
                         value={m}
                         checked={verificationMethod === m}
                         onChange={() => setVerificationMethod(m)}
-                        className="text-emerald-600 focus:ring-emerald-500"
+                        className="text-[var(--ks-patina-deep)] focus:ring-[var(--ks-patina-deep)]"
                       />
                       <span>{methodLabels[m] || m.replace("_", " ")}</span>
                     </label>
@@ -928,626 +929,621 @@ export function ReceptionClient({
 
             {/* Receptionist Notes */}
             <div className="mt-3">
-              <label className="block text-xs font-medium text-neutral-700 mb-1">
+              <label htmlFor="checkInNotes" className="block text-xs font-semibold text-[var(--ks-text)] mb-1">
                 Catatan Resepsionis (Opsional):
               </label>
               <input
+                id="checkInNotes"
                 type="text"
                 value={checkInNotes}
                 onChange={(e) => setCheckInNotes(e.target.value)}
                 placeholder="Contoh: Kartu KTP asli telah diperiksa dan sesuai identitas tamu."
-                className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 placeholder:text-neutral-400 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600"
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-3 py-1.5 text-xs text-[var(--ks-ink)] placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-kinpaku)] focus:ring-1 focus:ring-[var(--ks-kinpaku)] outline-hidden"
               />
             </div>
+          </>
+        )}
+      </UiModal>
 
-            {/* Action Buttons */}
-            <div className="mt-6 flex justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setVerifyingVisit(null)}
-                disabled={isCheckingIn}
-                className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmCheckIn}
-                disabled={isCheckingIn}
-                className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50 cursor-pointer"
-              >
-                {isCheckingIn ? "Memproses Masuk..." : "Konfirmasi & Proses Masuk"}
-              </button>
-            </div>
-          </div>
+      {/* Webcam Photo Capture Modal */}
+      <UiModal
+        isOpen={cameraActive}
+        onClose={handleStopCamera}
+        title="Ambil Foto Biometrik Tamu"
+        description="Posisikan wajah tamu di tengah layar untuk verifikasi MinMoe."
+        size="md"
+        footer={
+          <>
+            <UiButton variant="secondary" onClick={handleStopCamera}>
+              Batal
+            </UiButton>
+            <UiButton
+              variant="primary"
+              onClick={handleCaptureSelfie}
+              isLoading={isNormalizing}
+            >
+              Ambil Foto
+            </UiButton>
+          </>
+        }
+      >
+        <div className="relative rounded-[var(--ks-radius-md)] overflow-hidden bg-black aspect-4/3 flex items-center justify-center">
+          <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
         </div>
-      )}
+        {cameraError && (
+          <p className="text-xs text-[var(--ks-vermilion)]">{cameraError}</p>
+        )}
+      </UiModal>
 
       {/* Walk-in Registration Modal */}
-      {isWalkInModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-xs overflow-y-auto"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="w-full max-w-2xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl my-8">
-            <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
-              <div>
-                <h3 className="text-base font-bold text-neutral-900">
-                  Pendaftaran Tamu Datang Langsung (Walk-in)
-                </h3>
-                <p className="text-xs text-neutral-500">
-                  Pendaftaran kilat dan pengaktifan hak akses pintu untuk tamu lobi tanpa janji temu sebelumnya.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsWalkInModalOpen(false);
-                  handleStopCamera();
-                }}
-                className="text-neutral-400 hover:text-neutral-600 cursor-pointer text-lg"
+      <UiModal
+        isOpen={isWalkInModalOpen}
+        onClose={() => {
+          setIsWalkInModalOpen(false);
+          setWalkInError(null);
+          handleStopCamera();
+        }}
+        title="Pendaftaran Tamu Datang Langsung (Walk-in)"
+        description="Pendaftaran kilat dan pengaktifan hak akses pintu untuk tamu lobi tanpa janji temu sebelumnya."
+        size="xl"
+        className="max-h-[90vh] overflow-y-auto"
+        footer={
+          <>
+            <UiButton
+              variant="secondary"
+              onClick={() => {
+                setIsWalkInModalOpen(false);
+                handleStopCamera();
+              }}
+              disabled={isSubmittingWalkIn}
+            >
+              Batal
+            </UiButton>
+            <UiButton
+              variant="primary"
+              type="submit"
+              form="walk-in-form"
+              isLoading={isSubmittingWalkIn}
+              disabled={isSubmittingWalkIn || isNormalizing}
+            >
+              Daftarkan &amp; Berikan Izin Masuk
+            </UiButton>
+          </>
+        }
+      >
+        {walkInError && (
+          <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/10 p-3 text-xs text-[var(--ks-vermilion)]">
+            {walkInError}
+          </div>
+        )}
+
+        <form id="walk-in-form" onSubmit={handleSubmitWalkIn} className="space-y-4">
+          {/* Facility & Host row */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="walkInFacilityId" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+                Gedung Fasilitas *
+              </label>
+              <select
+                id="walkInFacilityId"
+                value={walkInFacilityId}
+                onChange={(e) => setWalkInFacilityId(e.target.value)}
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
               >
-                &times;
-              </button>
+                {facilities.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name} ({f.timezone})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="walkInHostId" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+                Karyawan Tuan Rumah *
+              </label>
+              <select
+                id="walkInHostId"
+                value={walkInHostId}
+                onChange={(e) => {
+                  setWalkInHostId(e.target.value);
+                  const option = e.target.options[e.target.selectedIndex];
+                  setWalkInHostName(option.text);
+                }}
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              >
+                <option value="emp-host-01">Budi Santoso (Engineering Manager)</option>
+                <option value="emp-host-02">Siti Rahma (Operations Lead)</option>
+                <option value="emp-host-03">Andi Pratama (Executive Director)</option>
+                <option value="emp-general">Front Desk General Host</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Names row */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="walkInGivenName"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
+                Nama Depan *
+              </label>
+              <input
+                id="walkInGivenName"
+                type="text"
+                required
+                value={walkInGivenName}
+                onChange={(e) => setWalkInGivenName(e.target.value)}
+                placeholder="Contoh: Hendra"
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="walkInFamilyName"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
+                Nama Belakang / Marga *
+              </label>
+              <input
+                id="walkInFamilyName"
+                type="text"
+                required
+                value={walkInFamilyName}
+                onChange={(e) => setWalkInFamilyName(e.target.value)}
+                placeholder="Contoh: Gunawan"
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              />
+            </div>
+          </div>
+
+          {/* Contact row */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label
+                htmlFor="walkInPhone"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
+                Nomor Telepon / WhatsApp
+              </label>
+              <input
+                id="walkInPhone"
+                type="tel"
+                value={walkInPhone}
+                onChange={(e) => setWalkInPhone(e.target.value)}
+                placeholder="+628..."
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="walkInEmail"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
+                Alamat Email (Opsional)
+              </label>
+              <input
+                id="walkInEmail"
+                type="email"
+                value={walkInEmail}
+                onChange={(e) => setWalkInEmail(e.target.value)}
+                placeholder="tamu@instansi.com"
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              />
+            </div>
+          </div>
+
+          {/* Certificate row */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="walkInCertType" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+                Jenis Kartu Identitas
+              </label>
+              <select
+                id="walkInCertType"
+                value={walkInCertType}
+                onChange={(e) => setWalkInCertType(Number(e.target.value) as CertificateType)}
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              >
+                {CERTIFICATE_TYPES.map((ct) => (
+                  <option key={ct} value={ct}>
+                    {CERTIFICATE_TYPE_LABELS[ct]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="walkInIdNumber" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+                Nomor Dokumen Identitas (NIK/Paspor)
+              </label>
+              <div className="relative">
+                <input
+                  id="walkInIdNumber"
+                  type="text"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  value={walkInCertNo}
+                  onBlur={() => checkReturningWalkInVisitor(walkInCertNo)}
+                  onChange={(e) => {
+                    setWalkInCertNo(e.target.value);
+                    if (walkInReturningProfile) setWalkInReturningProfile(null);
+                  }}
+                  placeholder="Contoh: 3171010101010001"
+                  className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] font-mono focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+                />
+                {isLookingUpWalkIn && (
+                  <span className="absolute right-2 top-1.5 text-[11px] text-[var(--ks-muted)]">
+                    Mencari data...
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Returning Visitor Recognized Banner */}
+          {walkInReturningProfile && (
+            <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/10 p-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-3">
+                {walkInReturningProfile.facePhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={walkInReturningProfile.facePhoto}
+                    alt="Foto Wajah Tersimpan"
+                    width={36}
+                    height={36}
+                    className="h-9 w-9 rounded-full object-cover border border-[var(--ks-patina)]/40"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ks-patina)]/20 text-xs font-bold text-[var(--ks-patina)]">
+                    {walkInReturningProfile.givenName?.[0]}
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs font-semibold text-[var(--ks-ink)]">
+                    Tamu Sebelumnya Ditemukan!
+                  </p>
+                  <p className="text-[11px] text-[var(--ks-muted)]">
+                    {walkInReturningProfile.fullName ||
+                      `${walkInReturningProfile.givenName} ${walkInReturningProfile.familyName}`}{" "}
+                    &bull; Profil tersimpan &amp; foto biometrik siap digunakan
+                  </p>
+                </div>
+              </div>
+              <UiButton
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={() =>
+                  applyReturningWalkInProfile(walkInReturningProfile)
+                }
+              >
+                Isi Otomatis Data &amp; Foto
+              </UiButton>
+            </div>
+          )}
+
+          {/* Purpose row */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="walkInReasonType" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+                Keperluan Kunjungan *
+              </label>
+              <select
+                id="walkInReasonType"
+                value={walkInReasonType}
+                onChange={(e) => setWalkInReasonType(Number(e.target.value) as VisitReasonType)}
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              >
+                {VISIT_REASON_TYPES.map((rt) => (
+                  <option key={rt} value={rt}>
+                    {VISIT_REASON_LABELS[rt]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label
+                htmlFor="walkInReason"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
+                Rincian Keperluan {walkInReasonType === 4 ? "*" : "(opsional)"}
+              </label>
+              <input
+                id="walkInReason"
+                type="text"
+                required={walkInReasonType === 4}
+                value={walkInReasonDetail}
+                onChange={(e) => setWalkInReasonDetail(e.target.value)}
+                placeholder="Contoh: Pemeliharaan perangkat server vendor"
+                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              />
+            </div>
+          </div>
+
+          {/* Access Levels selection */}
+          <div>
+            <span className="block text-xs font-semibold text-[var(--ks-ink)] mb-1.5">
+              Hak Akses Pintu Fisik (Khusus Gedung Terpilih):
+            </span>
+            {availableAccessLevels.length === 0 ? (
+              <p className="text-xs text-[var(--ks-muted)] italic">
+                Belum ada kelompok hak akses yang terdaftar untuk fasilitas ini.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {availableAccessLevels.map((al) => (
+                  <label
+                    key={al.id}
+                    className={`flex items-start gap-2 rounded-[var(--ks-radius-md)] border p-2 text-xs cursor-pointer transition-colors ${
+                      walkInAccessLevelIds.includes(al.id)
+                        ? "border-[var(--ks-kinpaku)] bg-[var(--ks-kinpaku)]/10 text-[var(--ks-ink)] shadow-xs"
+                        : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] text-[var(--ks-muted)] hover:border-[var(--ks-rule)]"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={walkInAccessLevelIds.includes(al.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setWalkInAccessLevelIds([...walkInAccessLevelIds, al.id]);
+                        } else {
+                          setWalkInAccessLevelIds(walkInAccessLevelIds.filter((id) => id !== al.id));
+                        }
+                      }}
+                      className="mt-0.5 accent-[var(--ks-kinpaku)]"
+                    />
+                    <div>
+                      <div className="font-medium text-[var(--ks-ink)]">{al.name}</div>
+                      {al.description && <div className="text-3xs text-[var(--ks-muted)]">{al.description}</div>}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Tap Quota Configuration */}
+          <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] p-3">
+            <span className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-ink)] mb-2">
+              Door Tap Quota Enforcement:
+            </span>
+            <div className="flex items-center gap-4 text-xs">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="tapQuotaMode"
+                  value="limited"
+                  checked={walkInTapQuotaMode === "limited"}
+                  onChange={() => setWalkInTapQuotaMode("limited")}
+                  className="accent-[var(--ks-kinpaku)]"
+                />
+                <span className="text-[var(--ks-text)]">Limited Taps:</span>
+              </label>
+              {walkInTapQuotaMode === "limited" && (
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={walkInMaxTaps}
+                  onChange={(e) => setWalkInMaxTaps(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-16 rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-2 py-1 text-xs font-mono text-[var(--ks-ink)]"
+                />
+              )}
+              <label className="flex items-center gap-1.5 cursor-pointer ml-3">
+                <input
+                  type="radio"
+                  name="tapQuotaMode"
+                  value="unlimited"
+                  checked={walkInTapQuotaMode === "unlimited"}
+                  onChange={() => setWalkInTapQuotaMode("unlimited")}
+                  className="accent-[var(--ks-kinpaku)]"
+                />
+                <span className="text-[var(--ks-text)]">Unlimited during visiting hours</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Photo Enrollment (Webcam or Upload) */}
+          <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-ink)]">
+                Biometric Face Photo (MinMoe Terminal Enrollment)
+              </span>
+              {walkInFacePhoto && (
+                <span
+                  className={`text-3xs font-semibold px-2 py-0.5 rounded-full border ${
+                    isFacePhotoSizeValid(walkInFaceByteSize)
+                      ? "border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/15 text-[var(--ks-patina)]"
+                      : "border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/15 text-[var(--ks-vermilion)]"
+                  }`}
+                >
+                  {formatFacePhotoSize(walkInFaceByteSize)} (10–100 KB)
+                </span>
+              )}
             </div>
 
-            {walkInError && (
-              <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
-                {walkInError}
+            {walkInFacePhoto ? (
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={walkInFacePhoto}
+                  alt="Enrolled Face"
+                  className="h-20 w-20 rounded-[var(--ks-radius-md)] object-cover border border-[var(--ks-rule-subtle)]"
+                />
+                <div className="space-y-1">
+                  <p className="text-xs text-[var(--ks-muted)]">
+                    Normalized Base64 JPEG photo ready for physical terminal distribution.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleClearPhoto}
+                    className="text-xs text-[var(--ks-vermilion)] hover:underline cursor-pointer"
+                  >
+                    Remove Photo
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <UiButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleStartCamera}
+                >
+                  <svg className="h-4 w-4 text-[var(--ks-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span>Buka Kamera Resepsionis</span>
+                </UiButton>
+                <label className="ks-btn inline-flex items-center gap-1.5 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-2.5 py-1 text-xs font-semibold text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] cursor-pointer">
+                  <span>Unggah Berkas Foto</span>
+                  <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                </label>
+              </div>
+            )}
+            {cameraError && <p className="mt-2 text-xs text-[var(--ks-vermilion)]">{cameraError}</p>}
+            {faceError && <p className="mt-2 text-xs text-[var(--ks-vermilion)]">{faceError}</p>}
+          </div>
+        </form>
+      </UiModal>
+
+      {/* Check-in Pass Modal (QR & Digital Badge) */}
+      <UiModal
+        isOpen={Boolean(issuedPass)}
+        onClose={() => {
+          setIssuedPass(null);
+          setSyncFeedback(null);
+        }}
+        title={
+          <div className="flex items-center gap-2">
+            <span>{issuedPass?.facilityName || "Lencana Kunjungan Tamu"}</span>
+            <UiBadge variant="normal" showDot={false}>
+              Lencana Masuk Aktif
+            </UiBadge>
+          </div>
+        }
+        description="Lencana akses digital dan kode verifikasi pintu fisik."
+        size="md"
+        footer={
+          <div className="flex gap-2 w-full">
+            <UiButton
+              type="button"
+              variant="secondary"
+              className="flex-1"
+              onClick={() => window.print()}
+            >
+              <svg className="h-4 w-4 text-[var(--ks-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              <span>Cetak Lencana Tamu</span>
+            </UiButton>
+            <UiButton
+              type="button"
+              variant="primary"
+              className="flex-1"
+              onClick={() => {
+                setIssuedPass(null);
+                setSyncFeedback(null);
+              }}
+            >
+              Selesai
+            </UiButton>
+          </div>
+        }
+      >
+        {issuedPass && (
+          <div className="flex flex-col items-center text-center">
+            {/* QR Code Pass */}
+            <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-white p-4 shadow-sm">
+              {issuedPass.qrCodeImage ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={`data:image/png;base64,${issuedPass.qrCodeImage}`}
+                  alt="QR Akses Masuk Tamu"
+                  className="h-44 w-44 object-contain"
+                />
+              ) : (
+                <div className="flex h-44 w-44 items-center justify-center rounded-[var(--ks-radius-md)] bg-[var(--ks-paper-deep)] text-[var(--ks-muted)] font-mono text-xs">
+                  Lencana QR Aktif
+                </div>
+              )}
+            </div>
+
+            {/* PIN Code */}
+            {issuedPass.pinCode && (
+              <div className="mt-3 w-full rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] py-2.5 text-[var(--ks-paper-raised)] border border-black">
+                <span className="block text-3xs uppercase tracking-widest text-[var(--ks-muted)] font-mono">
+                  Kode PIN Masuk Terminal Pintu
+                </span>
+                <span className="font-mono text-2xl font-bold tracking-widest text-[var(--ks-kinpaku)]">
+                  {issuedPass.pinCode}
+                </span>
               </div>
             )}
 
-            <form onSubmit={handleSubmitWalkIn} className="mt-4 space-y-4">
-              {/* Facility & Host row */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Gedung Fasilitas *
-                  </label>
-                  <select
-                    value={walkInFacilityId}
-                    onChange={(e) => setWalkInFacilityId(e.target.value)}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
-                  >
-                    {facilities.map((f) => (
-                      <option key={f.id} value={f.id}>
-                        {f.name} ({f.timezone})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Karyawan Tuan Rumah *
-                  </label>
-                  <select
-                    value={walkInHostId}
-                    onChange={(e) => {
-                      setWalkInHostId(e.target.value);
-                      const option = e.target.options[e.target.selectedIndex];
-                      setWalkInHostName(option.text);
-                    }}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
-                  >
-                    <option value="emp-host-01">Budi Santoso (Engineering Manager)</option>
-                    <option value="emp-host-02">Siti Rahma (Operations Lead)</option>
-                    <option value="emp-host-03">Andi Pratama (Executive Director)</option>
-                    <option value="emp-general">Front Desk General Host</option>
-                  </select>
-                </div>
+            {/* Visitor Details */}
+            <div className="mt-4 w-full space-y-1.5 text-left text-xs bg-[var(--ks-paper-deep)] p-3.5 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)]">
+              <div className="flex justify-between">
+                <span className="text-[var(--ks-muted)]">Nama Tamu:</span>
+                <span className="font-bold text-[var(--ks-ink)]">{issuedPass.visitorName}</span>
               </div>
-
-              {/* Names row */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Nama Depan *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={walkInGivenName}
-                    onChange={(e) => setWalkInGivenName(e.target.value)}
-                    placeholder="Contoh: Hendra"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Nama Belakang / Marga *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={walkInFamilyName}
-                    onChange={(e) => setWalkInFamilyName(e.target.value)}
-                    placeholder="Contoh: Gunawan"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
-                  />
-                </div>
-              </div>
-
-              {/* Contact row */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Nomor Telepon / WhatsApp
-                  </label>
-                  <input
-                    type="tel"
-                    value={walkInPhone}
-                    onChange={(e) => setWalkInPhone(e.target.value)}
-                    placeholder="+628..."
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Alamat Email (Opsional)
-                  </label>
-                  <input
-                    type="email"
-                    value={walkInEmail}
-                    onChange={(e) => setWalkInEmail(e.target.value)}
-                    placeholder="tamu@instansi.com"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
-                  />
-                </div>
-              </div>
-
-              {/* Certificate row */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Jenis Kartu Identitas
-                  </label>
-                  <select
-                    value={walkInCertType}
-                    onChange={(e) => setWalkInCertType(Number(e.target.value) as CertificateType)}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
-                  >
-                    {CERTIFICATE_TYPES.map((ct) => (
-                      <option key={ct} value={ct}>
-                        {CERTIFICATE_TYPE_LABELS[ct]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="walk-in-cert-no" className="block text-xs font-medium text-neutral-700 mb-1">
-                    Nomor Dokumen Identitas (NIK/Paspor)
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="walk-in-cert-no"
-                      type="text"
-                      autoCorrect="off"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      value={walkInCertNo}
-                      onBlur={() => checkReturningWalkInVisitor(walkInCertNo)}
-                      onChange={(e) => {
-                        setWalkInCertNo(e.target.value);
-                        if (walkInReturningProfile) setWalkInReturningProfile(null);
-                      }}
-                      placeholder="Contoh: 3171010101010001"
-                      className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 font-mono focus:border-emerald-600 focus:ring-emerald-600"
-                    />
-                    {isLookingUpWalkIn && (
-                      <span className="absolute right-2 top-1.5 text-[11px] text-neutral-400">
-                        Mencari data...
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Returning Visitor Recognized Banner */}
-              {walkInReturningProfile && (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 p-3 flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    {walkInReturningProfile.facePhoto ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={walkInReturningProfile.facePhoto}
-                        alt="Foto Wajah Tersimpan"
-                        width={36}
-                        height={36}
-                        className="h-9 w-9 rounded-full object-cover border border-emerald-200"
-                      />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-200 text-xs font-bold text-emerald-900">
-                        {walkInReturningProfile.givenName?.[0]}
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-xs font-semibold text-emerald-950">
-                        Tamu Sebelumnya Ditemukan!
-                      </p>
-                      <p className="text-[11px] text-emerald-800">
-                        {walkInReturningProfile.fullName ||
-                          `${walkInReturningProfile.givenName} ${walkInReturningProfile.familyName}`}{" "}
-                        &bull; Profil tersimpan &amp; foto biometrik siap digunakan
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      applyReturningWalkInProfile(walkInReturningProfile)
-                    }
-                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 transition cursor-pointer"
-                  >
-                    Isi Otomatis Data &amp; Foto
-                  </button>
+              {issuedPass.hostName && (
+                <div className="flex justify-between">
+                  <span className="text-[var(--ks-muted)]">Tuan Rumah:</span>
+                  <span className="font-medium text-[var(--ks-ink)]">{issuedPass.hostName}</span>
                 </div>
               )}
-
-              {/* Purpose row */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Keperluan Kunjungan *
-                  </label>
-                  <select
-                    value={walkInReasonType}
-                    onChange={(e) => setWalkInReasonType(Number(e.target.value) as VisitReasonType)}
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-2 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
-                  >
-                    {VISIT_REASON_TYPES.map((rt) => (
-                      <option key={rt} value={rt}>
-                        {VISIT_REASON_LABELS[rt]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-neutral-700 mb-1">
-                    Rincian Keperluan {walkInReasonType === 4 ? "*" : "(opsional)"}
-                  </label>
-                  <input
-                    type="text"
-                    required={walkInReasonType === 4}
-                    value={walkInReasonDetail}
-                    onChange={(e) => setWalkInReasonDetail(e.target.value)}
-                    placeholder="Contoh: Pemeliharaan perangkat server vendor"
-                    className="w-full rounded-lg border border-neutral-300 px-3 py-1.5 text-xs text-neutral-900 focus:border-emerald-600 focus:ring-emerald-600"
-                  />
-                </div>
-              </div>
-
-              {/* Access Levels selection */}
-              <div>
-                <label className="block text-xs font-semibold text-neutral-900 mb-1.5">
-                  Hak Akses Pintu Fisik (Khusus Gedung Terpilih):
-                </label>
-                {availableAccessLevels.length === 0 ? (
-                  <p className="text-xs text-neutral-500 italic">
-                    Belum ada kelompok hak akses yang terdaftar untuk fasilitas ini.
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {availableAccessLevels.map((al) => (
-                      <label
-                        key={al.id}
-                        className={`flex items-start gap-2 rounded-lg border p-2 text-xs cursor-pointer ${
-                          walkInAccessLevelIds.includes(al.id)
-                            ? "border-emerald-600 bg-emerald-50 text-emerald-900"
-                            : "border-neutral-200 text-neutral-700"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={walkInAccessLevelIds.includes(al.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setWalkInAccessLevelIds([...walkInAccessLevelIds, al.id]);
-                            } else {
-                              setWalkInAccessLevelIds(walkInAccessLevelIds.filter((id) => id !== al.id));
-                            }
-                          }}
-                          className="mt-0.5 text-emerald-600 focus:ring-emerald-500"
-                        />
-                        <div>
-                          <div className="font-medium">{al.name}</div>
-                          {al.description && <div className="text-3xs text-neutral-500">{al.description}</div>}
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Tap Quota Configuration */}
-              <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
-                <span className="block text-xs font-semibold text-neutral-900 mb-2">
-                  Door Tap Quota Enforcement:
+              <div className="flex justify-between">
+                <span className="text-[var(--ks-muted)]">Jam Kunjungan:</span>
+                <span className="font-mono text-[var(--ks-ink)]">
+                  {issuedPass.scheduledStartTime.split("T")[1]?.substring(0, 5)} - {issuedPass.scheduledEndTime.split("T")[1]?.substring(0, 5)}
                 </span>
-                <div className="flex items-center gap-4 text-xs">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="tapQuotaMode"
-                      value="limited"
-                      checked={walkInTapQuotaMode === "limited"}
-                      onChange={() => setWalkInTapQuotaMode("limited")}
-                      className="text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span>Limited Taps:</span>
-                  </label>
-                  {walkInTapQuotaMode === "limited" && (
-                    <input
-                      type="number"
-                      min={1}
-                      max={100}
-                      value={walkInMaxTaps}
-                      onChange={(e) => setWalkInMaxTaps(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="w-16 rounded border border-neutral-300 px-2 py-1 text-xs font-mono"
-                    />
-                  )}
-                  <label className="flex items-center gap-1.5 cursor-pointer ml-3">
-                    <input
-                      type="radio"
-                      name="tapQuotaMode"
-                      value="unlimited"
-                      checked={walkInTapQuotaMode === "unlimited"}
-                      onChange={() => setWalkInTapQuotaMode("unlimited")}
-                      className="text-emerald-600 focus:ring-emerald-500"
-                    />
-                    <span>Unlimited during visiting hours</span>
-                  </label>
-                </div>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--ks-muted)]">Waktu Masuk:</span>
+                <span className="font-mono text-[var(--ks-patina)] font-medium">
+                  {new Date(issuedPass.actualCheckInTimeUtc).toLocaleTimeString()}
+                </span>
               </div>
 
-              {/* Photo Enrollment (Webcam or Upload) */}
-              <div className="rounded-lg border border-neutral-200 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-semibold text-neutral-900">
-                    Biometric Face Photo (MinMoe Terminal Enrollment)
+              {/* Credential Sync Status */}
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--ks-rule-subtle)]">
+                <span className="text-[var(--ks-muted)] font-medium">Sinkronisasi Terminal:</span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-2xs font-semibold border ${
+                      issuedPass.credentialSyncStatus === "Applied"
+                        ? "border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/15 text-[var(--ks-patina)]"
+                        : issuedPass.credentialSyncStatus === "Failed"
+                          ? "border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/15 text-[var(--ks-vermilion)]"
+                          : "border-[var(--ks-kinpaku)]/30 bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)]"
+                    }`}
+                  >
+                    {issuedPass.credentialSyncStatus}
                   </span>
-                  {walkInFacePhoto && (
-                    <span
-                      className={`text-3xs font-semibold px-2 py-0.5 rounded-full ${
-                        isFacePhotoSizeValid(walkInFaceByteSize)
-                          ? "bg-emerald-100 text-emerald-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {formatFacePhotoSize(walkInFaceByteSize)} (10–100 KB)
-                    </span>
-                  )}
-                </div>
-
-                {cameraActive ? (
-                  <div className="relative rounded-lg overflow-hidden bg-black max-w-sm mx-auto aspect-4/3">
-                    <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
-                    <div className="absolute bottom-2 inset-x-0 flex justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={handleCaptureSelfie}
-                        disabled={isNormalizing}
-                        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-emerald-700 cursor-pointer"
-                      >
-                        {isNormalizing ? "Processing..." : "Capture Photo"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleStopCamera}
-                        className="rounded-lg bg-neutral-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700 cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : walkInFacePhoto ? (
-                  <div className="flex items-center gap-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={walkInFacePhoto}
-                      alt="Enrolled Face"
-                      className="h-20 w-20 rounded-lg object-cover border border-neutral-300"
-                    />
-                    <div className="space-y-1">
-                      <p className="text-xs text-neutral-600">
-                        Normalized Base64 JPEG photo ready for physical terminal distribution.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={handleClearPhoto}
-                        className="text-xs text-red-600 hover:text-red-800 underline cursor-pointer"
-                      >
-                        Remove Photo
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
+                  {(issuedPass.credentialSyncStatus === "Failed" ||
+                    issuedPass.credentialSyncStatus === "Syncing" ||
+                    issuedPass.credentialSyncStatus === "Unknown") && (
+                    <UiButton
                       type="button"
-                      onClick={handleStartCamera}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleRetrySync}
+                      isLoading={isRetryingSync}
                     >
-                      <svg className="h-4 w-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Buka Kamera Resepsionis
-                    </button>
-                    <label className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer">
-                      <span>Unggah Berkas Foto</span>
-                      <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
-                    </label>
-                  </div>
-                )}
-                {cameraError && <p className="mt-2 text-xs text-red-600">{cameraError}</p>}
-                {faceError && <p className="mt-2 text-xs text-red-600">{faceError}</p>}
-              </div>
-
-              {/* Form submit footer */}
-              <div className="mt-6 flex justify-end gap-2.5 border-t border-neutral-200 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsWalkInModalOpen(false);
-                    handleStopCamera();
-                  }}
-                  disabled={isSubmittingWalkIn}
-                  className="rounded-lg border border-neutral-300 px-4 py-2 text-xs font-medium text-neutral-700 hover:bg-neutral-50 cursor-pointer"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmittingWalkIn || isNormalizing}
-                  className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50 cursor-pointer"
-                >
-                  {isSubmittingWalkIn ? "Mendaftarkan & Memproses Masuk..." : "Daftarkan & Berikan Izin Masuk"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Check-in Pass Modal (QR & Digital Badge) */}
-      {issuedPass && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 p-4 backdrop-blur-xs"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-neutral-200 pb-3">
-              <div>
-                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-3xs font-bold uppercase tracking-wider text-emerald-800">
-                  Lencana Masuk Aktif
-                </span>
-                <h3 className="text-base font-bold text-neutral-900 mt-1">
-                  {issuedPass.facilityName || "Lencana Kunjungan Tamu"}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIssuedPass(null)}
-                className="text-neutral-400 hover:text-neutral-600 cursor-pointer text-lg"
-              >
-                &times;
-              </button>
-            </div>
-
-            {/* Pass Body */}
-            <div className="mt-4 flex flex-col items-center text-center">
-              {/* QR Code Pass */}
-              <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-4 shadow-inner">
-                {issuedPass.qrCodeImage ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={`data:image/png;base64,${issuedPass.qrCodeImage}`}
-                    alt="QR Akses Masuk Tamu"
-                    className="h-44 w-44 object-contain"
-                  />
-                ) : (
-                  <div className="flex h-44 w-44 items-center justify-center rounded-lg bg-neutral-200 text-neutral-500 font-mono text-xs">
-                    Lencana QR Aktif
-                  </div>
-                )}
-              </div>
-
-              {/* PIN Code */}
-              {issuedPass.pinCode && (
-                <div className="mt-3 w-full rounded-xl bg-neutral-900 py-2 text-white">
-                  <span className="block text-3xs uppercase tracking-wider text-neutral-400">
-                    Kode PIN Masuk Terminal Pintu
-                  </span>
-                  <span className="font-mono text-xl font-extrabold tracking-widest text-emerald-400">
-                    {issuedPass.pinCode}
-                  </span>
+                      Kirim Ulang
+                    </UiButton>
+                  )}
                 </div>
-              )}
-
-              {/* Visitor Details */}
-              <div className="mt-4 w-full space-y-1.5 text-left text-xs text-neutral-700 bg-neutral-50 p-3.5 rounded-xl border border-neutral-200">
-                <div className="flex justify-between">
-                  <span className="text-neutral-600 dark:text-slate-400">Nama Tamu:</span>
-                  <span className="font-bold text-neutral-900">{issuedPass.visitorName}</span>
-                </div>
-                {issuedPass.hostName && (
-                  <div className="flex justify-between">
-                    <span className="text-neutral-600 dark:text-slate-400">Tuan Rumah:</span>
-                    <span className="font-medium text-neutral-800">{issuedPass.hostName}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-neutral-600 dark:text-slate-400">Jam Kunjungan:</span>
-                  <span className="font-mono text-neutral-800">
-                    {issuedPass.scheduledStartTime.split("T")[1]?.substring(0, 5)} - {issuedPass.scheduledEndTime.split("T")[1]?.substring(0, 5)}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-neutral-600 dark:text-slate-400">Waktu Masuk:</span>
-                  <span className="font-mono text-blue-700 font-medium">
-                    {new Date(issuedPass.actualCheckInTimeUtc).toLocaleTimeString()}
-                  </span>
-                </div>
-
-                {/* Credential Sync Status */}
-                <div className="flex items-center justify-between pt-2 border-t border-neutral-200">
-                  <span className="text-neutral-500 font-medium">Sinkronisasi Terminal:</span>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-2xs font-semibold ${
-                        issuedPass.credentialSyncStatus === "Applied"
-                          ? "bg-emerald-100 text-emerald-800"
-                          : issuedPass.credentialSyncStatus === "Failed"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-amber-100 text-amber-800"
-                      }`}
-                    >
-                      {issuedPass.credentialSyncStatus}
-                    </span>
-                    {(issuedPass.credentialSyncStatus === "Failed" ||
-                      issuedPass.credentialSyncStatus === "Syncing" ||
-                      issuedPass.credentialSyncStatus === "Unknown") && (
-                      <button
-                        type="button"
-                        onClick={handleRetrySync}
-                        disabled={isRetryingSync}
-                        className="rounded bg-neutral-200 px-2 py-0.5 text-3xs font-medium text-neutral-800 hover:bg-neutral-300 cursor-pointer"
-                      >
-                        {isRetryingSync ? "Mengulang..." : "Kirim Ulang"}
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {syncFeedback && <p className="text-3xs text-emerald-700 pt-1">{syncFeedback}</p>}
               </div>
-            </div>
-
-            {/* Modal Actions */}
-            <div className="mt-5 flex gap-2">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-neutral-300 bg-white py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50 cursor-pointer"
-              >
-                <svg className="h-4 w-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Cetak Lencana Tamu
-              </button>
-              <button
-                type="button"
-                onClick={() => setIssuedPass(null)}
-                className="flex-1 rounded-lg bg-neutral-900 py-2 text-xs font-semibold text-white hover:bg-neutral-800 cursor-pointer"
-              >
-                Selesai
-              </button>
+              {syncFeedback && <p className="text-3xs text-[var(--ks-patina)] pt-1">{syncFeedback}</p>}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </UiModal>
     </div>
   );
 }

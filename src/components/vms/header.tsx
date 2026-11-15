@@ -17,7 +17,7 @@ export interface HeaderProps {
   operatorRole?: string;
 }
 
-function getTimezoneAbbreviation(tz: string): string {
+export function getTimezoneAbbreviation(tz: string): string {
   if (tz === "Asia/Jakarta") return "WIB";
   if (tz === "Asia/Makassar") return "WITA";
   if (tz === "Asia/Jayapura") return "WIT";
@@ -80,42 +80,42 @@ export function Header({
   const breadcrumb = getBreadcrumbHierarchy(activePath);
 
   return (
-    <header className="sticky top-0 z-20 h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-20 h-16 bg-[var(--ks-paper-raised)] border-b border-[var(--ks-rule)] flex items-center justify-between px-3 sm:px-6 max-w-full overflow-hidden">
       {/* Left: Hamburger (mobile) + Breadcrumbs */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
         <button
           type="button"
           onClick={onOpenMobileMenu}
           aria-label="Buka menu navigasi"
-          className="lg:hidden p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="lg:hidden p-1.5 sm:p-2 text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper-deep)] rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--ks-patina-deep)]"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
 
-        <nav aria-label="Breadcrumb" className="flex items-center text-xs text-slate-500 dark:text-slate-400">
-          <Link href="/vms/reception" className="hover:text-slate-900 dark:hover:text-white transition-colors">
+        <nav aria-label="Breadcrumb" className="flex items-center text-xs text-[var(--ks-text-muted)] min-w-0">
+          <Link href="/vms/reception" className="hover:text-[var(--ks-ink)] transition-colors font-medium hidden sm:inline shrink-0">
             VMS
           </Link>
           {breadcrumb.group && (
             <>
-              <span className="mx-2 text-slate-300 dark:text-slate-600">/</span>
-              <span className="text-slate-500 dark:text-slate-400 hidden sm:inline">{breadcrumb.group}</span>
+              <span className="mx-2 text-[var(--ks-rule)] font-bold hidden sm:inline">/</span>
+              <span className="text-[var(--ks-text-muted)] hidden md:inline truncate">{breadcrumb.group}</span>
             </>
           )}
-          <span className="mx-2 text-slate-300 dark:text-slate-600">/</span>
-          <span className="font-semibold text-slate-900 dark:text-white">
+          <span className="mx-2 text-[var(--ks-rule)] font-bold hidden sm:inline">/</span>
+          <span className="font-semibold text-[var(--ks-ink)] truncate max-w-[120px] sm:max-w-none" title={breadcrumb.title}>
             {breadcrumb.title}
           </span>
         </nav>
       </div>
 
       {/* Right Controls: Facility & Live Clock, System Health, Operator Profile */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         {/* Facility Selector & Live Clock */}
-        <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-xl px-2.5 py-1.5 shadow-2xs">
-          <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <div className="flex items-center gap-1.5 sm:gap-2 bg-[var(--ks-paper-deep)] border border-[var(--ks-rule)] rounded-[var(--ks-radius-md)] px-2 sm:px-2.5 py-1.5 shadow-2xs">
+          <svg className="w-4 h-4 text-[var(--ks-text-faint)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
 
@@ -124,31 +124,31 @@ export function Header({
               aria-label={idDict.header.selectFacility}
               value={selectedFacility?.id}
               onChange={(e) => onSelectFacility?.(e.target.value)}
-              className="text-xs font-medium text-slate-800 dark:text-slate-200 bg-transparent border-0 focus:ring-0 cursor-pointer pr-2 outline-hidden"
+              className="text-xs font-semibold text-[var(--ks-ink)] bg-transparent border-0 focus:ring-0 cursor-pointer pr-1 sm:pr-2 outline-hidden max-w-[120px] sm:max-w-none truncate"
             >
               {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id} className="dark:bg-slate-900">
+                <option key={fac.id} value={fac.id} className="bg-[var(--ks-paper-raised)] text-[var(--ks-ink)]">
                   {fac.name}
                 </option>
               ))}
             </select>
           ) : (
-            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+            <span className="text-xs font-semibold text-[var(--ks-ink)] max-w-[120px] sm:max-w-none truncate">
               Jakarta Corporate HQ
             </span>
           )}
 
-          <div className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+          <div className="hidden sm:block h-3.5 w-px bg-[var(--ks-rule)] mx-1" />
 
-          {/* Timezone Clock */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+          {/* Timezone Clock (Hidden on screens < 640px) */}
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-[var(--ks-text-muted)]">
             <span
               suppressHydrationWarning
-              className="font-mono tabular-nums text-slate-900 dark:text-slate-100 font-medium"
+              className="font-mono tabular-nums text-[var(--ks-ink)] font-semibold"
             >
               {currentTime || "--:--:--"}
             </span>
-            <span className="px-1.5 py-0.2 rounded-md bg-slate-200/70 dark:bg-slate-700 text-[10px] font-semibold text-slate-700 dark:text-slate-300">
+            <span className="px-1.5 py-0.5 rounded-[var(--ks-radius-sm)] bg-[var(--ks-gray-2)] text-[10px] font-bold text-[var(--ks-ink)]">
               {tzAbbr}
             </span>
           </div>
@@ -169,15 +169,15 @@ export function Header({
         </div>
 
         {/* Operator Profile Avatar & Role */}
-        <div className="flex items-center gap-2 pl-1 sm:pl-2 border-l border-slate-200 dark:border-slate-800">
-          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 font-semibold text-xs flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-800">
+        <div className="flex items-center gap-1.5 sm:gap-2 pl-1 sm:pl-2 border-l border-[var(--ks-rule)]">
+          <div className="w-8 h-8 rounded-[var(--ks-radius-pill)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] font-bold text-xs flex items-center justify-center shrink-0 border border-[var(--ks-rule)] shadow-2xs">
             PR
           </div>
           <div className="hidden xl:flex flex-col">
-            <span className="text-xs font-medium text-slate-900 dark:text-white leading-tight">
+            <span className="text-xs font-semibold text-[var(--ks-ink)] leading-tight">
               {operatorRole}
             </span>
-            <span className="text-[10px] text-slate-400 leading-tight">
+            <span className="text-[10px] text-[var(--ks-text-muted)] leading-tight">
               Aktif • Lobi Utama
             </span>
           </div>

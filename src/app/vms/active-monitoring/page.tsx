@@ -20,17 +20,17 @@ export default async function ActiveMonitoringPage() {
   return (
     <div className="space-y-6">
       {/* Page Header with Guide Modal Trigger */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-[var(--ks-rule-subtle)]">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--ks-ink)]">
               {pageInfo.title}
             </h1>
-            <span className="rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 dark:border dark:border-blue-800 px-2.5 py-0.5 text-xs font-semibold">
-              Live Monitoring
+            <span className="rounded-full border border-[var(--ks-kinpaku)]/30 bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)] px-2.5 py-0.5 text-2xs font-bold uppercase tracking-wider">
+              {idDict.header.liveMonitoring}
             </span>
           </div>
-          <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-3xl">
+          <p className="mt-1 text-xs sm:text-sm text-[var(--ks-muted)] max-w-3xl">
             {pageInfo.subtitle}
           </p>
         </div>

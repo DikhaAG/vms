@@ -51,10 +51,10 @@ export function PageGuideModal({
         onClick={handleOpen}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
-        className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:text-blue-800 transition-colors shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 dark:hover:bg-blue-900/60 ${className}`}
+        className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-[var(--ks-ink)] bg-[var(--ks-paper-deep)] border border-[var(--ks-rule)] rounded-[var(--ks-radius-md)] hover:border-[var(--ks-edge)] transition-colors shadow-2xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--ks-patina-deep)] ${className}`}
       >
         <svg
-          className="w-4 h-4 text-blue-600 dark:text-blue-400"
+          className="w-4 h-4 text-[var(--ks-kinpaku-rich)]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -80,7 +80,7 @@ export function PageGuideModal({
         >
           {/* Backdrop overlay */}
           <div
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            className="fixed inset-0 bg-[var(--ks-ink)]/50 backdrop-blur-xs transition-opacity"
             onClick={handleClose}
             aria-hidden="true"
           />
@@ -88,12 +88,12 @@ export function PageGuideModal({
           {/* Modal Container */}
           <div
             ref={modalRef}
-            className="relative w-full max-w-3xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh] z-10 animate-in fade-in zoom-in-95 duration-150"
+            className="relative w-full max-w-3xl bg-[var(--ks-paper-raised)] rounded-[var(--ks-radius-md)] shadow-[var(--ks-lift-2)] border border-[var(--ks-rule)] overflow-hidden flex flex-col max-h-[90vh] z-10 animate-in fade-in zoom-in-95 duration-150"
           >
             {/* Header */}
-            <div className="flex items-start justify-between px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50">
+            <div className="flex items-start justify-between px-6 py-5 border-b border-[var(--ks-rule)] bg-[var(--ks-paper-deep)]">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                <div className="flex items-center justify-center w-10 h-10 rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] border border-[var(--ks-rule)]">
                   <svg
                     className="w-5 h-5"
                     fill="none"
@@ -112,13 +112,13 @@ export function PageGuideModal({
                 <div>
                   <h2
                     id={titleId}
-                    className="text-lg font-semibold text-slate-900 dark:text-white"
+                    className="text-lg font-bold text-[var(--ks-ink)] tracking-tight"
                   >
                     {guide.title}
                   </h2>
                   <p
                     id={descId}
-                    className="text-xs text-slate-500 dark:text-slate-400 mt-0.5"
+                    className="text-xs text-[var(--ks-text-muted)] mt-0.5"
                   >
                     {guide.subtitle}
                   </p>
@@ -130,7 +130,7 @@ export function PageGuideModal({
                 type="button"
                 onClick={handleClose}
                 aria-label="Tutup panduan"
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors dark:hover:text-slate-200 dark:hover:bg-slate-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="p-1.5 text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper-raised)] rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--ks-patina-deep)]"
               >
                 <svg
                   className="w-5 h-5"
@@ -152,21 +152,21 @@ export function PageGuideModal({
             {/* Scrollable Body with 5 Sections */}
             <div className="p-6 space-y-6 overflow-y-auto">
               {/* Section 1: Penjelasan Tujuan */}
-              <section className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-300 flex items-center gap-2 mb-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-400" />
+              <section className="bg-[var(--ks-paper-deep)] border border-[var(--ks-rule)] rounded-[var(--ks-radius-md)] p-4">
+                <h3 className="text-sm font-bold text-[var(--ks-ink)] flex items-center gap-2 mb-2">
+                  <span className="w-2 h-2 rounded-full bg-[var(--ks-kinpaku-rich)]" />
                   Tujuan Halaman Ini
                 </h3>
-                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                <p className="text-sm text-[var(--ks-text)] leading-relaxed">
                   {guide.purpose}
                 </p>
               </section>
 
               {/* Section 2: Peran Penanggung Jawab */}
-              <section className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-1.5">
+              <section className="bg-[var(--ks-paper-deep)] border border-[var(--ks-rule)] rounded-[var(--ks-radius-md)] p-4">
+                <h3 className="text-sm font-bold text-[var(--ks-ink)] flex items-center gap-2 mb-1.5">
                   <svg
-                    className="w-4 h-4 text-emerald-600 dark:text-emerald-400"
+                    className="w-4 h-4 text-[var(--ks-patina-deep)]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -181,16 +181,16 @@ export function PageGuideModal({
                   </svg>
                   Peran Penanggung Jawab
                 </h3>
-                <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                <p className="text-sm font-semibold text-[var(--ks-patina-deep)]">
                   {guide.role}
                 </p>
               </section>
 
               {/* Section 3: Langkah Operasional 1-2-3 */}
               <section>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
+                <h3 className="text-sm font-bold text-[var(--ks-ink)] flex items-center gap-2 mb-3">
                   <svg
-                    className="w-4 h-4 text-blue-600 dark:text-blue-400"
+                    className="w-4 h-4 text-[var(--ks-kinpaku-rich)]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -209,16 +209,16 @@ export function PageGuideModal({
                   {guide.steps.map((step) => (
                     <div
                       key={step.step}
-                      className="flex items-start gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                      className="flex items-start gap-3 p-3.5 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)] transition-colors shadow-2xs"
                     >
-                      <div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white font-semibold text-xs flex items-center justify-center mt-0.5">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-[var(--ks-radius-sm)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] font-bold text-xs flex items-center justify-center mt-0.5">
                         {step.step}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-slate-900 dark:text-white">
+                        <h4 className="text-sm font-bold text-[var(--ks-ink)]">
                           {step.title}
                         </h4>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-normal">
+                        <p className="text-xs text-[var(--ks-text-muted)] mt-1 leading-normal">
                           {step.description}
                         </p>
                       </div>
@@ -229,9 +229,9 @@ export function PageGuideModal({
 
               {/* Section 4: Arti Warna Status & Simbol */}
               <section>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
+                <h3 className="text-sm font-bold text-[var(--ks-ink)] flex items-center gap-2 mb-3">
                   <svg
-                    className="w-4 h-4 text-purple-600 dark:text-purple-400"
+                    className="w-4 h-4 text-[var(--ks-text-faint)]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -250,14 +250,14 @@ export function PageGuideModal({
                   {guide.badgeMeanings.map((b, idx) => (
                     <div
                       key={idx}
-                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex flex-col gap-1.5"
+                      className="p-3 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] bg-[var(--ks-paper-deep)] flex flex-col gap-1.5"
                     >
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium w-fit ${b.color}`}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-[var(--ks-radius-pill)] text-xs font-semibold w-fit ${b.color}`}
                       >
                         {b.label}
                       </span>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 leading-normal">
+                      <p className="text-xs text-[var(--ks-text-muted)] leading-normal">
                         {b.description}
                       </p>
                     </div>
@@ -267,9 +267,9 @@ export function PageGuideModal({
 
               {/* Section 5: Solusi Masalah Umum (FAQ) */}
               <section>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2 mb-3">
+                <h3 className="text-sm font-bold text-[var(--ks-ink)] flex items-center gap-2 mb-3">
                   <svg
-                    className="w-4 h-4 text-amber-600 dark:text-amber-400"
+                    className="w-4 h-4 text-[#d97706]"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -288,16 +288,16 @@ export function PageGuideModal({
                   {guide.faqs.map((faq, idx) => (
                     <div
                       key={idx}
-                      className="p-3.5 rounded-xl border border-amber-200/60 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20"
+                      className="p-3.5 rounded-[var(--ks-radius-md)] border border-[var(--ks-amber)]/30 bg-[var(--ks-amber)]/5"
                     >
-                      <h4 className="text-xs font-semibold text-slate-900 dark:text-white flex items-start gap-1.5">
-                        <span className="text-amber-600 dark:text-amber-400 font-bold">
+                      <h4 className="text-xs font-bold text-[var(--ks-ink)] flex items-start gap-1.5">
+                        <span className="text-[var(--ks-amber-deep)] font-bold">
                           Q:
                         </span>
                         <span>{faq.question}</span>
                       </h4>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 pl-4 leading-normal">
-                        <strong className="text-slate-700 dark:text-slate-300 font-medium">
+                      <p className="text-xs text-[var(--ks-text-muted)] mt-1 pl-4 leading-normal">
+                        <strong className="text-[var(--ks-text)] font-semibold">
                           Solusi:{" "}
                         </strong>
                         {faq.answer}
@@ -309,11 +309,11 @@ export function PageGuideModal({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+            <div className="flex items-center justify-end px-6 py-4 border-t border-[var(--ks-rule)] bg-[var(--ks-paper-deep)]">
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="ks-btn px-4 py-2 text-xs font-semibold text-[var(--ks-paper-raised)] bg-[var(--ks-ink)] hover:bg-[var(--ks-text)] rounded-[var(--ks-radius-sm)] shadow-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--ks-patina-deep)]"
               >
                 {idDict.common.close}
               </button>
@@ -324,4 +324,3 @@ export function PageGuideModal({
     </>
   );
 }
-

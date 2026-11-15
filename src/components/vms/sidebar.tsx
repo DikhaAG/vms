@@ -1,10 +1,12 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { idDict, type NavigationItem, type NavIconKey } from "@/lib/vms/i18n/id";
+import type { Facility } from "@/lib/vms/vms-contract";
 import { useSafePathname } from "./use-safe-pathname";
 import { useModalFocusTrap } from "./use-modal-focus-trap";
+import { getTimezoneAbbreviation } from "./header";
 
 export interface SidebarProps {
   currentPath?: string;
@@ -12,6 +14,9 @@ export interface SidebarProps {
   onToggleCollapse?: () => void;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
+  facilities?: Facility[];
+  selectedFacilityId?: string;
+  selectedFacility?: Facility;
 }
 
 function renderNavIcon(icon: NavIconKey) {
@@ -73,10 +78,48 @@ export function Sidebar({
   onToggleCollapse,
   mobileOpen = false,
   onCloseMobile,
+  facilities = [],
+  selectedFacilityId,
+  selectedFacility,
 }: SidebarProps) {
   const activePath = useSafePathname(propPath);
   const groups = Object.entries(idDict.navigation.groups);
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  const activeFacility =
+    selectedFacility ||
+    facilities.find((f) => f.id === selectedFacilityId) ||
+    facilities[0] || {
+      id: "fac-jakarta",
+      name: "Jakarta Corporate HQ",
+      timezone: "Asia/Jakarta",
+    };
+
+  const tz = activeFacility.timezone || "Asia/Jakarta";
+  const tzAbbr = getTimezoneAbbreviation(tz);
+  const [currentTime, setCurrentTime] = useState<string>("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      try {
+        const now = new Date();
+        const formatted = new Intl.DateTimeFormat("id-ID", {
+          timeZone: tz,
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).format(now);
+        setCurrentTime(formatted);
+      } catch {
+        setCurrentTime(new Date().toLocaleTimeString());
+      }
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, [tz]);
 
   // Keyboard navigation & focus trapping for mobile drawer
   useModalFocusTrap({
@@ -90,7 +133,7 @@ export function Sidebar({
       {groups.map(([groupKey, group]) => (
         <div key={groupKey}>
           {(!collapsed || isDrawer) && (
-            <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+            <h3 className="px-3 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--ks-text-faint)] mb-2">
               {group.title}
             </h3>
           )}
@@ -104,17 +147,17 @@ export function Sidebar({
                   onClick={isDrawer ? onCloseMobile : undefined}
                   aria-current={isActive ? "page" : undefined}
                   title={item.title}
-                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-[var(--ks-radius-md)] text-sm font-medium transition-all ${
                     isActive
-                      ? "bg-blue-50/90 text-blue-700 font-semibold ring-1 ring-blue-500/20 dark:bg-blue-950/60 dark:text-blue-300 dark:ring-blue-400/30 shadow-2xs"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60"
+                      ? "bg-[var(--ks-paper-deep)] text-[var(--ks-ink)] font-semibold shadow-2xs border-l-2 border-[var(--ks-kinpaku-rich)]"
+                      : "text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper-deep)]/60"
                   }`}
                 >
                   <span
                     className={
                       isActive
-                        ? "text-blue-600 dark:text-blue-400"
-                        : "text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 transition-colors"
+                        ? "text-[var(--ks-kinpaku-deep)]"
+                        : "text-[var(--ks-text-faint)] group-hover:text-[var(--ks-ink)] transition-colors"
                     }
                   >
                     {renderNavIcon(item.icon)}
@@ -135,57 +178,90 @@ export function Sidebar({
     <>
       {/* Desktop Sidebar (visible on lg screens) */}
       <aside
-        className={`hidden lg:flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-200 z-30 shrink-0 ${
+        className={`hidden lg:flex flex-col bg-[var(--ks-paper-raised)] border-r border-[var(--ks-rule)] transition-all duration-200 z-30 shrink-0 ${
           collapsed ? "w-18" : "w-64"
         }`}
       >
         {/* Brand / Logo */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-800">
+        <div
+          className={`h-16 px-4 border-b border-[var(--ks-rule)] flex items-center ${
+            collapsed ? "justify-center px-2" : ""
+          }`}
+        >
           {!collapsed ? (
-            <Link href="/vms/reception" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-blue-700 flex items-center justify-center text-white font-bold text-sm shadow-xs ring-1 ring-white/20">
+            <Link href="/vms/reception" className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] flex items-center justify-center font-bold text-sm shadow-xs border border-[var(--ks-rule)] shrink-0">
                 VMS
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                <span className="text-sm font-bold text-[var(--ks-ink)] truncate tracking-tight">
                   {idDict.appName}
                 </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                <span className="text-[10px] text-[var(--ks-text-muted)] truncate">
                   {idDict.appShortName}
                 </span>
               </div>
             </Link>
           ) : (
-            <div className="mx-auto w-9 h-9 rounded-xl bg-blue-700 flex items-center justify-center text-white font-bold text-sm shadow-xs ring-1 ring-white/20">
-              V
-            </div>
-          )}
-
-          {/* Collapse Toggle Button */}
-          <button
-            type="button"
-            onClick={onToggleCollapse}
-            aria-label={collapsed ? idDict.navigation.expandMenu : idDict.navigation.collapseMenu}
-            aria-expanded={!collapsed}
-            className={`p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors dark:hover:text-slate-200 dark:hover:bg-slate-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 ${
-              collapsed ? "mx-auto mt-2" : ""
-            }`}
-          >
-            <svg
-              className={`w-4 h-4 transition-transform duration-200 ${collapsed ? "rotate-180" : ""}`}
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
+            <Link
+              href="/vms/reception"
+              title={idDict.appName}
+              className="flex items-center justify-center"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-          </button>
+              <div className="w-9 h-9 rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] flex items-center justify-center font-bold text-sm shadow-xs border border-[var(--ks-rule)]">
+                V
+              </div>
+            </Link>
+          )}
         </div>
 
         {/* Scrollable Navigation */}
         <div className="flex-1 px-3 py-4 overflow-y-auto">
           {renderNavLinks(false)}
+        </div>
+
+        {/* Bottom Footer Dock: Ergonomic Collapse/Expand Toggle */}
+        <div className="mt-auto border-t border-[var(--ks-rule)] p-2">
+          {collapsed ? (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label={idDict.navigation.expandMenu}
+              aria-expanded={false}
+              title={idDict.navigation.expandMenu}
+              className="w-full flex items-center justify-center p-2 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper-deep)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--ks-patina-deep)]"
+            >
+              <svg
+                className="w-4 h-4 rotate-180"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label={idDict.navigation.collapseMenu}
+              aria-expanded={true}
+              title={idDict.navigation.collapseMenu}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] text-xs font-semibold text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper-deep)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--ks-patina-deep)]"
+            >
+              <svg
+                className="w-4 h-4 shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+              </svg>
+              <span className="truncate">{idDict.navigation.collapseMenu}</span>
+            </button>
+          )}
         </div>
       </aside>
 
@@ -207,19 +283,19 @@ export function Sidebar({
           {/* Drawer Sheet */}
           <div
             ref={drawerRef}
-            className="relative flex flex-col w-72 max-w-[80vw] bg-white dark:bg-slate-900 shadow-2xl border-r border-slate-200 dark:border-slate-800 z-10 animate-in slide-in-from-left duration-200"
+            className="relative flex flex-col w-72 max-w-[80vw] bg-[var(--ks-paper-raised)] shadow-[var(--ks-lift-2)] border-r border-[var(--ks-rule)] z-10 animate-in slide-in-from-left duration-200"
           >
             {/* Drawer Header */}
-            <div className="flex items-center justify-between h-16 px-4 border-b border-slate-200 dark:border-slate-800">
-              <Link href="/vms/reception" onClick={onCloseMobile} className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-xs">
+            <div className="flex items-center justify-between h-16 px-4 border-b border-[var(--ks-rule)]">
+              <Link href="/vms/reception" onClick={onCloseMobile} className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] flex items-center justify-center font-bold text-xs shadow-xs border border-[var(--ks-rule)] shrink-0">
                   VMS
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                  <span className="text-sm font-bold text-[var(--ks-ink)] truncate tracking-tight">
                     {idDict.appName}
                   </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                  <span className="text-[10px] text-[var(--ks-text-muted)] truncate">
                     {idDict.appShortName}
                   </span>
                 </div>
@@ -229,12 +305,37 @@ export function Sidebar({
                 type="button"
                 onClick={onCloseMobile}
                 aria-label="Tutup menu navigasi"
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors dark:hover:text-slate-200 dark:hover:bg-slate-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="p-1.5 text-[var(--ks-text-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper-deep)] rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule)] transition-colors shrink-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--ks-patina-deep)]"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
+            </div>
+
+            {/* Mobile Drawer Telemetry Block (Active Facility + Live Clock) */}
+            <div className="px-4 py-3 bg-[var(--ks-paper-deep)]/80 border-b border-[var(--ks-rule)]">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <svg className="w-4 h-4 text-[var(--ks-text-faint)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <span className="text-xs font-semibold text-[var(--ks-ink)] truncate" title={activeFacility.name}>
+                    {activeFacility.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-[var(--ks-text-muted)] shrink-0">
+                  <span
+                    suppressHydrationWarning
+                    className="font-mono tabular-nums text-[var(--ks-ink)] font-semibold"
+                  >
+                    {currentTime || "--:--:--"}
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-[var(--ks-radius-sm)] bg-[var(--ks-gray-2)] text-[10px] font-bold text-[var(--ks-ink)]">
+                    {tzAbbr}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Drawer Links */}

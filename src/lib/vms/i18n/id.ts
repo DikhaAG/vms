@@ -105,8 +105,8 @@ export const idDict = {
 
   navigation: {
     toggleSidebar: "Buka / Tutup Menu Navigasi",
-    collapseMenu: "Ciutkan Navigasi",
-    expandMenu: "Bentangkan Navigasi",
+    collapseMenu: "Ciutkan Menu",
+    expandMenu: "Bentangkan Menu",
     groups: {
       mainOperations: {
         title: "Operasional Utama",
@@ -176,6 +176,9 @@ export const idDict = {
     facilityTimezoneHint: "Waktu lokal fasilitas",
     systemConnected: "Sistem Pintu Terhubung",
     systemDisconnected: "Koneksi Terminal Terputus",
+    systemChecking: "Memeriksa Gateway...",
+    systemConfigIncomplete: "Konfigurasi Belum Lengkap",
+    liveMonitoring: "Live Monitoring",
     operatorRole: "Petugas Resepsionis Lobi",
     operatorGreeting: "Selamat Datang,",
     notifications: "Pemberitahuan Sistem",

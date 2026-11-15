@@ -10,7 +10,7 @@ import {
   type TimeScheduleTemplateId,
 } from "@/lib/vms/access-level-contract";
 import { idDict } from "@/lib/vms/i18n/id";
-import { useModalFocusTrap } from "@/components/vms/use-modal-focus-trap";
+import { UiModal, UiButton } from "@/components/vms/ui";
 
 const COMMON_FLOOR_PRESETS = ["B1", "1F", "2F", "3F", "4F", "5F"];
 
@@ -52,7 +52,7 @@ export function AccessLevelFormModal({
   onSave,
 }: AccessLevelFormModalProps) {
   const formId = useId();
-  const modalRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
 
   const [targetFacilityId, setTargetFacilityId] = useState(() => {
     if (editingLevel) return editingLevel.facilityId;
@@ -81,13 +81,6 @@ export function AccessLevelFormModal({
     Boolean(editingLevel?.isDefault),
   );
   const [localErrors, setLocalErrors] = useState<Record<string, string>>({});
-
-  // Keyboard navigation: Escape key closes modal & Tab focus trap
-  useModalFocusTrap({
-    ref: modalRef,
-    isOpen,
-    onClose,
-  });
 
   if (!isOpen) return null;
 
@@ -166,349 +159,333 @@ export function AccessLevelFormModal({
   };
 
   return (
-    <div
-      ref={modalRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="accessLevelModalTitle"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 p-4 backdrop-blur-xs"
+    <UiModal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      title={
+        editingLevel
+          ? "Ubah Kelompok Hak Akses"
+          : "Buat Kelompok Hak Akses Baru"
+      }
+      closeLabel="Tutup form modal"
+      initialFocusRef={nameInputRef}
+      className="max-h-[90vh] overflow-y-auto"
     >
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-xl">
-        <div className="flex items-center justify-between border-b border-neutral-100 dark:border-slate-800 pb-3">
-          <h2
-            id="accessLevelModalTitle"
-            className="text-base font-bold text-neutral-950 dark:text-white"
+      <form onSubmit={handleSubmit} className="mt-4 space-y-4" id={formId}>
+        <div>
+          <label
+            htmlFor={`${formId}-target-facility`}
+            className="block text-xs font-medium text-[var(--ks-muted)]"
           >
-            {editingLevel
-              ? "Ubah Kelompok Hak Akses"
-              : "Buat Kelompok Hak Akses Baru"}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-neutral-400 hover:text-neutral-600 dark:hover:text-slate-200 text-lg leading-none"
-            aria-label="Tutup form modal"
+            Gedung / Lokasi Fasilitas *
+          </label>
+          <select
+            id={`${formId}-target-facility`}
+            value={targetFacilityId}
+            onChange={(e) => setTargetFacilityId(e.target.value)}
+            className="mt-1 block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs focus:border-[var(--ks-kinpaku)] focus:outline-hidden"
           >
-            &times;
-          </button>
+            {facilities.map((fac) => (
+              <option key={fac.id} value={fac.id}>
+                {fac.name} ({fac.timezone})
+              </option>
+            ))}
+          </select>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label
-              htmlFor={`${formId}-target-facility`}
-              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
+        <div>
+          <label
+            htmlFor={`${formId}-name`}
+            className="block text-xs font-medium text-[var(--ks-muted)]"
+          >
+            Nama Kelompok Hak Akses * (maks 32 karakter)
+          </label>
+          <input
+            ref={nameInputRef}
+            id={`${formId}-name`}
+            type="text"
+            maxLength={32}
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="cth. Pintu Putar Lobi & Lantai 1"
+            className={`mt-1 block w-full rounded-[var(--ks-radius-md)] border px-3 py-2 text-sm text-[var(--ks-ink)] bg-[var(--ks-paper)] shadow-xs focus:outline-hidden ${
+              mergedErrors.name
+                ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)]"
+                : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-kinpaku)]"
+            }`}
+          />
+          {mergedErrors.name ? (
+            <p className="mt-1 text-xs text-[var(--ks-vermilion)]">{mergedErrors.name}</p>
+          ) : null}
+        </div>
+
+        <div>
+          <label
+            htmlFor={`${formId}-desc`}
+            className="block text-xs font-medium text-[var(--ks-muted)]"
+          >
+            Deskripsi (maks 128 karakter)
+          </label>
+          <input
+            id={`${formId}-desc`}
+            type="text"
+            maxLength={128}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="cth. Izin masuk standar gerbang lobi dan pintu putar resepsionis"
+            className="mt-1 block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs focus:border-[var(--ks-kinpaku)] focus:outline-hidden"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor={`${formId}-schedule`}
+            className="block text-xs font-medium text-[var(--ks-muted)]"
+          >
+            Template Jadwal Waktu Akses *
+          </label>
+          <select
+            id={`${formId}-schedule`}
+            value={timeScheduleId}
+            onChange={(e) =>
+              setTimeScheduleId(
+                Number(e.target.value) as TimeScheduleTemplateId,
+              )
+            }
+            className="mt-1 block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs focus:border-[var(--ks-kinpaku)] focus:outline-hidden"
+          >
+            {TIME_SCHEDULE_TEMPLATES.map((tmpl) => (
+              <option key={tmpl} value={tmpl}>
+                {idDict.timeSchedules[tmpl] ?? TIME_SCHEDULE_LABELS[tmpl]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Authoritative Doors Selection from HikCentral */}
+        <div>
+          <div className="flex items-center justify-between">
+            <span className="block text-xs font-medium text-[var(--ks-muted)]">
+              Daftar Pintu Fisik Server HikCentral * (minimal 1 pintu)
+            </span>
+            <button
+              type="button"
+              onClick={onSyncDoors}
+              disabled={isSyncingDoors}
+              className="text-2xs font-semibold text-[var(--ks-patina)] hover:text-[var(--ks-patina-deep)] hover:underline inline-flex items-center gap-1 disabled:opacity-50 cursor-pointer"
             >
-              Gedung / Lokasi Fasilitas *
-            </label>
-            <select
-              id={`${formId}-target-facility`}
-              value={targetFacilityId}
-              onChange={(e) => setTargetFacilityId(e.target.value)}
-              className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
-            >
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id}>
-                  {fac.name} ({fac.timezone})
-                </option>
-              ))}
-            </select>
+              <span aria-hidden="true">{isSyncingDoors ? "⏳" : "🔄"}</span>
+              <span>{isSyncingDoors ? "Menyinkronkan..." : "Sinkronkan Pintu"}</span>
+            </button>
           </div>
 
-          <div>
-            <label
-              htmlFor={`${formId}-name`}
-              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
-            >
-              Nama Kelompok Hak Akses * (maks 32 karakter)
-            </label>
-            <input
-              id={`${formId}-name`}
-              type="text"
-              maxLength={32}
-              autoCorrect="off"
-              autoCapitalize="none"
-              spellCheck={false}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="cth. Pintu Putar Lobi & Lantai 1"
-              className={`mt-1 block w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 dark:text-white dark:bg-slate-800 shadow-xs focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500 ${
-                mergedErrors.name
-                  ? "border-rose-300 focus:border-rose-500"
-                  : "border-neutral-300 dark:border-slate-700 focus:border-neutral-900 dark:focus:border-blue-500"
-              }`}
-            />
-            {mergedErrors.name ? (
-              <p className="mt-1 text-xs text-rose-600">{mergedErrors.name}</p>
-            ) : null}
-          </div>
-
-          <div>
-            <label
-              htmlFor={`${formId}-desc`}
-              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
-            >
-              Deskripsi (maks 128 karakter)
-            </label>
-            <input
-              id={`${formId}-desc`}
-              type="text"
-              maxLength={128}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="cth. Izin masuk standar gerbang lobi dan pintu putar resepsionis"
-              className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor={`${formId}-schedule`}
-              className="block text-xs font-medium text-neutral-700 dark:text-slate-300"
-            >
-              Template Jadwal Waktu Akses *
-            </label>
-            <select
-              id={`${formId}-schedule`}
-              value={timeScheduleId}
-              onChange={(e) =>
-                setTimeScheduleId(
-                  Number(e.target.value) as TimeScheduleTemplateId,
-                )
-              }
-              className="mt-1 block w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
-            >
-              {TIME_SCHEDULE_TEMPLATES.map((tmpl) => (
-                <option key={tmpl} value={tmpl}>
-                  {idDict.timeSchedules[tmpl] ?? TIME_SCHEDULE_LABELS[tmpl]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Authoritative Doors Selection from HikCentral */}
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-medium text-neutral-700 dark:text-slate-300">
-                Daftar Pintu Fisik Server HikCentral * (minimal 1 pintu)
-              </label>
-              <button
-                type="button"
-                onClick={onSyncDoors}
-                disabled={isSyncingDoors}
-                className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
-              >
-                <span>{isSyncingDoors ? "⏳" : "🔄"}</span>
-                {isSyncingDoors ? "Menyinkronkan..." : "Sinkronkan Pintu"}
-              </button>
-            </div>
-
-            {/* Selected Doors Badges */}
-            <div className="mt-1 flex flex-wrap gap-1.5 rounded-lg border border-neutral-300 dark:border-slate-700 p-2 min-h-[38px] bg-neutral-50/50 dark:bg-slate-800/40">
-              {doors.length === 0 ? (
-                <span className="text-xs text-neutral-400">
-                  Belum ada pintu yang dipilih. Pilih pintu dari daftar di bawah.
-                </span>
-              ) : (
-                doors.map((doorCode) => {
-                  const matchedDoor = availableDoors.find(
-                    (d) =>
-                      d.doorIndexCode === doorCode || d.doorName === doorCode,
-                  );
-                  const label = matchedDoor ? matchedDoor.doorName : doorCode;
-                  const code = matchedDoor
-                    ? matchedDoor.doorIndexCode
-                    : doorCode;
-                  return (
-                    <span
-                      key={doorCode}
-                      className="inline-flex items-center gap-1.5 rounded-md bg-neutral-900 dark:bg-blue-600 px-2 py-0.5 text-xs text-white"
-                    >
-                      <span>{label}</span>
-                      <span className="text-[10px] text-neutral-300 dark:text-blue-200">
-                        #{code}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDoor(doorCode)}
-                        className="text-neutral-400 hover:text-white"
-                        aria-label={`Hapus ${label}`}
-                      >
-                        &times;
-                      </button>
+          {/* Selected Doors Badges */}
+          <div className="mt-1 flex flex-wrap gap-1.5 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] p-2 min-h-[38px] bg-[var(--ks-paper-deep)]">
+            {doors.length === 0 ? (
+              <span className="text-xs text-[var(--ks-muted)]">
+                Belum ada pintu yang dipilih. Pilih pintu dari daftar di bawah.
+              </span>
+            ) : (
+              doors.map((doorCode) => {
+                const matchedDoor = availableDoors.find(
+                  (d) =>
+                    d.doorIndexCode === doorCode || d.doorName === doorCode,
+                );
+                const label = matchedDoor ? matchedDoor.doorName : doorCode;
+                const code = matchedDoor
+                  ? matchedDoor.doorIndexCode
+                  : doorCode;
+                return (
+                  <span
+                    key={doorCode}
+                    className="inline-flex items-center gap-1.5 rounded-[var(--ks-radius-sm)] bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] px-2 py-0.5 text-2xs"
+                  >
+                    <span>{label}</span>
+                    <span className="text-[10px] text-[var(--ks-muted)]">
+                      #{code}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDoor(doorCode)}
+                      className="text-[var(--ks-muted)] hover:text-[var(--ks-paper-raised)] cursor-pointer"
+                      aria-label={`Hapus ${label}`}
+                    >
+                      &times;
+                    </button>
+                  </span>
+                );
+              })
+            )}
+          </div>
+          {mergedErrors.doors ? (
+            <p className="mt-1 text-xs text-[var(--ks-vermilion)]">{mergedErrors.doors}</p>
+          ) : null}
+
+          {/* Door Checklist Box */}
+          <div className="mt-2 space-y-2">
+            <input
+              type="text"
+              value={doorSearchQuery}
+              onChange={(e) => setDoorSearchQuery(e.target.value)}
+              placeholder="Cari pintu gedung..."
+              className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-2.5 py-1 text-xs text-[var(--ks-ink)] placeholder-[var(--ks-muted)] focus:outline-hidden focus:border-[var(--ks-kinpaku)]"
+            />
+
+            <div className="max-h-48 overflow-y-auto rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] divide-y divide-[var(--ks-rule-subtle)]">
+              {displayedAvailableDoors.length === 0 ? (
+                <div className="p-4 text-center">
+                  <p className="text-xs text-[var(--ks-muted)]">
+                    Belum ada pintu terdaftar dari HikCentral.
+                  </p>
+                  <UiButton
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={onSyncDoors}
+                    disabled={isSyncingDoors}
+                    isLoading={isSyncingDoors}
+                    className="mt-2"
+                  >
+                    Sinkronkan Sekarang
+                  </UiButton>
+                </div>
+              ) : (
+                displayedAvailableDoors.map((door) => {
+                  const isChecked =
+                    doors.includes(door.doorIndexCode) ||
+                    doors.includes(door.doorName);
+                  return (
+                    <label
+                      key={door.doorIndexCode}
+                      className={`flex items-center justify-between p-2.5 text-xs cursor-pointer transition hover:bg-[var(--ks-paper-deep)] ${
+                        isChecked ? "bg-[var(--ks-kinpaku)]/10" : ""
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() =>
+                            handleToggleDoor(door.doorIndexCode)
+                          }
+                          className="h-4 w-4 rounded-[var(--ks-radius-sm)] border-[var(--ks-rule)] text-[var(--ks-ink)] accent-[var(--ks-ink)] focus:ring-[var(--ks-kinpaku)]"
+                        />
+                        <div>
+                          <span className="font-semibold text-[var(--ks-ink)]">
+                            {door.doorName}
+                          </span>
+                          <span className="ml-1.5 text-[10px] text-[var(--ks-muted)]">
+                            #{door.doorIndexCode}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {door.isPerimeter ? (
+                          <span className="rounded-[var(--ks-radius-sm)] bg-[var(--ks-patina)]/15 border border-[var(--ks-patina)]/30 text-[var(--ks-patina-deep)] px-1.5 py-0.5 text-2xs font-semibold">
+                            Perimeter
+                          </span>
+                        ) : (
+                          <span className="rounded-[var(--ks-radius-sm)] bg-[var(--ks-paper-deep)] border border-[var(--ks-rule-subtle)] text-[var(--ks-muted)] px-1.5 py-0.5 text-2xs font-medium">
+                            Interior
+                          </span>
+                        )}
+                        <span className="rounded-[var(--ks-radius-sm)] bg-[var(--ks-paper-deep)] border border-[var(--ks-rule-subtle)] text-[var(--ks-muted)] px-1.5 py-0.5 text-2xs font-medium">
+                          {door.accessType === "SINGLE_DIRECTION_IN"
+                            ? "1-Arah In"
+                            : "2-Arah"}
+                        </span>
+                      </div>
+                    </label>
                   );
                 })
               )}
             </div>
-            {mergedErrors.doors ? (
-              <p className="mt-1 text-xs text-rose-600">{mergedErrors.doors}</p>
-            ) : null}
+          </div>
+        </div>
 
-            {/* Door Checklist Box */}
-            <div className="mt-2 space-y-2">
-              <input
-                type="text"
-                value={doorSearchQuery}
-                onChange={(e) => setDoorSearchQuery(e.target.value)}
-                placeholder="Cari pintu gedung..."
-                className="w-full rounded-md border border-neutral-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-xs text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-hidden focus:ring-1 focus:ring-blue-500"
-              />
-
-              <div className="max-h-48 overflow-y-auto rounded-lg border border-neutral-200 dark:border-slate-700 bg-white dark:bg-slate-800 divide-y divide-neutral-100 dark:divide-slate-700/50">
-                {displayedAvailableDoors.length === 0 ? (
-                  <div className="p-4 text-center">
-                    <p className="text-xs text-neutral-500 dark:text-slate-400">
-                      Belum ada pintu terdaftar dari HikCentral.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={onSyncDoors}
-                      disabled={isSyncingDoors}
-                      className="mt-2 inline-flex items-center gap-1 rounded-md bg-neutral-900 dark:bg-blue-600 px-2.5 py-1 text-xs font-medium text-white shadow-xs hover:bg-neutral-800 dark:hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      {isSyncingDoors
-                        ? "Menyinkronkan..."
-                        : "Sinkronkan Sekarang"}
-                    </button>
-                  </div>
-                ) : (
-                  displayedAvailableDoors.map((door) => {
-                    const isChecked =
-                      doors.includes(door.doorIndexCode) ||
-                      doors.includes(door.doorName);
-                    return (
-                      <label
-                        key={door.doorIndexCode}
-                        className={`flex items-center justify-between p-2.5 text-xs cursor-pointer transition hover:bg-neutral-50 dark:hover:bg-slate-700/40 ${
-                          isChecked ? "bg-blue-50/60 dark:bg-blue-950/20" : ""
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() =>
-                              handleToggleDoor(door.doorIndexCode)
-                            }
-                            className="h-4 w-4 rounded border-neutral-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <div>
-                            <span className="font-semibold text-neutral-900 dark:text-white">
-                              {door.doorName}
-                            </span>
-                            <span className="ml-1.5 text-[10px] text-neutral-400">
-                              #{door.doorIndexCode}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          {door.isPerimeter ? (
-                            <span className="rounded-sm bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 px-1.5 py-0.5 text-[10px] font-medium">
-                              Perimeter
-                            </span>
-                          ) : (
-                            <span className="rounded-sm bg-neutral-100 dark:bg-slate-700 text-neutral-600 dark:text-slate-300 px-1.5 py-0.5 text-[10px]">
-                              Interior
-                            </span>
-                          )}
-                          <span className="rounded-sm bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 text-[10px]">
-                            {door.accessType === "SINGLE_DIRECTION_IN"
-                              ? "1-Arah In"
-                              : "2-Arah"}
-                          </span>
-                        </div>
-                      </label>
-                    );
-                  })
-                )}
-              </div>
-            </div>
+        {/* Floors Management */}
+        <div>
+          <span className="block text-xs font-medium text-[var(--ks-muted)]">
+            Akses Lantai Lift (Opsional)
+          </span>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {COMMON_FLOOR_PRESETS.map((fl) => {
+              const active = floors.includes(fl);
+              return (
+                <button
+                  key={fl}
+                  type="button"
+                  onClick={() => handleToggleFloor(fl)}
+                  className={`rounded-[var(--ks-radius-sm)] px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                    active
+                      ? "bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] shadow-xs"
+                      : "border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] text-[var(--ks-ink)] hover:bg-[var(--ks-paper)]"
+                  }`}
+                >
+                  {fl}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Floors Management */}
-          <div>
-            <label className="block text-xs font-medium text-neutral-700 dark:text-slate-300">
-              Akses Lantai Lift (Opsional)
-            </label>
-            <div className="mt-1 flex flex-wrap gap-1">
-              {COMMON_FLOOR_PRESETS.map((fl) => {
-                const active = floors.includes(fl);
-                return (
-                  <button
-                    key={fl}
-                    type="button"
-                    onClick={() => handleToggleFloor(fl)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${
-                      active
-                        ? "bg-blue-600 text-white"
-                        : "border border-neutral-200 dark:border-slate-700 bg-neutral-50 dark:bg-slate-800 text-neutral-700 dark:text-slate-300 hover:bg-neutral-100 dark:hover:bg-slate-700"
-                    }`}
-                  >
-                    {fl}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-2 flex gap-2">
-              <input
-                type="text"
-                value={newFloorInput}
-                onChange={(e) => setNewFloorInput(e.target.value)}
-                placeholder="Lantai khusus (cth. Atap, Mezanin)..."
-                className="flex-1 rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs text-neutral-900 dark:text-white shadow-xs focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-blue-500"
-              />
-              <button
-                type="button"
-                onClick={handleAddCustomFloor}
-                className="rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-neutral-800 dark:text-slate-200 transition hover:bg-neutral-50 dark:hover:bg-slate-700"
-              >
-                Tambah Lantai
-              </button>
-            </div>
-          </div>
-
-          {/* Default Checkbox */}
-          <div className="flex items-center gap-2 pt-2">
+          <div className="mt-2 flex gap-2">
             <input
-              id={`${formId}-is-default`}
-              type="checkbox"
-              checked={isDefault}
-              onChange={(e) => setIsDefault(e.target.checked)}
-              className="h-4 w-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
+              type="text"
+              value={newFloorInput}
+              onChange={(e) => setNewFloorInput(e.target.value)}
+              placeholder="Lantai khusus (cth. Atap, Mezanin)..."
+              className="flex-1 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs text-[var(--ks-ink)] shadow-xs focus:border-[var(--ks-kinpaku)] focus:outline-hidden"
             />
-            <label
-              htmlFor={`${formId}-is-default`}
-              className="text-xs font-medium text-neutral-700 dark:text-slate-300"
-            >
-              Jadikan kelompok hak akses standar untuk tamu baru
-            </label>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 border-t border-neutral-100 dark:border-slate-800 pt-4">
-            <button
+            <UiButton
               type="button"
-              onClick={onClose}
-              className="rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-neutral-700 dark:text-slate-200 transition hover:bg-neutral-50 dark:hover:bg-slate-700"
+              variant="secondary"
+              size="sm"
+              onClick={handleAddCustomFloor}
             >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex min-h-9 items-center justify-center rounded-lg bg-neutral-900 dark:bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-neutral-800 dark:hover:bg-blue-700 disabled:opacity-50"
-            >
-              {isSubmitting
-                ? "Menyimpan..."
-                : editingLevel
-                  ? "Simpan Perubahan"
-                  : "Buat Hak Akses"}
-            </button>
+              Tambah Lantai
+            </UiButton>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+
+        {/* Default Checkbox */}
+        <div className="flex items-center gap-2 pt-2">
+          <input
+            id={`${formId}-is-default`}
+            type="checkbox"
+            checked={isDefault}
+            onChange={(e) => setIsDefault(e.target.checked)}
+            className="h-4 w-4 rounded-[var(--ks-radius-sm)] border-[var(--ks-rule)] text-[var(--ks-ink)] accent-[var(--ks-ink)] focus:ring-[var(--ks-kinpaku)]"
+          />
+          <label
+            htmlFor={`${formId}-is-default`}
+            className="text-xs font-medium text-[var(--ks-ink)]"
+          >
+            Jadikan kelompok hak akses standar untuk tamu baru
+          </label>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 border-t border-[var(--ks-rule-subtle)] pt-4">
+          <UiButton
+            type="button"
+            variant="secondary"
+            onClick={onClose}
+          >
+            Batal
+          </UiButton>
+          <UiButton
+            type="submit"
+            variant="primary"
+            isLoading={isSubmitting}
+          >
+            {editingLevel ? "Simpan Perubahan" : "Buat Hak Akses"}
+          </UiButton>
+        </div>
+      </form>
+    </UiModal>
   );
 }

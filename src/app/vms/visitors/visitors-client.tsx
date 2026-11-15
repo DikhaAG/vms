@@ -1,10 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import type { VisitorProfile } from "@/lib/vms/group-contract";
 import { CERTIFICATE_TYPE_LABELS, type CertificateType } from "@/lib/vms/vms-contract";
 import { idDict } from "@/lib/vms/i18n/id";
+import {
+  UiButton,
+  UiCard,
+  UiKpiCard,
+  UiKpiGrid,
+  UiFilterToolbar,
+  UiBadge,
+  UiModal,
+} from "@/components/vms/ui";
 
 interface VisitorsClientProps {
   initialProfiles: VisitorProfile[];
@@ -27,17 +36,6 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
   const [deleteReason, setDeleteReason] = useState(
     "Permintaan penghapusan data pribadi oleh pemilik identitas sesuai kepatuhan UU PDP",
   );
-
-  useEffect(() => {
-    if (!selectedForDelete) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setSelectedForDelete(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedForDelete]);
 
   const activeCount = profiles.filter((p) => !p.isDeleted).length;
   const deletedCount = profiles.filter((p) => p.isDeleted).length;
@@ -100,78 +98,86 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
 
   return (
     <div className="space-y-6">
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-xs">
-          <p className="text-xs font-medium text-neutral-500 dark:text-slate-400">Total Basis Data Tamu</p>
-          <p className="mt-2 text-2xl font-bold text-neutral-900 dark:text-white">{profiles.length}</p>
-          <p className="mt-1 text-[11px] text-neutral-500 dark:text-slate-400">
-            Tersimpan aman dalam basis data aplikasi VMS
-          </p>
-        </div>
+      {/* Metric Summary Cards */}
+      <UiKpiGrid className="grid-cols-1 sm:grid-cols-3">
+        <UiKpiCard
+          label="Total Basis Data Tamu"
+          value={profiles.length}
+          description="Tersimpan aman dalam basis data aplikasi VMS"
+          indicator="neutral"
+        />
 
-        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30 p-5 shadow-xs">
-          <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
-            Profil Aktif (Siap Auto-fill)
-          </p>
-          <p className="mt-2 text-2xl font-bold text-emerald-950 dark:text-emerald-100">{activeCount}</p>
-          <p className="mt-1 text-[11px] text-emerald-700 dark:text-emerald-400">
-            Pengenalan 1-klik untuk tamu yang datang kembali
-          </p>
-        </div>
+        <UiKpiCard
+          label="Profil Aktif (Siap Auto-fill)"
+          value={activeCount}
+          description="Pengenalan 1-klik untuk tamu yang datang kembali"
+          indicator="patina"
+        />
 
-        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/30 p-5 shadow-xs">
-          <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-            Arsip PDP / Terhapus Halus
-          </p>
-          <p className="mt-2 text-2xl font-bold text-amber-950 dark:text-amber-100">{deletedCount}</p>
-          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
-            Dikecualikan dari auto-fill; log audit tetap terjaga
-          </p>
-        </div>
-      </div>
+        <UiKpiCard
+          label="Arsip PDP / Terhapus Halus"
+          value={deletedCount}
+          description="Dikecualikan dari auto-fill; log audit tetap terjaga"
+          indicator="amber"
+        />
+      </UiKpiGrid>
 
       {feedback && (
         <div
           role="status"
-          className={`rounded-xl border p-4 text-sm ${
+          className={`flex items-start justify-between rounded-[var(--ks-radius-md)] p-4 text-xs ${
             feedback.type === "success"
-              ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300"
-              : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300"
+              ? "border border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/10 text-[var(--ks-ink)]"
+              : "border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/10 text-[var(--ks-vermilion)]"
           }`}
         >
-          {feedback.message}
+          <div className="flex items-center gap-2">
+            <span>{feedback.message}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFeedback(null)}
+            className="p-1 text-[var(--ks-muted)] hover:text-[var(--ks-ink)] rounded-md cursor-pointer transition-colors"
+            aria-label="Tutup notifikasi"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
         </div>
       )}
 
       {/* Filter and Search Bar */}
-      <div className="rounded-xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs flex flex-wrap items-center justify-between gap-4">
-        <div className="flex-1 min-w-[240px]">
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari berdasarkan nama, nomor NIK/ID, telepon, atau email..."
-            className="w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-neutral-900 dark:text-white placeholder:text-neutral-400 focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
-          />
-        </div>
+      <UiFilterToolbar
+        searchSlot={
+          <div className="relative flex-1 min-w-[240px]">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari berdasarkan nama, nomor NIK/ID, telepon, atau email..."
+              className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] bg-[var(--ks-paper)] px-3 py-2 text-xs sm:text-sm text-[var(--ks-ink)] placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-patina-deep)] focus:outline-hidden"
+            />
+          </div>
+        }
+        actionsSlot={
+          <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-[var(--ks-ink)]">
+            <input
+              type="checkbox"
+              checked={showDeleted}
+              onChange={(e) => setShowDeleted(e.target.checked)}
+              className="rounded-[var(--ks-radius-xs)] border-[var(--ks-rule)] text-[var(--ks-ink)] focus:ring-[var(--ks-patina)] accent-[var(--ks-ink)]"
+            />
+            <span>Tampilkan Arsip Terhapus (Kepatuhan PDP)</span>
+          </label>
+        }
+      />
 
-        <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-neutral-700 dark:text-slate-300">
-          <input
-            type="checkbox"
-            checked={showDeleted}
-            onChange={(e) => setShowDeleted(e.target.checked)}
-            className="rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900"
-          />
-          <span>Tampilkan Arsip Terhapus (Kepatuhan PDP)</span>
-        </label>
-      </div>
-
-      {/* Profiles Table */}
-      <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+      {/* Visitors Profiles Table */}
+      <UiCard className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-neutral-600 dark:text-slate-300">
-            <thead className="border-b border-neutral-200 dark:border-slate-800 bg-neutral-50/75 dark:bg-slate-800/60 text-xs font-semibold text-neutral-900 dark:text-white">
+          <table className="w-full text-left text-sm text-[var(--ks-text)]">
+            <thead className="border-b border-[var(--ks-rule)] bg-[var(--ks-paper)]/60 text-xs font-semibold text-[var(--ks-ink)]">
               <tr>
                 <th className="px-4 py-3">Nama Tamu</th>
                 <th className="px-4 py-3">Tanda Pengenal (NIK/Paspor)</th>
@@ -181,28 +187,29 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
                 <th className="px-4 py-3 text-right">Aksi Tindakan</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-[var(--ks-rule-subtle)]">
               {filteredProfiles.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center">
-                    <p className="text-sm font-semibold text-neutral-800 dark:text-slate-200">
+                    <p className="text-sm font-semibold text-[var(--ks-ink)]">
                       {searchQuery
                         ? `Tidak ada profil tamu yang cocok dengan "${searchQuery}".`
                         : "Buku Tamu Masih Kosong"}
                     </p>
-                    <p className="mt-1 text-xs text-neutral-500 dark:text-slate-400">
+                    <p className="mt-1 text-xs text-[var(--ks-muted)]">
                       {searchQuery
                         ? "Periksa ejaan kata kunci atau hapus pencarian untuk menampilkan seluruh tamu."
                         : "Data profil dan riwayat kunjungan tamu akan otomatis tercatat di sini setelah pendaftaran diproses."}
                     </p>
                     {searchQuery && (
-                      <button
-                        type="button"
+                      <UiButton
+                        variant="secondary"
+                        size="sm"
                         onClick={() => setSearchQuery("")}
-                        className="mt-3.5 inline-flex items-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-neutral-700 dark:text-slate-200 hover:bg-neutral-50 dark:hover:bg-slate-700 transition cursor-pointer"
+                        className="mt-3.5"
                       >
                         Reset Pencarian
-                      </button>
+                      </UiButton>
                     )}
                   </td>
                 </tr>
@@ -210,8 +217,8 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
                 filteredProfiles.map((profile) => (
                   <tr
                     key={profile.id}
-                    className={`transition hover:bg-neutral-50/50 dark:hover:bg-slate-800/40 ${
-                      profile.isDeleted ? "bg-neutral-50/30 dark:bg-slate-900/40 opacity-75" : ""
+                    className={`transition hover:bg-[var(--ks-paper)]/50 ${
+                      profile.isDeleted ? "bg-[var(--ks-paper-deep)]/40 opacity-75" : ""
                     }`}
                   >
                     <td className="px-4 py-3.5">
@@ -222,19 +229,19 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
                             alt={profile.fullName}
                             width={36}
                             height={36}
-                            className="rounded-full object-cover border border-neutral-200"
+                            className="rounded-full object-cover border border-[var(--ks-rule-subtle)]"
                             unoptimized
                           />
                         ) : (
-                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-200 dark:bg-slate-700 text-xs font-bold text-neutral-700 dark:text-slate-200">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--ks-paper-deep)] border border-[var(--ks-rule-subtle)] text-xs font-bold text-[var(--ks-ink)]">
                             {profile.givenName?.[0] || profile.fullName[0]}
                           </div>
                         )}
                         <div>
-                          <p className="font-semibold text-neutral-900 dark:text-white">
+                          <p className="font-semibold text-[var(--ks-ink)]">
                             {profile.fullName}
                           </p>
-                          <p className="text-[11px] font-mono text-neutral-400">
+                          <p className="text-[11px] font-mono text-[var(--ks-muted)]">
                             {profile.id}
                           </p>
                         </div>
@@ -242,26 +249,29 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
                     </td>
 
                     <td className="px-4 py-3.5">
-                      <p className="text-xs font-semibold text-neutral-900 dark:text-white">
-                        {profile.certificateType ? (idDict.certificateTypes[profile.certificateType as CertificateType] ?? CERTIFICATE_TYPE_LABELS[profile.certificateType as CertificateType]) : "Identitas"}
+                      <p className="text-xs font-semibold text-[var(--ks-ink)]">
+                        {profile.certificateType
+                          ? (idDict.certificateTypes[profile.certificateType as CertificateType] ??
+                            CERTIFICATE_TYPE_LABELS[profile.certificateType as CertificateType])
+                          : "Identitas"}
                       </p>
-                      <p className="font-mono text-xs text-neutral-600 dark:text-slate-400">
+                      <p className="font-mono text-xs text-[var(--ks-muted)]">
                         {profile.certificateNo}
                       </p>
                     </td>
 
                     <td className="px-4 py-3.5 text-xs">
-                      {profile.phone && <p className="text-neutral-800 dark:text-slate-200">{profile.phone}</p>}
+                      {profile.phone && <p className="text-[var(--ks-ink)] font-mono">{profile.phone}</p>}
                       {profile.email && (
-                        <p className="text-neutral-600 dark:text-slate-400">{profile.email}</p>
+                        <p className="text-[var(--ks-muted)]">{profile.email}</p>
                       )}
                       {!profile.phone && !profile.email && (
-                        <span className="text-neutral-500 dark:text-slate-400">-</span>
+                        <span className="text-[var(--ks-muted)]">-</span>
                       )}
                     </td>
 
                     <td className="px-4 py-3.5 text-center">
-                      <span className="inline-block rounded-full bg-neutral-100 dark:bg-slate-800 px-2 py-0.5 text-xs font-semibold text-neutral-800 dark:text-slate-200">
+                      <span className="inline-block rounded-full bg-[var(--ks-paper-deep)] border border-[var(--ks-rule-subtle)] px-2 py-0.5 text-xs font-semibold font-mono tabular-nums text-[var(--ks-ink)]">
                         {profile.visitCount ?? 0}
                       </span>
                     </td>
@@ -269,41 +279,47 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
                     <td className="px-4 py-3.5">
                       {profile.isDeleted ? (
                         <div>
-                          <span className="inline-block rounded-full bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:text-amber-300">
-                            Terhapus Halus / Diarsipkan
-                          </span>
+                          <UiBadge
+                            variant="warning"
+                            label="Terhapus Halus / Diarsipkan"
+                          />
                           {profile.deletionReason && (
-                            <p className="mt-1 text-[11px] text-neutral-500 dark:text-slate-400 max-w-[200px] truncate" title={profile.deletionReason}>
+                            <p
+                              className="mt-1 text-[11px] text-[var(--ks-muted)] max-w-[200px] truncate"
+                              title={profile.deletionReason}
+                            >
                               {profile.deletionReason}
                             </p>
                           )}
                         </div>
                       ) : (
-                        <span className="inline-block rounded-full bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                          Aktif (Tersimpan PDP)
-                        </span>
+                        <UiBadge
+                          variant="normal"
+                          label="Aktif (Tersimpan PDP)"
+                        />
                       )}
                     </td>
 
                     <td className="px-4 py-3.5 text-right">
                       {profile.isDeleted ? (
-                        <button
-                          type="button"
+                        <UiButton
+                          variant="secondary"
+                          size="sm"
                           disabled={loadingId === profile.id}
+                          isLoading={loadingId === profile.id}
                           onClick={() => handleSoftDelete(profile.id, false)}
-                          className="inline-flex items-center rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-neutral-800 dark:text-slate-200 shadow-xs hover:bg-neutral-50 dark:hover:bg-slate-700 transition disabled:opacity-50"
                         >
-                          {loadingId === profile.id ? "Memulihkan..." : "Pulihkan"}
-                        </button>
+                          Pulihkan
+                        </UiButton>
                       ) : (
-                        <button
-                          type="button"
+                        <UiButton
+                          variant="danger"
+                          size="sm"
                           disabled={loadingId === profile.id}
                           onClick={() => setSelectedForDelete(profile)}
-                          className="inline-flex items-center rounded-lg border border-red-200 dark:border-red-900 bg-red-50/50 dark:bg-red-950/30 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 shadow-xs hover:bg-red-100 dark:hover:bg-red-900/50 transition disabled:opacity-50"
                         >
                           Hapus PDP
-                        </button>
+                        </UiButton>
                       )}
                     </td>
                   </tr>
@@ -312,68 +328,65 @@ export function VisitorsClient({ initialProfiles }: VisitorsClientProps) {
             </tbody>
           </table>
         </div>
-      </div>
+      </UiCard>
 
       {/* Confirmation Modal for Soft-Delete */}
-      {selectedForDelete && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs"
-        >
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-neutral-200 dark:border-slate-800 p-6 shadow-xl space-y-4">
-            <h3 className="text-base font-bold text-neutral-900 dark:text-white">
-              Arsipkan Profil Tamu (Kepatuhan PDP)
-            </h3>
-
-            <p className="text-xs text-neutral-600 dark:text-slate-300">
+      <UiModal
+        isOpen={Boolean(selectedForDelete)}
+        onClose={() => setSelectedForDelete(null)}
+        title="Arsipkan Profil Tamu (Kepatuhan PDP)"
+        description={
+          selectedForDelete ? (
+            <span>
               Arsipkan data biometrik dan data pribadi untuk{" "}
-              <strong className="text-neutral-900 dark:text-white">
+              <strong className="text-[var(--ks-ink)] font-semibold">
                 {selectedForDelete.fullName}
               </strong>{" "}
               (No: {selectedForDelete.certificateNo}). Tindakan ini menonaktifkan fitur pengenalan otomatis untuk tamu kembali, dengan tetap menjaga keutuhan log riwayat audit keamanan.
-            </p>
-
-            <div>
-              <label
-                htmlFor="complianceDeleteReason"
-                className="block text-xs font-semibold text-neutral-700 dark:text-slate-300"
-              >
-                Alasan Kepatuhan / Permintaan Penghapusan Data
-              </label>
-              <textarea
-                id="complianceDeleteReason"
-                rows={3}
-                value={deleteReason}
-                onChange={(e) => setDeleteReason(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 p-2.5 text-xs text-neutral-900 dark:text-white focus:border-neutral-900 dark:focus:border-blue-500 focus:outline-hidden"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setSelectedForDelete(null)}
-                className="rounded-lg border border-neutral-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-xs font-medium text-neutral-700 dark:text-slate-300 hover:bg-neutral-50 dark:hover:bg-slate-700"
-              >
-                Batal
-              </button>
-              <button
-                type="button"
-                disabled={loadingId === selectedForDelete.id}
-                onClick={() =>
-                  handleSoftDelete(selectedForDelete.id, true, deleteReason)
+            </span>
+          ) : undefined
+        }
+        footer={
+          <>
+            <UiButton
+              variant="secondary"
+              size="md"
+              onClick={() => setSelectedForDelete(null)}
+            >
+              Batal
+            </UiButton>
+            <UiButton
+              variant="danger"
+              size="md"
+              disabled={loadingId === selectedForDelete?.id}
+              isLoading={loadingId === selectedForDelete?.id}
+              onClick={() => {
+                if (selectedForDelete) {
+                  handleSoftDelete(selectedForDelete.id, true, deleteReason);
                 }
-                className="rounded-lg bg-red-600 px-4 py-2 text-xs font-medium text-white shadow-xs hover:bg-red-700 disabled:opacity-50"
-              >
-                {loadingId === selectedForDelete.id
-                  ? "Mengarsipkan..."
-                  : "Konfirmasi Hapus PDP"}
-              </button>
-            </div>
-          </div>
+              }}
+            >
+              Konfirmasi Hapus PDP
+            </UiButton>
+          </>
+        }
+      >
+        <div>
+          <label
+            htmlFor="complianceDeleteReason"
+            className="block text-xs font-semibold text-[var(--ks-ink)]"
+          >
+            Alasan Kepatuhan / Permintaan Penghapusan Data
+          </label>
+          <textarea
+            id="complianceDeleteReason"
+            rows={3}
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            className="mt-1.5 w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule)] bg-[var(--ks-paper)] p-2.5 text-xs text-[var(--ks-ink)] placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-patina-deep)] focus:outline-hidden"
+          />
         </div>
-      )}
+      </UiModal>
     </div>
   );
 }

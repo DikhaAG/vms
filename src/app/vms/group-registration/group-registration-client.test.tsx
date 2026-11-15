@@ -42,6 +42,7 @@ describe("GroupRegistration UI Localization", () => {
     expect(html).toContain("2. Hak Akses Pintu &amp; Kuota Tap");
     expect(html).toContain("3. Anggota Rombongan (2 Tamu)");
     expect(html).toContain("+ Tambah Anggota Tamu");
+    expect(html).toContain("Unggah CSV Rombongan");
     expect(html).toContain("Anggota Tamu #1");
     expect(html).toContain("Anggota Tamu #2");
     expect(html).toContain("Konfirmasi &amp; Daftarkan Kunjungan Rombongan (2 Tamu)");

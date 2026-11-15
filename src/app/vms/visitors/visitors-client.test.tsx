@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
+import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { VisitorsClient } from "./visitors-client";
 import VisitorsPage from "./page";
 import type { VisitorProfile } from "@/lib/vms/group-contract";
 
-describe("Visitors UI Localization", () => {
+describe("Visitors UI Localization & Canonical Component Migration", () => {
   const dummyProfiles: VisitorProfile[] = [
     {
       id: "prof-01",
@@ -54,6 +55,48 @@ describe("Visitors UI Localization", () => {
     expect(html).toContain("Pulihkan");
   });
 
+  it("adopts canonical UiKpiGrid and UiKpiCard primitives with tabular counters and LED indicators", () => {
+    const html = renderToStaticMarkup(
+      <VisitorsClient initialProfiles={dummyProfiles} />,
+    );
+
+    // UiKpiCard container and tabular numbers
+    expect(html).toContain("tabular-nums");
+    expect(html).toContain("font-mono");
+    expect(html).toContain("ks-led-patina");
+    expect(html).toContain("ks-led-amber");
+    expect(html).toContain("role=\"status\"");
+  });
+
+  it("adopts canonical UiFilterToolbar primitive with Kinpaku design tokens", () => {
+    const html = renderToStaticMarkup(
+      <VisitorsClient initialProfiles={dummyProfiles} />,
+    );
+
+    expect(html).toContain("bg-[var(--ks-paper-raised)]");
+    expect(html).toContain("border-[var(--ks-rule-subtle)]");
+    expect(html).toContain("rounded-[var(--ks-radius-md)]");
+    expect(html).toContain("type=\"search\"");
+    expect(html).toContain("type=\"checkbox\"");
+    expect(html).toContain("Tampilkan Arsip Terhapus (Kepatuhan PDP)");
+  });
+
+  it("adopts UiCard and Kinpaku table border rules with tactile UiButton actions", () => {
+    const html = renderToStaticMarkup(
+      <VisitorsClient initialProfiles={dummyProfiles} />,
+    );
+
+    // UiCard container and hairline rules
+    expect(html).toContain("border-[var(--ks-rule)]");
+    expect(html).toContain("border-[var(--ks-rule-subtle)]");
+
+    // Tactile UiButton actions
+    expect(html).toContain("ks-btn");
+    expect(html).toContain("rounded-[var(--ks-radius-md)]");
+    expect(html).toContain("Pulihkan");
+    expect(html).toContain("Hapus PDP");
+  });
+
   it("renders polite empty state when initialProfiles is empty", () => {
     const html = renderToStaticMarkup(<VisitorsClient initialProfiles={[]} />);
     expect(html).toContain("Buku Tamu Masih Kosong");
@@ -72,4 +115,3 @@ describe("Visitors UI Localization", () => {
     expect(html).toContain("aria-haspopup=\"dialog\"");
   });
 });
-
