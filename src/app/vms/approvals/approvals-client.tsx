@@ -1,12 +1,19 @@
 "use client";
 
-import { useId, useState, useEffect } from "react";
+import { useId, useState } from "react";
 import type { Facility, Visit } from "@/lib/vms/vms-contract";
 import {
   CERTIFICATE_TYPE_LABELS,
   VISIT_REASON_LABELS,
 } from "@/lib/vms/vms-contract";
 import type { ApprovalAction } from "@/lib/vms/approval-contract";
+import {
+  UiButton,
+  UiCard,
+  UiFilterToolbar,
+  UiBadge,
+  UiModal,
+} from "@/components/vms/ui";
 
 interface ApprovalsClientProps {
   facilities: Facility[];
@@ -40,19 +47,6 @@ export function ApprovalsClient({
   const [rejectionTarget, setRejectionTarget] = useState<Visit | null>(null);
   const [rejectionComment, setRejectionComment] = useState("");
   const [rejectionError, setRejectionError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!rejectionTarget) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setRejectionTarget(null);
-        setRejectionComment("");
-        setRejectionError(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [rejectionTarget]);
 
   const facilityFilterId = useId();
   const approverPersonaId = useId();
@@ -107,9 +101,7 @@ export function ApprovalsClient({
       setDecidedVisits((prev) => [updatedVisit, ...prev]);
 
       // Close modal if open
-      setRejectionTarget(null);
-      setRejectionComment("");
-      setRejectionError(null);
+      closeRejectionModal();
 
       const actionText = action === "approve" ? "disetujui" : "ditolak";
       setNotification({
@@ -132,11 +124,17 @@ export function ApprovalsClient({
     setRejectionError(null);
   }
 
+  function closeRejectionModal() {
+    setRejectionTarget(null);
+    setRejectionComment("");
+    setRejectionError(null);
+  }
+
   function handleConfirmReject() {
     if (!rejectionTarget) return;
     const trimmed = rejectionComment.trim();
     if (!trimmed) {
-      setRejectionError("Rejection reason comment is mandatory.");
+      setRejectionError("Alasan penolakan wajib diisi.");
       return;
     }
     handleDecision(rejectionTarget, "reject", trimmed);
@@ -148,101 +146,104 @@ export function ApprovalsClient({
       {notification && (
         <div
           role="alert"
-          className={`flex items-start justify-between rounded-lg p-4 text-sm font-medium ${
+          className={`flex items-start justify-between rounded-[var(--ks-radius-md)] p-4 text-xs sm:text-sm font-medium border ${
             notification.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-rose-50 text-rose-800 border border-rose-200"
+              ? "bg-[var(--ks-patina)]/10 text-[var(--ks-patina-deep)] border-[var(--ks-patina)]/30"
+              : "bg-[var(--ks-vermilion)]/10 text-[var(--ks-vermilion)] border-[var(--ks-vermilion)]/30"
           }`}
         >
           <span>{notification.message}</span>
           <button
             type="button"
             onClick={() => setNotification(null)}
-            className="ml-4 text-xs font-semibold opacity-70 hover:opacity-100"
+            className="ml-4 text-xs font-semibold opacity-70 hover:opacity-100 cursor-pointer"
           >
-            Dismiss
+            Tutup
           </button>
         </div>
       )}
 
       {/* Control Bar: Filters & Persona */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-2xs">
-        <div className="flex flex-wrap items-center gap-4">
-          <div>
-            <label
-              htmlFor={facilityFilterId}
-              className="block text-xs font-medium text-neutral-600 mb-1"
-            >
-              Saring Gedung:
-            </label>
-            <select
-              id={facilityFilterId}
-              value={selectedFacilityId}
-              onChange={(e) => setSelectedFacilityId(e.target.value)}
-              className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-800 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-            >
-              <option value="all">Semua Gedung Fasilitas ({facilities.length})</option>
-              {facilities.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} ({f.timezone})
-                </option>
-              ))}
-            </select>
+      <UiFilterToolbar
+        facilitySlot={
+          <div className="flex flex-wrap items-center gap-3">
+            <div>
+              <label
+                htmlFor={facilityFilterId}
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
+                Saring Gedung:
+              </label>
+              <select
+                id={facilityFilterId}
+                value={selectedFacilityId}
+                onChange={(e) => setSelectedFacilityId(e.target.value)}
+                className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs font-medium text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              >
+                <option value="all">Semua Gedung Fasilitas ({facilities.length})</option>
+                {facilities.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name} ({f.timezone})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                htmlFor={approverPersonaId}
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
+                Peran Penyetuju:
+              </label>
+              <select
+                id={approverPersonaId}
+                value={approverRole}
+                onChange={(e) =>
+                  setApproverRole(
+                    e.target.value as "Host Approver" | "Security Officer",
+                  )
+                }
+                className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs font-medium text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              >
+                <option value="Host Approver">Pejabat Penyetuju (Tuan Rumah)</option>
+                <option value="Security Officer">Petugas Keamanan (Satpam)</option>
+              </select>
+            </div>
           </div>
-
-          <div>
-            <label
-              htmlFor={approverPersonaId}
-              className="block text-xs font-medium text-neutral-600 mb-1"
-            >
-              Peran Penyetuju:
-            </label>
-            <select
-              id={approverPersonaId}
-              value={approverRole}
-              onChange={(e) =>
-                setApproverRole(
-                  e.target.value as "Host Approver" | "Security Officer",
-                )
-              }
-              className="rounded-lg border border-neutral-300 bg-white px-3 py-1.5 text-sm font-medium text-neutral-800 focus:border-neutral-900 focus:outline-none focus:ring-1 focus:ring-neutral-900"
-            >
-              <option value="Host Approver">Pejabat Penyetuju (Tuan Rumah)</option>
-              <option value="Security Officer">Petugas Keamanan (Satpam)</option>
-            </select>
+        }
+        actionsSlot={
+          <div className="flex items-center gap-2 text-xs text-[var(--ks-muted)]">
+            <span className="text-2xs uppercase tracking-wider font-semibold">Antrean Aktif:</span>
+            <span className="font-semibold text-[var(--ks-ink)]">
+              {filteredPending.length} Menunggu Persetujuan
+            </span>
+            <span>&bull;</span>
+            <span className="font-semibold text-[var(--ks-vermilion)]">
+              {filteredEscalated.length} Eskalasi Daftar Pantauan
+            </span>
           </div>
-        </div>
+        }
+      />
 
-        <div className="flex items-center gap-2 text-xs text-neutral-500">
-          <span>Antrean Aktif:</span>
-          <span className="font-semibold text-neutral-900">
-            {filteredPending.length} Menunggu Persetujuan
-          </span>
-          <span>&bull;</span>
-          <span className="font-semibold text-rose-600">
-            {filteredEscalated.length} Eskalasi Daftar Pantauan
-          </span>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="border-b border-neutral-200">
+      {/* Queue Tabs */}
+      <div className="border-b border-[var(--ks-rule-subtle)]">
         <nav className="flex space-x-6" aria-label="Approval Queues">
           <button
             type="button"
             onClick={() => setActiveTab("pending")}
-            className={`flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-medium transition ${
+            className={`flex items-center gap-2 border-b-2 py-3 px-1 text-xs sm:text-sm font-semibold transition cursor-pointer ${
               activeTab === "pending"
-                ? "border-neutral-950 text-neutral-950"
-                : "border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700"
+                ? "border-[var(--ks-ink)] text-[var(--ks-ink)]"
+                : "border-transparent text-[var(--ks-muted)] hover:border-[var(--ks-rule)] hover:text-[var(--ks-ink)]"
             }`}
           >
             <span>Menunggu Persetujuan Normal</span>
             <span
-              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              className={`rounded-full px-2 py-0.5 text-2xs font-mono font-bold ${
                 activeTab === "pending"
-                  ? "bg-neutral-900 text-white"
-                  : "bg-neutral-100 text-neutral-600"
+                  ? "bg-[var(--ks-ink)] text-[var(--ks-paper-raised)]"
+                  : "bg-[var(--ks-paper-deep)] text-[var(--ks-muted)]"
               }`}
             >
               {filteredPending.length}
@@ -252,15 +253,15 @@ export function ApprovalsClient({
           <button
             type="button"
             onClick={() => setActiveTab("escalated")}
-            className={`flex items-center gap-2 border-b-2 py-3 px-1 text-sm font-medium transition ${
+            className={`flex items-center gap-2 border-b-2 py-3 px-1 text-xs sm:text-sm font-semibold transition cursor-pointer ${
               activeTab === "escalated"
-                ? "border-rose-600 text-rose-700"
-                : "border-transparent text-neutral-500 hover:border-rose-300 hover:text-rose-600"
+                ? "border-[var(--ks-vermilion)] text-[var(--ks-vermilion)]"
+                : "border-transparent text-[var(--ks-muted)] hover:border-[var(--ks-vermilion)]/40 hover:text-[var(--ks-vermilion)]"
             }`}
           >
             <span className="flex items-center gap-1.5">
               <svg
-                className="h-4 w-4 text-rose-600"
+                className="h-4 w-4 text-[var(--ks-vermilion)]"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -276,10 +277,10 @@ export function ApprovalsClient({
               <span>Eskalasi Daftar Pantauan</span>
             </span>
             <span
-              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+              className={`rounded-full px-2 py-0.5 text-2xs font-mono font-bold ${
                 activeTab === "escalated"
-                  ? "bg-rose-600 text-white"
-                  : "bg-rose-100 text-rose-700"
+                  ? "bg-[var(--ks-vermilion)] text-white"
+                  : "bg-[var(--ks-vermilion)]/15 text-[var(--ks-vermilion)]"
               }`}
             >
               {filteredEscalated.length}
@@ -293,11 +294,14 @@ export function ApprovalsClient({
         {activeTab === "pending" && (
           <>
             {filteredPending.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 p-12 text-center">
-                <p className="text-sm font-semibold text-neutral-900">
+              <div className="rounded-[var(--ks-radius-md)] border border-dashed border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-12 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--ks-paper-deep)] text-[var(--ks-muted)] text-xl font-bold font-mono">
+                  0
+                </div>
+                <p className="mt-3 text-sm font-semibold text-[var(--ks-ink)]">
                   Tidak Ada Permohonan Kunjungan Tertunda
                 </p>
-                <p className="mt-1 text-xs text-neutral-500 max-w-md mx-auto">
+                <p className="mt-1 text-xs text-[var(--ks-muted)] max-w-md mx-auto">
                   Seluruh permohonan kunjungan telah disetujui atau ditolak.
                 </p>
               </div>
@@ -318,11 +322,14 @@ export function ApprovalsClient({
         {activeTab === "escalated" && (
           <>
             {filteredEscalated.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-neutral-300 bg-neutral-50/50 p-12 text-center">
-                <p className="text-sm font-medium text-neutral-900">
+              <div className="rounded-[var(--ks-radius-md)] border border-dashed border-[var(--ks-rule)] bg-[var(--ks-paper-raised)] p-12 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[var(--ks-paper-deep)] text-[var(--ks-muted)] text-xl font-bold font-mono">
+                  0
+                </div>
+                <p className="mt-3 text-sm font-semibold text-[var(--ks-ink)]">
                   Tidak Ada Eskalasi Daftar Pantauan
                 </p>
-                <p className="mt-1 text-xs text-neutral-500">
+                <p className="mt-1 text-xs text-[var(--ks-muted)]">
                   Tidak ada tamu yang teridentifikasi dalam Daftar Pantauan Keamanan (Monitoring List).
                 </p>
               </div>
@@ -344,38 +351,33 @@ export function ApprovalsClient({
 
       {/* Decided History Section */}
       {decidedVisits.length > 0 && (
-        <div className="mt-12 pt-8 border-t border-neutral-200">
-          <h2 className="text-sm font-semibold text-neutral-900 mb-4">
+        <div className="mt-12 pt-8 border-t border-[var(--ks-rule-subtle)]">
+          <h2 className="text-sm font-bold text-[var(--ks-ink)] mb-4">
             Kunjungan yang Baru Saja Diputuskan Sesi Ini ({decidedVisits.length})
           </h2>
           <div className="space-y-3">
             {decidedVisits.map((v) => (
               <div
                 key={v.id}
-                className="flex items-center justify-between rounded-lg border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-4 py-3 text-xs"
               >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`rounded-full px-2 py-0.5 font-bold uppercase tracking-wider text-[10px] ${
-                      v.status === "APPROVED"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-rose-100 text-rose-800"
-                    }`}
-                  >
-                    {v.status}
-                  </span>
-                  <span className="font-semibold text-neutral-900">
+                <div className="flex flex-wrap items-center gap-3">
+                  <UiBadge
+                    status={v.status}
+                    label={v.status}
+                  />
+                  <span className="font-semibold text-[var(--ks-ink)]">
                     {v.visitorFamilyName} {v.visitorGivenName}
                   </span>
-                  <span className="text-neutral-500">({v.facilityName})</span>
+                  <span className="text-[var(--ks-muted)]">({v.facilityName})</span>
                   {v.approvalRecord?.comment && (
-                    <span className="italic text-neutral-600">
+                    <span className="italic text-[var(--ks-muted)]">
                       &ldquo;{v.approvalRecord.comment}&rdquo;
                     </span>
                   )}
                 </div>
-                <div className="text-neutral-500">
-                  By {v.approvalRecord?.approverName} ({v.approvalRecord?.approverRole})
+                <div className="text-[var(--ks-muted)] text-2xs">
+                  Oleh {v.approvalRecord?.approverName} ({v.approvalRecord?.approverRole})
                 </div>
               </div>
             ))}
@@ -384,78 +386,73 @@ export function ApprovalsClient({
       )}
 
       {/* Rejection Modal Dialog */}
-      {rejectionTarget && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/40 backdrop-blur-xs p-4"
-        >
-          <div className="w-full max-w-md rounded-2xl border border-neutral-200 bg-white p-6 shadow-xl space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold text-neutral-950">
-                Reject Visit Request
-              </h3>
-              <p className="mt-1 text-xs text-neutral-600">
-                Provide a mandatory reason for rejecting this visit for{" "}
-                <strong className="text-neutral-900">
-                  {rejectionTarget.visitorFamilyName} {rejectionTarget.visitorGivenName}
-                </strong>
-                . This comment is recorded in the permanent audit trail.
-              </p>
-            </div>
-
-            <div>
-              <label
-                htmlFor={commentInputId}
-                className="block text-xs font-medium text-neutral-700 mb-1"
-              >
-                Rejection Reason <span className="text-rose-600">*</span>
-              </label>
-              <textarea
-                id={commentInputId}
-                rows={3}
-                value={rejectionComment}
-                onChange={(e) => {
-                  setRejectionComment(e.target.value);
-                  if (rejectionError) setRejectionError(null);
-                }}
-                placeholder="Contoh: Tuan rumah sedang dinas luar, lokasi gedung tidak sesuai, atau akses tidak diizinkan..."
-                className={`w-full rounded-lg border px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:ring-1 ${
-                  rejectionError
-                    ? "border-rose-500 focus:border-rose-500 focus:ring-rose-500"
-                    : "border-neutral-300 focus:border-neutral-900 focus:ring-neutral-900"
-                }`}
-              />
-              {rejectionError && (
-                <p className="mt-1 text-xs text-rose-600">{rejectionError}</p>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setRejectionTarget(null);
-                  setRejectionComment("");
-                  setRejectionError(null);
-                }}
-                disabled={submittingVisitId !== null}
-                className="rounded-lg border border-neutral-300 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmReject}
-                disabled={submittingVisitId !== null}
-                className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 transition disabled:opacity-50"
-              >
-                {submittingVisitId ? "Rejecting..." : "Confirm Rejection"}
-              </button>
-            </div>
-          </div>
+      <UiModal
+        isOpen={Boolean(rejectionTarget)}
+        onClose={closeRejectionModal}
+        size="md"
+        title="Tolak Permohonan Kunjungan"
+        description={
+          rejectionTarget ? (
+            <>
+              Berikan alasan wajib penolakan kunjungan untuk{" "}
+              <strong className="text-[var(--ks-ink)] font-semibold">
+                {rejectionTarget.visitorFamilyName} {rejectionTarget.visitorGivenName}
+              </strong>
+              . Catatan ini akan dicatat dalam jejak audit permanen.
+            </>
+          ) : undefined
+        }
+        footer={
+          <>
+            <UiButton
+              variant="secondary"
+              size="sm"
+              onClick={closeRejectionModal}
+              disabled={submittingVisitId !== null}
+            >
+              Batal
+            </UiButton>
+            <UiButton
+              variant="danger"
+              size="sm"
+              onClick={handleConfirmReject}
+              disabled={submittingVisitId !== null}
+              isLoading={submittingVisitId !== null}
+            >
+              Konfirmasi Penolakan
+            </UiButton>
+          </>
+        }
+      >
+        <div>
+          <label
+            htmlFor={commentInputId}
+            className="block text-xs font-bold text-[var(--ks-ink)] mb-1"
+          >
+            Alasan Penolakan <span className="text-[var(--ks-vermilion)]">*</span>
+          </label>
+          <textarea
+            id={commentInputId}
+            rows={3}
+            value={rejectionComment}
+            onChange={(e) => {
+              setRejectionComment(e.target.value);
+              if (rejectionError) setRejectionError(null);
+            }}
+            placeholder="Contoh: Tuan rumah sedang dinas luar, lokasi gedung tidak sesuai, atau akses tidak diizinkan..."
+            className={`w-full rounded-[var(--ks-radius-md)] border bg-[var(--ks-paper)] px-3 py-2 text-xs sm:text-sm text-[var(--ks-ink)] placeholder:text-[var(--ks-muted)] focus:outline-hidden focus:ring-1 ${
+              rejectionError
+                ? "border-[var(--ks-vermilion)] focus:border-[var(--ks-vermilion)] focus:ring-[var(--ks-vermilion)]"
+                : "border-[var(--ks-rule-subtle)] focus:border-[var(--ks-kinpaku)] focus:ring-[var(--ks-kinpaku)]"
+            }`}
+          />
+          {rejectionError && (
+            <p className="mt-1 text-xs text-[var(--ks-vermilion)] font-medium">
+              {rejectionError}
+            </p>
+          )}
         </div>
-      )}
+      </UiModal>
     </div>
   );
 }
@@ -486,18 +483,18 @@ function VisitCard({
       : "General";
 
   return (
-    <div
-      className={`rounded-xl border p-5 transition shadow-2xs ${
+    <UiCard
+      className={`p-5 transition shadow-xs ${
         isEscalated
-          ? "border-rose-300 bg-rose-50/30 ring-1 ring-rose-200"
-          : "border-neutral-200 bg-white hover:border-neutral-300"
+          ? "border-[var(--ks-vermilion)]/40 bg-[var(--ks-vermilion)]/5 ring-1 ring-[var(--ks-vermilion)]/20"
+          : "hover:border-[var(--ks-kinpaku)]/40"
       }`}
     >
       {/* Blacklist Alert Header */}
       {isEscalated && (
-        <div className="mb-4 flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-100/70 p-3 text-xs text-rose-900">
+        <div className="mb-4 flex items-start gap-3 rounded-[var(--ks-radius-md)] border border-[var(--ks-vermilion)]/40 bg-[var(--ks-vermilion)]/10 p-3.5 text-xs text-[var(--ks-vermilion)]">
           <svg
-            className="h-5 w-5 shrink-0 text-rose-600"
+            className="h-5 w-5 shrink-0 text-[var(--ks-vermilion)]"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -511,19 +508,24 @@ function VisitCard({
             />
           </svg>
           <div>
-            <span className="font-bold uppercase tracking-wider text-[11px] text-rose-800">
-              Peringatan: Tamu Teridentifikasi Dalam Daftar Pantauan Keamanan
-            </span>
-            <p className="mt-0.5">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full ks-led-vermilion" />
+              <span className="font-bold uppercase tracking-wider text-2xs text-[var(--ks-vermilion)]">
+                Peringatan: Tamu Teridentifikasi Dalam Daftar Pantauan Keamanan
+              </span>
+            </div>
+            <p className="mt-1 text-[var(--ks-ink)] font-medium">
               {visit.monitoringListFlag?.reason ||
                 "Nomor identitas tamu cocok dengan daftar pantauan keamanan aktif."}
             </p>
             {visit.monitoringListFlag?.matches &&
               visit.monitoringListFlag.matches.length > 0 && (
-                <div className="mt-1 flex flex-wrap gap-2 text-[11px] font-medium text-rose-700">
+                <div className="mt-1.5 flex flex-wrap gap-2 text-2xs font-mono font-medium text-[var(--ks-vermilion)]">
                   <span>
                     Nomor Identitas Cocok:{" "}
-                    <code>{visit.monitoringListFlag.matches[0].certificateNo}</code>
+                    <code className="bg-[var(--ks-paper)] px-1 py-0.5 rounded border border-[var(--ks-vermilion)]/30">
+                      {visit.monitoringListFlag.matches[0].certificateNo}
+                    </code>
                   </span>
                   <span>&bull;</span>
                   <span>
@@ -543,10 +545,10 @@ function VisitCard({
             <img
               src={visit.facePhoto}
               alt={`${visit.visitorFamilyName} ${visit.visitorGivenName}`}
-              className="h-20 w-20 rounded-xl object-cover ring-1 ring-neutral-300 shadow-2xs"
+              className="h-20 w-20 rounded-[var(--ks-radius-md)] object-cover ring-1 ring-[var(--ks-rule)] shadow-xs"
             />
           ) : (
-            <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-neutral-100 ring-1 ring-neutral-200 text-neutral-400 font-semibold text-lg">
+            <div className="flex h-20 w-20 items-center justify-center rounded-[var(--ks-radius-md)] bg-[var(--ks-paper-deep)] ring-1 ring-[var(--ks-rule-subtle)] text-[var(--ks-muted)] font-bold text-lg font-mono">
               {visit.visitorFamilyName?.charAt(0) || "V"}
               {visit.visitorGivenName?.charAt(0) || ""}
             </div>
@@ -557,12 +559,12 @@ function VisitCard({
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h3 className="text-base font-bold text-neutral-950">
+              <h3 className="text-base font-bold text-[var(--ks-ink)]">
                 {visit.visitorGivenName} {visit.visitorFamilyName}
               </h3>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-[var(--ks-muted)]">
                 {certificateLabel}:{" "}
-                <span className="font-mono font-medium text-neutral-700">
+                <span className="font-mono font-medium text-[var(--ks-ink)]">
                   {visit.certificateNo || "Tidak dicantumkan"}
                 </span>
                 {visit.visitorPhone && (
@@ -580,38 +582,33 @@ function VisitCard({
               </p>
             </div>
 
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                isEscalated
-                  ? "bg-rose-100 text-rose-800"
-                  : "bg-blue-100 text-blue-800"
-              }`}
-            >
-              {isEscalated ? "ESKALASI KEAMANAN" : "MENUNGGU PERSETUJUAN"}
-            </span>
+            <UiBadge
+              variant={isEscalated ? "danger" : "warning"}
+              label={isEscalated ? "ESKALASI KEAMANAN" : "MENUNGGU PERSETUJUAN"}
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-4 text-xs text-neutral-600">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-4 text-xs text-[var(--ks-muted)]">
             <div>
-              <span className="font-medium text-neutral-700">Gedung:</span>{" "}
+              <span className="font-semibold text-[var(--ks-ink)]">Gedung:</span>{" "}
               {visit.facilityName}
             </div>
             <div>
-              <span className="font-medium text-neutral-700">Tuan Rumah:</span>{" "}
+              <span className="font-semibold text-[var(--ks-ink)]">Tuan Rumah:</span>{" "}
               {visit.hostName || "Belum ditentukan"}{" "}
               {visit.hostId && (
-                <span className="text-neutral-400">({visit.hostId})</span>
+                <span className="text-[var(--ks-muted)]/70 font-mono">({visit.hostId})</span>
               )}
             </div>
             <div>
-              <span className="font-medium text-neutral-700">Jadwal Kunjungan:</span>{" "}
-              <span className="font-mono text-neutral-800">
+              <span className="font-semibold text-[var(--ks-ink)]">Jadwal Kunjungan:</span>{" "}
+              <span className="font-mono text-[var(--ks-ink)]">
                 {visit.scheduledStartTimeFacility} &rarr;{" "}
                 {visit.scheduledEndTimeFacility}
               </span>
             </div>
             <div>
-              <span className="font-medium text-neutral-700">Keperluan:</span>{" "}
+              <span className="font-semibold text-[var(--ks-ink)]">Keperluan:</span>{" "}
               {reasonLabel}
               {visit.visitReasonDetail && ` - ${visit.visitReasonDetail}`}
             </div>
@@ -620,33 +617,30 @@ function VisitCard({
       </div>
 
       {/* Action Footer */}
-      <div className="mt-4 pt-4 border-t border-neutral-100 flex items-center justify-end gap-3">
-        <button
-          type="button"
+      <div className="mt-4 pt-4 border-t border-[var(--ks-rule-subtle)] flex items-center justify-end gap-3">
+        <UiButton
+          variant="secondary"
+          size="sm"
           onClick={onReject}
           disabled={isSubmitting}
-          className="rounded-lg border border-neutral-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:border-rose-200 transition disabled:opacity-50"
+          className="text-[var(--ks-vermilion)] hover:text-[var(--ks-vermilion)] hover:bg-[var(--ks-vermilion)]/10"
         >
           {isSubmitting ? "Memproses..." : "Tolak Kunjungan"}
-        </button>
+        </UiButton>
 
-        <button
-          type="button"
+        <UiButton
+          variant={isEscalated ? "danger" : "primary"}
+          size="sm"
           onClick={onApprove}
           disabled={isSubmitting}
-          className={`rounded-lg px-4 py-1.5 text-xs font-semibold text-white transition disabled:opacity-50 ${
-            isEscalated
-              ? "bg-amber-600 hover:bg-amber-700"
-              : "bg-neutral-900 hover:bg-neutral-800"
-          }`}
         >
           {isSubmitting
             ? "Mengesahkan..."
             : isEscalated
               ? "Abaikan Peringatan & Setujui"
               : "Setujui Kunjungan"}
-        </button>
+        </UiButton>
       </div>
-    </div>
+    </UiCard>
   );
 }
