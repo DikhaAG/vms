@@ -6,8 +6,8 @@ export interface PageHeaderProps {
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
   badge?: React.ReactNode;
-  guidePageKey?: PageKey;
   pageKey?: PageKey;
+  guidePageKey?: PageKey;
   guideSlot?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
@@ -17,8 +17,8 @@ export function PageHeader({
   title,
   subtitle,
   badge,
-  guidePageKey,
   pageKey,
+  guidePageKey,
   guideSlot,
   actions,
   className = "",

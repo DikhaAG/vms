@@ -4,13 +4,13 @@
 
 **Blocked by:** 01: Canonical Reusable UI Component Primitives, 02: Responsive Shell & Ergonomic Bottom Dock Sidebar Toggle
 
-**Status:** claimed
+**Status:** closed
 
-- [ ] `src/app/vms/reception/page.tsx` updated to use `PageHeader`.
-- [ ] Status filter buttons ("Semua", "Normal", "Overstay", "Kuota") updated to use `UiButton` or `UiKpiCard` with uniform Kinpaku active states and border radius.
-- [ ] Walk-in registration modal refactored to use `UiModal`.
-- [ ] Webcam photo capture modal refactored to use `UiModal` with standard buttons.
-- [ ] Pass card and QR issuance modal refactored to use `UiModal`.
-- [ ] Action buttons across reception tables and cards updated to standard `UiButton`.
-- [ ] `src/app/vms/reception/reception-client.test.tsx` passes with 100% success rate.
+- [x] `src/app/vms/reception/page.tsx` updated to use `PageHeader`.
+- [x] Status filter buttons ("Semua", "Normal", "Overstay", "Kuota") updated to use `UiButton` or `UiKpiCard` with uniform Kinpaku active states and border radius.
+- [x] Walk-in registration modal refactored to use `UiModal`.
+- [x] Webcam photo capture modal refactored to use `UiModal` with standard buttons.
+- [x] Pass card and QR issuance modal refactored to use `UiModal`.
+- [x] Action buttons across reception tables and cards updated to standard `UiButton`.
+- [x] `src/app/vms/reception/reception-client.test.tsx` passes with 100% success rate.
 
