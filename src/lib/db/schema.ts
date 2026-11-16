@@ -221,10 +221,49 @@ export function getInitSchemaSql(): string {
       data JSONB NOT NULL
     );
 
-    -- Single-site contract migration: backfill global site name and purge the
-    -- deprecated Facility entity. All statements are idempotent so they are safe
-    -- to run on both fresh and previously-initialized databases.
+    -- Upgrade path for databases created before these columns existed.
+    -- CREATE TABLE IF NOT EXISTS above is a no-op on such databases, so every
+    -- column added after the first release needs its own idempotent ALTER.
     ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS site_name TEXT NOT NULL DEFAULT 'Gedung Utama';
+    ALTER TABLE facility_doors ADD COLUMN IF NOT EXISTS region_index_code TEXT;
+
+    -- Single-site contract migration: carry the legacy facility's operator
+    -- settings into the global singleton, then purge the Facility entity.
+    -- The backfill only runs while the legacy table still exists and never
+    -- overwrites settings an operator has already saved. With several legacy
+    -- facilities the lowest id wins, so the result is deterministic.
+    DO $$
+    BEGIN
+      IF to_regclass('public.facilities') IS NOT NULL THEN
+        INSERT INTO system_settings (
+          id, site_name, timezone, overstay_grace_minutes,
+          auto_check_in_early_buffer_minutes, updated_at, data
+        )
+        SELECT
+          'default', legacy.site_name, legacy.timezone, legacy.overstay_grace_minutes,
+          15, legacy.updated_at,
+          jsonb_build_object(
+            'id', 'default',
+            'siteName', legacy.site_name,
+            'timezone', legacy.timezone,
+            'overstayGraceMinutes', legacy.overstay_grace_minutes,
+            'autoCheckInEarlyBufferMinutes', 15,
+            'updatedAt', legacy.updated_at
+          )
+        FROM (
+          SELECT
+            COALESCE(NULLIF(btrim(f.name), ''), 'Gedung Utama') AS site_name,
+            f.timezone AS timezone,
+            COALESCE(f.overstay_grace_minutes, 15) AS overstay_grace_minutes,
+            to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS updated_at
+          FROM facilities f
+          ORDER BY f.id
+          LIMIT 1
+        ) AS legacy
+        ON CONFLICT (id) DO NOTHING;
+      END IF;
+    END $$;
+
     ALTER TABLE visits DROP COLUMN IF EXISTS facility_id;
     ALTER TABLE access_levels DROP COLUMN IF EXISTS facility_id;
     ALTER TABLE facility_doors DROP COLUMN IF EXISTS facility_id;

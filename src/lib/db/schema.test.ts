@@ -71,5 +71,30 @@ describe("PostgreSQL Drizzle Schema & DDL Generator", () => {
     expect(sql).toContain("DROP TABLE IF EXISTS facilities");
     expect(sql).not.toContain("CREATE TABLE IF NOT EXISTS facilities");
   });
+
+  it("adds region_index_code to a facility_doors table created before door sync stored it", () => {
+    const sql = getInitSchemaSql();
+    // CREATE TABLE IF NOT EXISTS is a no-op on upgraded databases, so the
+    // column needs its own idempotent ALTER or saveDoors fails on first sync.
+    expect(sql).toContain(
+      "ALTER TABLE facility_doors ADD COLUMN IF NOT EXISTS region_index_code TEXT",
+    );
+  });
+
+  it("carries the legacy facility's settings into system_settings before dropping facilities", () => {
+    const sql = getInitSchemaSql();
+    const backfill = sql.indexOf("INSERT INTO system_settings");
+    const drop = sql.indexOf("DROP TABLE IF EXISTS facilities");
+
+    expect(backfill).toBeGreaterThan(-1);
+    expect(backfill).toBeLessThan(drop);
+    // Only runs when the legacy table is still present (fresh installs skip it)…
+    expect(sql).toContain("to_regclass('public.facilities')");
+    // …copies the operator-configured values, not the defaults…
+    expect(sql).toMatch(/f\.timezone/);
+    expect(sql).toMatch(/f\.overstay_grace_minutes/);
+    // …and never overwrites settings an operator already saved.
+    expect(sql).toContain("ON CONFLICT (id) DO NOTHING");
+  });
 });
 
