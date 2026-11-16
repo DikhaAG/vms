@@ -14,7 +14,6 @@ describe("group-service", () => {
   let deps: GroupServiceDeps;
 
   const validGroupInput: GroupVisitInput = {
-    facilityId: "fac-jakarta",
     hostId: "emp-host-01",
     hostName: "Budi Santoso",
     visitorGroupName: "Google DeepMind Research Delegation",
@@ -174,16 +173,66 @@ describe("group-service", () => {
       expect(result.memberVisits[0].status).toBe("SECURITY_ESCALATED");
     });
 
-    it("throws error if facility does not exist", async () => {
-      await expect(
-        createGroupVisit(
-          {
-            ...validGroupInput,
-            facilityId: "fac-non-existent",
-          },
-          deps,
-        ),
-      ).rejects.toThrow(/facility.*not found/i);
+    it("schedules the group in the global system timezone without a facility", async () => {
+      await repository.updateSettings({ timezone: "Asia/Makassar" });
+      const recorded: HikCentralAppointmentParams[] = [];
+      deps.appointmentDispatcher = async (params) => {
+        recorded.push(params);
+        return {
+          appointRecordId: `apt-${recorded.length}`,
+          visitorId: `vis-${recorded.length}`,
+          appointCode: `CODE${recorded.length}`,
+        };
+      };
+
+      const result = await createGroupVisit(
+        {
+          ...validGroupInput,
+          scheduledStartTime: "2026-11-13T14:00:00",
+          scheduledEndTime: "2026-11-13T17:00:00",
+        },
+        deps,
+      );
+
+      expect(result.successCount).toBe(2);
+      expect(recorded[0].appointStartTime).toBe("2026-11-13T14:00:00+08:00");
+      const visits = await Promise.all(
+        result.memberVisits.map((m) => repository.getVisit(m.visitId)),
+      );
+      expect(visits[0]?.scheduledStartTimeUtc).toBe("2026-11-13T06:00:00.000Z");
+      expect(visits[0]).not.toHaveProperty("facilityId");
+    });
+
+    it("falls back to the building's default access levels when none are selected", async () => {
+      const recorded: HikCentralAppointmentParams[] = [];
+      deps.appointmentDispatcher = async (params) => {
+        recorded.push(params);
+        return { appointRecordId: "apt-1", visitorId: "vis-1", appointCode: "C1" };
+      };
+      await repository.saveAccessLevel({
+        id: "acc-default-lobby",
+        name: "Lobby Default",
+        description: "Default lobby access",
+        doors: [],
+        floors: [],
+        timeScheduleId: 1,
+        isDefault: true,
+        createdAtUtc: "2026-01-01T00:00:00Z",
+        updatedAtUtc: "2026-01-01T00:00:00Z",
+      });
+      const defaultIds = (await repository.listAccessLevels())
+        .filter((al) => al.isDefault)
+        .map((al) => al.id);
+
+      const result = await createGroupVisit(
+        { ...validGroupInput, accessLevelIds: undefined },
+        deps,
+      );
+
+      expect(defaultIds).toContain("acc-default-lobby");
+      expect(recorded[0].accessLevels?.map((al) => al.id)).toEqual(defaultIds);
+      const visit = await repository.getVisit(result.memberVisits[0].visitId);
+      expect(visit?.accessLevelIds).toEqual(defaultIds);
     });
   });
 

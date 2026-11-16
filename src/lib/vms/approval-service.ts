@@ -52,17 +52,16 @@ export interface ApprovalServiceDeps {
 
 /**
  * Lists visits requiring review (both normal PENDING_APPROVAL and SECURITY_ESCALATED),
- * optionally filtered by facilityId.
+ * across the whole site.
  */
 export async function listPendingApprovals(
-  facilityId?: string,
   deps: { repository?: IVmsRepository } = {},
 ): Promise<PendingApprovalsResult> {
   const repository = deps.repository ?? defaultVmsRepository;
-  const visits = await repository.getVisitsByStatus(
-    ["PENDING_APPROVAL", "SECURITY_ESCALATED"],
-    facilityId,
-  );
+  const visits = await repository.getVisitsByStatus([
+    "PENDING_APPROVAL",
+    "SECURITY_ESCALATED",
+  ]);
 
   const pendingVisits = visits.filter((v) => v.status === "PENDING_APPROVAL");
   const escalatedVisits = visits.filter(

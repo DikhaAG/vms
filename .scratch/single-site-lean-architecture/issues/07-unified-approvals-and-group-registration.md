@@ -4,10 +4,10 @@
 
 **Blocked by:** 04: Pre-Registration & HikCentral Artemis Timezone Alignment
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Approvals queue UI (`/vms/approvals`) displays all pending visit requests site-wide without facility selector filtering.
-- [ ] Approval API route (`/api/vms/approvals`) and tRPC approval router process approval and rejection actions globally.
-- [ ] Group registration interface (`/vms/group-registration`) and API (`POST /api/vms/group-registration`) register delegation visits without facility dropdowns.
-- [ ] Blacklist screening and host approval workflows execute uniformly across all visitor requests.
-- [ ] Tests verify approval decision flows and group registration workflows without facility parameters.
+- [x] Approvals queue UI (`/vms/approvals`) displays all pending visit requests site-wide without facility selector filtering.
+- [x] Approval API route (`/api/vms/approvals`) and tRPC approval router process approval and rejection actions globally.
+- [x] Group registration interface (`/vms/group-registration`) and API (`POST /api/vms/group-registration`) register delegation visits without facility dropdowns.
+- [x] Blacklist screening and host approval workflows execute uniformly across all visitor requests.
+- [x] Tests verify approval decision flows and group registration workflows without facility parameters.

@@ -77,7 +77,7 @@ describe("Approval Service", () => {
         status: "APPROVED",
       });
 
-      const result = await listPendingApprovals(undefined, { repository });
+      const result = await listPendingApprovals({ repository });
       expect(result.totalCount).toBe(2);
       expect(result.pendingVisits).toHaveLength(1);
       expect(result.escalatedVisits).toHaveLength(1);
@@ -86,7 +86,7 @@ describe("Approval Service", () => {
       expect(result.escalatedVisits[0].id).toBe("vis-escalated-1");
     });
 
-    it("filters pending visits by facilityId", async () => {
+    it("lists every pending visit site-wide regardless of legacy facility tags", async () => {
       await repository.saveVisit(samplePendingVisit);
       await repository.saveVisit({
         ...samplePendingVisit,
@@ -94,9 +94,8 @@ describe("Approval Service", () => {
         facilityId: "fac-bali",
       });
 
-      const jakartaResults = await listPendingApprovals("fac-jakarta", { repository });
-      expect(jakartaResults.totalCount).toBe(1);
-      expect(jakartaResults.allVisits[0].facilityId).toBe("fac-jakarta");
+      const result = await listPendingApprovals({ repository });
+      expect(result.totalCount).toBe(2);
     });
   });
 

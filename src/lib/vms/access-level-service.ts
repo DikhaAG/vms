@@ -316,3 +316,37 @@ export async function deleteAccessLevelService(
 
   return { ok: true };
 }
+
+/**
+ * Resolves the access levels a visit grants: the explicit selection, or the
+ * building's default levels when none are selected. Names come from the
+ * repository, falling back to a generic label for unknown ids.
+ */
+export async function resolveVisitAccessLevels(
+  repository: IVmsRepository,
+  selectedIds: string[] | undefined,
+): Promise<{
+  accessLevelIds: string[] | undefined;
+  accessLevels: Array<{ id: string; name: string }> | undefined;
+}> {
+  const allAccessLevels = await repository.listAccessLevels();
+  let accessLevelIds = selectedIds;
+  if (!accessLevelIds || accessLevelIds.length === 0) {
+    const defaultLevels = allAccessLevels.filter((al) => al.isDefault);
+    if (defaultLevels.length > 0) {
+      accessLevelIds = defaultLevels.map((al) => al.id);
+    }
+  }
+
+  if (!accessLevelIds || accessLevelIds.length === 0) {
+    return { accessLevelIds, accessLevels: undefined };
+  }
+  const levelMap = new Map(allAccessLevels.map((al) => [al.id, al.name]));
+  return {
+    accessLevelIds,
+    accessLevels: accessLevelIds.map((id) => ({
+      id,
+      name: levelMap.get(id) ?? "Access Level",
+    })),
+  };
+}

@@ -2,17 +2,9 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ApprovalsClient } from "./approvals-client";
-import type { Facility, Visit } from "@/lib/vms/vms-contract";
+import type { Visit } from "@/lib/vms/vms-contract";
 
 describe("ApprovalsClient Component Localization", () => {
-  const mockFacilities: Facility[] = [
-    {
-      id: "fac-jakarta",
-      name: "Jakarta Corporate HQ",
-      timezone: "Asia/Jakarta",
-    },
-  ];
-
   const mockPendingVisits: Visit[] = [
     {
       id: "vis-app-1",
@@ -42,7 +34,6 @@ describe("ApprovalsClient Component Localization", () => {
   it("renders Indonesian persona roles and tab headings", () => {
     const html = renderToStaticMarkup(
       <ApprovalsClient
-        facilities={mockFacilities}
         initialPendingVisits={mockPendingVisits}
         initialEscalatedVisits={mockEscalatedVisits}
       />
@@ -54,10 +45,21 @@ describe("ApprovalsClient Component Localization", () => {
     expect(html).toContain("Eskalasi Daftar Pantauan");
   });
 
+  it("shows the site-wide queue without a facility filter", () => {
+    const html = renderToStaticMarkup(
+      <ApprovalsClient
+        initialPendingVisits={mockPendingVisits}
+        initialEscalatedVisits={mockEscalatedVisits}
+      />
+    );
+
+    expect(html).not.toContain("Semua Gedung Fasilitas");
+    expect(html).not.toContain("Jakarta Corporate HQ");
+  });
+
   it("renders approval action buttons in Indonesian", () => {
     const html = renderToStaticMarkup(
       <ApprovalsClient
-        facilities={mockFacilities}
         initialPendingVisits={mockPendingVisits}
         initialEscalatedVisits={mockEscalatedVisits}
       />

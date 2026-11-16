@@ -6,7 +6,7 @@ import {
   type MemberVisitResult,
   type VisitorProfile,
 } from "./group-contract";
-import type { Visit } from "./vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS, type Visit } from "./vms-contract";
 import { formatFacilityIso, parseLocalDateTimeToUtc } from "./timezone";
 import {
   dispatchHikCentralAppointment,
@@ -15,6 +15,7 @@ import {
   type HikCentralAppointmentSuccess,
 } from "./hikcentral-appointment-adapter";
 import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import { resolveVisitAccessLevels } from "./access-level-service";
 import { toJpegDataUri } from "./face-normalizer";
 import { parseMonitoringListFlag } from "./hikcentral-approval-adapter";
 
@@ -30,7 +31,7 @@ export interface GroupServiceDeps {
 
 /**
  * Creates a multi-visitor Group Visit booking.
- * Validates group details, converts schedule to facility timezone,
+ * Validates group details, converts schedule to the global system timezone,
  * calls HikCentral OpenAPI individually per visitor under the unified visitorGroupName,
  * handles partial failures gracefully, persists visits and visitor profiles.
  */
@@ -55,41 +56,21 @@ export async function createGroupVisit(
 
   const input = validation.input;
 
-  // 2. Fetch facility
-  const facility = await repository.getFacility(input.facilityId);
-  if (!facility) {
-    throw new Error(`Facility '${input.facilityId}' not found.`);
-  }
+  // 2. Single site: schedule against the global system timezone
+  const settings = await repository.getSettings();
+  const timezone = settings?.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
 
   // 3. Timezone conversion and normalization
-  const startUtc = parseLocalDateTimeToUtc(
-    input.scheduledStartTime,
-    facility.timezone,
-  );
-  const endUtc = parseLocalDateTimeToUtc(
-    input.scheduledEndTime,
-    facility.timezone,
-  );
+  const startUtc = parseLocalDateTimeToUtc(input.scheduledStartTime, timezone);
+  const endUtc = parseLocalDateTimeToUtc(input.scheduledEndTime, timezone);
+  const scheduledStartTimeFacility = formatFacilityIso(startUtc, timezone);
+  const scheduledEndTimeFacility = formatFacilityIso(endUtc, timezone);
 
-  const scheduledStartTimeFacility = formatFacilityIso(
-    startUtc,
-    facility.timezone,
-  );
-  const scheduledEndTimeFacility = formatFacilityIso(
-    endUtc,
-    facility.timezone,
-  );
-
-  // 4. Resolve access levels & tap quota
-  let resolvedAccessLevels: Array<{ id: string; name: string }> | undefined;
-  if (input.accessLevelIds && input.accessLevelIds.length > 0) {
-    const facilityLevels = await repository.listAccessLevels(facility.id);
-    const levelMap = new Map(facilityLevels.map((al) => [al.id, al.name]));
-    resolvedAccessLevels = input.accessLevelIds.map((id) => ({
-      id,
-      name: levelMap.get(id) ?? "Access Level",
-    }));
-  }
+  // 4. Resolve flat building access levels (fallback to defaults when none selected)
+  const {
+    accessLevelIds: effectiveAccessLevelIds,
+    accessLevels: resolvedAccessLevels,
+  } = await resolveVisitAccessLevels(repository, input.accessLevelIds);
 
   const qrCodeValidNum =
     input.tapQuota?.mode === "limited"
@@ -145,8 +126,6 @@ export async function createGroupVisit(
       const visitId = generateId();
       const visit: Visit = {
         id: visitId,
-        facilityId: facility.id,
-        facilityName: facility.name,
         groupId,
         visitorGroupName: input.visitorGroupName,
         hostId: input.hostId,
@@ -166,7 +145,7 @@ export async function createGroupVisit(
         status: visitStatus,
         monitoringListFlag: monitoringFlag,
         facePhoto: normalizedFacePhoto,
-        accessLevelIds: input.accessLevelIds,
+        accessLevelIds: effectiveAccessLevelIds,
         tapQuota: input.tapQuota,
         credentialSyncStatus: "Applied",
         hikCentral: {

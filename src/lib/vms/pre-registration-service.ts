@@ -19,6 +19,7 @@ import {
   type HikCentralDeleteAppointmentSuccess,
 } from "./hikcentral-appointment-adapter";
 import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import { resolveVisitAccessLevels } from "./access-level-service";
 import { HikCentralError } from "../hikcentral/client";
 import { normalizeFaceImage, toPngDataUri } from "./face-normalizer";
 import { parseMonitoringListFlag } from "./hikcentral-approval-adapter";
@@ -147,24 +148,10 @@ export async function createPreRegistration(
   }
 
   // 5. Resolve flat building access levels (fallback to default access levels if none selected)
-  const allAccessLevels = await repository.listAccessLevels();
-  let effectiveAccessLevelIds = input.accessLevelIds;
-
-  if (!effectiveAccessLevelIds || effectiveAccessLevelIds.length === 0) {
-    const defaultLevels = allAccessLevels.filter((al) => al.isDefault);
-    if (defaultLevels.length > 0) {
-      effectiveAccessLevelIds = defaultLevels.map((al) => al.id);
-    }
-  }
-
-  let resolvedAccessLevels: Array<{ id: string; name: string }> | undefined;
-  if (effectiveAccessLevelIds && effectiveAccessLevelIds.length > 0) {
-    const levelMap = new Map(allAccessLevels.map((al) => [al.id, al.name]));
-    resolvedAccessLevels = effectiveAccessLevelIds.map((id) => ({
-      id,
-      name: levelMap.get(id) ?? "Access Level",
-    }));
-  }
+  const {
+    accessLevelIds: effectiveAccessLevelIds,
+    accessLevels: resolvedAccessLevels,
+  } = await resolveVisitAccessLevels(repository, input.accessLevelIds);
 
   const qrCodeValidNum =
     input.tapQuota?.mode === "limited" ? (input.tapQuota.maxTaps ?? 1) : 0;

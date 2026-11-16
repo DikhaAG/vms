@@ -1,4 +1,3 @@
-import { defaultVmsRepository } from "@/lib/vms/repository";
 import { listPendingApprovals } from "@/lib/vms/approval-service";
 import { ApprovalsClient } from "./approvals-client";
 import { PageHeader } from "@/components/vms/ui";
@@ -10,7 +9,6 @@ export const metadata = {
 };
 
 export default async function ApprovalsPage() {
-  const facilities = await defaultVmsRepository.listFacilities();
   const initialData = await listPendingApprovals();
 
   return (
@@ -21,7 +19,6 @@ export default async function ApprovalsPage() {
       />
 
       <ApprovalsClient
-        facilities={facilities}
         initialPendingVisits={initialData.pendingVisits}
         initialEscalatedVisits={initialData.escalatedVisits}
       />

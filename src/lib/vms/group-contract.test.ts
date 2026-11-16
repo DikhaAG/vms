@@ -13,7 +13,6 @@ import {
 
 describe("group-contract", () => {
   const validBaseInput: GroupVisitInput = {
-    facilityId: "fac-jakarta",
     hostId: "emp-101",
     hostName: "Budi Santoso",
     visitorGroupName: "Google DeepMind Delegation",
@@ -63,14 +62,22 @@ describe("group-contract", () => {
       }
     });
 
-    it("rejects missing facilityId", () => {
+    it("accepts input without a facility", () => {
+      const outcome = validateGroupVisitInput(validBaseInput);
+      expect(outcome.valid).toBe(true);
+      if (outcome.valid) {
+        expect(outcome.input).not.toHaveProperty("facilityId");
+      }
+    });
+
+    it("accepts a legacy client payload carrying facilityId but drops it from the validated input", () => {
       const outcome = validateGroupVisitInput({
         ...validBaseInput,
-        facilityId: "",
+        facilityId: "fac-jakarta",
       });
-      expect(outcome.valid).toBe(false);
-      if (!outcome.valid) {
-        expect(outcome.errors.facilityId).toMatch(/facility/i);
+      expect(outcome.valid).toBe(true);
+      if (outcome.valid) {
+        expect(outcome.input).not.toHaveProperty("facilityId");
       }
     });
 

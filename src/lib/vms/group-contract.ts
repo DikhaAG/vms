@@ -63,10 +63,6 @@ export type VisitorPersonalDetails = z.infer<
 
 export const groupVisitInputSchema = z
   .object({
-    facilityId: z
-      .string({ error: "Facility is required." })
-      .trim()
-      .min(1, "Facility is required."),
     hostId: z.string().trim().optional(),
     hostName: z.string().trim().optional(),
     visitorGroupName: z

@@ -51,8 +51,7 @@ describe("GET /api/vms/approvals", () => {
   });
 
   it("returns review queue containing pending and escalated visits", async () => {
-    const request = new Request("http://localhost:3000/api/vms/approvals");
-    const response = await GET(request);
+    const response = await GET();
 
     expect(response.status).toBe(200);
     const json = await response.json();
@@ -63,13 +62,18 @@ describe("GET /api/vms/approvals", () => {
     expect(json.data.escalatedVisits.some((v: Visit) => v.id === "route-vis-escalated")).toBe(true);
   });
 
-  it("filters review queue by facilityId", async () => {
-    const request = new Request("http://localhost:3000/api/vms/approvals?facilityId=fac-bali");
-    const response = await GET(request);
+  it("returns the site-wide queue across legacy facility tags", async () => {
+    await defaultVmsRepository.saveVisit({
+      ...visitPending,
+      id: "route-vis-pending-bali",
+      facilityId: "fac-bali",
+    });
+    const response = await GET();
 
     expect(response.status).toBe(200);
     const json = await response.json();
     expect(json.ok).toBe(true);
-    expect(json.data.allVisits.every((v: Visit) => v.facilityId === "fac-bali")).toBe(true);
+    const ids = json.data.allVisits.map((v: Visit) => v.id);
+    expect(ids).toEqual(expect.arrayContaining(["route-vis-pending", "route-vis-pending-bali"]));
   });
 });

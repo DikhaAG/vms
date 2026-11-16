@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import type { Facility, Visit } from "@/lib/vms/vms-contract";
+import type { Visit } from "@/lib/vms/vms-contract";
 import {
   CERTIFICATE_TYPE_LABELS,
   VISIT_REASON_LABELS,
@@ -16,18 +16,15 @@ import {
 } from "@/components/vms/ui";
 
 interface ApprovalsClientProps {
-  facilities: Facility[];
   initialPendingVisits: Visit[];
   initialEscalatedVisits: Visit[];
 }
 
 export function ApprovalsClient({
-  facilities,
   initialPendingVisits,
   initialEscalatedVisits,
 }: ApprovalsClientProps) {
   const [activeTab, setActiveTab] = useState<"pending" | "escalated">("pending");
-  const [selectedFacilityId, setSelectedFacilityId] = useState<string>("all");
   const [approverRole, setApproverRole] = useState<"Host Approver" | "Security Officer">(
     "Host Approver",
   );
@@ -48,17 +45,12 @@ export function ApprovalsClient({
   const [rejectionComment, setRejectionComment] = useState("");
   const [rejectionError, setRejectionError] = useState<string | null>(null);
 
-  const facilityFilterId = useId();
   const approverPersonaId = useId();
   const commentInputId = useId();
 
-  // Filter lists based on facility
-  const filteredPending = pendingVisits.filter(
-    (v) => selectedFacilityId === "all" || v.facilityId === selectedFacilityId,
-  );
-  const filteredEscalated = escalatedVisits.filter(
-    (v) => selectedFacilityId === "all" || v.facilityId === selectedFacilityId,
-  );
+  // Single-site: the queue is always the whole building.
+  const filteredPending = pendingVisits;
+  const filteredEscalated = escalatedVisits;
 
   async function handleDecision(
     visit: Visit,
@@ -167,28 +159,6 @@ export function ApprovalsClient({
       <UiFilterToolbar
         facilitySlot={
           <div className="flex flex-wrap items-center gap-3">
-            <div>
-              <label
-                htmlFor={facilityFilterId}
-                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
-              >
-                Saring Gedung:
-              </label>
-              <select
-                id={facilityFilterId}
-                value={selectedFacilityId}
-                onChange={(e) => setSelectedFacilityId(e.target.value)}
-                className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-1.5 text-xs font-medium text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
-              >
-                <option value="all">Semua Gedung Fasilitas ({facilities.length})</option>
-                {facilities.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name} ({f.timezone})
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div>
               <label
                 htmlFor={approverPersonaId}
@@ -366,7 +336,6 @@ export function ApprovalsClient({
                   <span className="font-semibold text-[var(--ks-ink)]">
                     {v.visitorFamilyName} {v.visitorGivenName}
                   </span>
-                  <span className="text-[var(--ks-muted)]">({v.facilityName})</span>
                   {v.approvalRecord?.comment && (
                     <span className="italic text-[var(--ks-muted)]">
                       &ldquo;{v.approvalRecord.comment}&rdquo;
@@ -586,10 +555,6 @@ function VisitCard({
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-1.5 gap-x-4 text-xs text-[var(--ks-muted)]">
-            <div>
-              <span className="font-semibold text-[var(--ks-ink)]">Gedung:</span>{" "}
-              {visit.facilityName}
-            </div>
             <div>
               <span className="font-semibold text-[var(--ks-ink)]">Tuan Rumah:</span>{" "}
               {visit.hostName || "Belum ditentukan"}{" "}

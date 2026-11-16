@@ -2,12 +2,9 @@ import { NextResponse } from "next/server";
 import { listPendingApprovals } from "@/lib/vms/approval-service";
 import { withServerErrors } from "@/lib/vms/route-errors";
 
-async function handleGET(request: Request) {
+async function handleGET() {
   try {
-    const url = new URL(request.url);
-    const facilityId = url.searchParams.get("facilityId") || undefined;
-
-    const data = await listPendingApprovals(facilityId);
+    const data = await listPendingApprovals();
 
     return NextResponse.json({
       ok: true,

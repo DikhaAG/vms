@@ -65,19 +65,9 @@ async function executeApprovalDecision(
 }
 
 export const approvalRouter = router({
-  listPending: publicProcedure
-    .input(
-      z
-        .object({
-          facilityId: z.string().optional(),
-        })
-        .optional(),
-    )
-    .query(async ({ ctx, input }) => {
-      return listPendingApprovals(input?.facilityId, {
-        repository: ctx.repository,
-      });
-    }),
+  listPending: publicProcedure.query(async ({ ctx }) => {
+    return listPendingApprovals({ repository: ctx.repository });
+  }),
 
   approve: publicProcedure
     .input(

@@ -583,7 +583,7 @@ export const idDict = {
           {
             step: 1,
             title: "Tentukan Nama Rombongan & Jadwal Utama",
-            description: "Beri nama rombongan (contoh: 'Kunjungan Kerja Tim Audit BPK'), tentukan gedung tujuan, dan rentang jam kunjungan.",
+            description: "Beri nama rombongan (contoh: 'Kunjungan Kerja Tim Audit BPK') dan tentukan rentang jam kunjungan.",
           },
           {
             step: 2,

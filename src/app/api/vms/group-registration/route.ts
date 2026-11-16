@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createGroupVisit } from "@/lib/vms/group-service";
 import { validateGroupVisitInput } from "@/lib/vms/group-contract";
-import { defaultVmsRepository } from "@/lib/vms/repository";
 import { withServerErrors } from "@/lib/vms/route-errors";
 
 async function handlePOST(request: Request) {
@@ -33,22 +32,6 @@ async function handlePOST(request: Request) {
         },
       },
       { status: 400 },
-    );
-  }
-
-  const facility = await defaultVmsRepository.getFacility(
-    validation.input.facilityId,
-  );
-  if (!facility) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          kind: "not_found",
-          message: `Facility '${validation.input.facilityId}' not found.`,
-        },
-      },
-      { status: 404 },
     );
   }
 

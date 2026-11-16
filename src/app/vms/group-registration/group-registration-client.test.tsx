@@ -2,19 +2,9 @@ import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { GroupRegistrationClient } from "./group-registration-client";
 import GroupRegistrationPage from "./page";
-import type { Facility } from "@/lib/vms/vms-contract";
 import type { AccessLevel } from "@/lib/vms/access-level-contract";
 
 describe("GroupRegistration UI Localization", () => {
-  const dummyFacilities: Facility[] = [
-    {
-      id: "fac-jakarta",
-      name: "Kantor Pusat Jakarta",
-      timezone: "Asia/Jakarta",
-      address: "Jl. Jenderal Sudirman No. 1, Jakarta",
-    },
-  ];
-
   const dummyAccessLevels: AccessLevel[] = [
     {
       id: "al-lobby",
@@ -33,7 +23,6 @@ describe("GroupRegistration UI Localization", () => {
   it("renders localized form sections, labels, and action buttons in Indonesian", () => {
     const html = renderToStaticMarkup(
       <GroupRegistrationClient
-        facilities={dummyFacilities}
         allAccessLevels={dummyAccessLevels}
       />,
     );
@@ -46,6 +35,7 @@ describe("GroupRegistration UI Localization", () => {
     expect(html).toContain("Anggota Tamu #1");
     expect(html).toContain("Anggota Tamu #2");
     expect(html).toContain("Konfirmasi &amp; Daftarkan Kunjungan Rombongan (2 Tamu)");
+    expect(html).not.toContain("group-facility-id");
   });
 
   it("renders page header with PageGuideModal for groupRegistration", async () => {

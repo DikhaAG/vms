@@ -392,8 +392,7 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
     expect(blacklistedData.visit.monitoringListFlag?.isFlagged).toBe(true);
 
     // 3. Approver checks queue
-    const queueReq = new Request("http://localhost:3000/api/vms/approvals?facilityId=fac-jakarta");
-    const queueRes = await getApprovals(queueReq);
+    const queueRes = await getApprovals();
     expect(queueRes.status).toBe(200);
     const queueData = await queueRes.json();
     expect(queueData.data.pendingVisits.some((v: { id: string }) => v.id === normalVisitId)).toBe(true);

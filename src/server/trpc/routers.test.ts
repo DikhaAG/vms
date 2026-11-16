@@ -140,7 +140,7 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
     });
 
     it("lists pending approvals with counts", async () => {
-      const res = await caller.approval.listPending({ facilityId: "fac-jakarta" });
+      const res = await caller.approval.listPending();
       expect(res).toBeDefined();
       expect(res.pendingVisits.length).toBeGreaterThanOrEqual(1);
       expect(res.pendingVisits.some((v: Visit) => v.id === "vis-trpc-pending")).toBe(true);
@@ -276,6 +276,8 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
     // the directives fail as unused if a facilityId input reappears.
     // Never invoked, so no procedure runs.
     const _monitoringRejectsFacilityInput = () => {
+      // @ts-expect-error facilityId was removed from approval.listPending
+      void caller.approval.listPending({ facilityId: "fac-jakarta" });
       // @ts-expect-error facilityId was removed from monitoring.listActive
       void caller.monitoring.listActive({ facilityId: "fac-jakarta" });
       // @ts-expect-error facilityId was removed from monitoring.fetchDoorTelemetry
