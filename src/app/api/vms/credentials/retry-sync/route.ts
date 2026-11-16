@@ -10,8 +10,9 @@ import {
   type StubScenario,
 } from "@/lib/vms/vms-contract";
 import { HikCentralError } from "@/lib/hikcentral/client";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function POST(req: NextRequest) {
+async function handlePOST(req: NextRequest) {
   let body: unknown;
   try {
     body = await req.json();
@@ -93,3 +94,5 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export const POST = withServerErrors(handlePOST);

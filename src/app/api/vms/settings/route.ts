@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import { validateUpdateSystemSettingsInput } from "@/lib/vms/vms-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+async function handleGET() {
   try {
     const settings = await defaultVmsRepository.getSettings();
     return NextResponse.json({
@@ -27,7 +28,7 @@ export async function GET() {
   }
 }
 
-export async function PUT(request: Request) {
+async function handlePUT(request: Request) {
   try {
     let body: unknown;
     try {
@@ -80,3 +81,6 @@ export async function PUT(request: Request) {
     );
   }
 }
+
+export const GET = withServerErrors(handleGET);
+export const PUT = withServerErrors(handlePUT);

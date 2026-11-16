@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createPreRegistration } from "@/lib/vms/pre-registration-service";
 import type { PreRegistrationResult } from "@/lib/vms/vms-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ function statusForResult(result: PreRegistrationResult): number {
   }
 }
 
-export async function POST(request: Request): Promise<NextResponse> {
+async function handlePOST(request: Request): Promise<NextResponse> {
   let body: unknown;
   try {
     body = await request.json();
@@ -51,3 +52,5 @@ export async function POST(request: Request): Promise<NextResponse> {
   const result = await createPreRegistration(body);
   return NextResponse.json(result, { status: statusForResult(result) });
 }
+
+export const POST = withServerErrors(handlePOST);

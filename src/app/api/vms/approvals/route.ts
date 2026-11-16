@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { listPendingApprovals } from "@/lib/vms/approval-service";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const url = new URL(request.url);
     const facilityId = url.searchParams.get("facilityId") || undefined;
@@ -28,3 +29,5 @@ export async function GET(request: Request) {
     );
   }
 }
+
+export const GET = withServerErrors(handleGET);

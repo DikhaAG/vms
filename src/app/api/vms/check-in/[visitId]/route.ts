@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { defaultCheckInService } from "@/lib/vms/checkin-service";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
+async function handlePOST(
   request: Request,
   context: { params: Promise<{ visitId: string }> },
 ): Promise<NextResponse> {
@@ -74,3 +75,5 @@ export async function POST(
     { status: 200 },
   );
 }
+
+export const POST = withServerErrors(handlePOST);

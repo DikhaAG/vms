@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { setProfileSoftDelete } from "@/lib/vms/group-service";
 import { validateSoftDeleteInput } from "@/lib/vms/group-contract";
 import { defaultVmsRepository } from "@/lib/vms/repository";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function PATCH(
+async function handlePATCH(
   request: Request,
   props: { params: Promise<{ id: string }> },
 ) {
@@ -81,3 +82,5 @@ export async function PATCH(
     );
   }
 }
+
+export const PATCH = withServerErrors(handlePATCH);

@@ -5,6 +5,7 @@ import type {
   SelfRegistrationResult,
   SelfRegistrationSubmissionInput,
 } from "@/lib/vms/invitation-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ function statusForSelfRegResult(result: SelfRegistrationResult): number {
  * Public endpoint to fetch invitation details and facility metadata.
  * Returns 200 for valid active tokens, 404 for invalid/not-found, 410 for expired/consumed.
  */
-export async function GET(
+async function handleGET(
   _request: Request,
   context: RouteContext,
 ): Promise<NextResponse> {
@@ -78,7 +79,7 @@ export async function GET(
  * Public endpoint for external visitors to submit identity details and biometric face photo.
  * Enrolls appointment in HikCentral, consumes token to enforce single-use, returns QR pass.
  */
-export async function POST(
+async function handlePOST(
   request: Request,
   context: RouteContext,
 ): Promise<NextResponse> {
@@ -117,3 +118,6 @@ export async function POST(
 
   return NextResponse.json(result, { status: statusForSelfRegResult(result) });
 }
+
+export const GET = withServerErrors(handleGET);
+export const POST = withServerErrors(handlePOST);

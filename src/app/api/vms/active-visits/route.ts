@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { defaultActiveMonitoringService } from "@/lib/vms/active-monitoring-service";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(): Promise<NextResponse> {
+async function handleGET(): Promise<NextResponse> {
   try {
     const activeVisits = await defaultActiveMonitoringService.getActiveVisits();
     const totalOnPremise = activeVisits.length;
@@ -43,3 +44,5 @@ export async function GET(): Promise<NextResponse> {
     );
   }
 }
+
+export const GET = withServerErrors(handleGET);

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import { validateUpdateFacilityInput } from "@/lib/vms/vms-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
+async function handleGET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
@@ -27,7 +28,7 @@ export async function GET(
   return NextResponse.json({ ok: true, facility }, { status: 200 });
 }
 
-export async function PUT(
+async function handlePUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
@@ -88,3 +89,6 @@ export async function PUT(
     { status: 200 },
   );
 }
+
+export const GET = withServerErrors(handleGET);
+export const PUT = withServerErrors(handlePUT);

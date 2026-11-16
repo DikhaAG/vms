@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { cancelVisit } from "@/lib/vms/pre-registration-service";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(
+async function handlePOST(
   request: Request,
   context: { params: Promise<{ visitId: string }> },
 ): Promise<NextResponse> {
@@ -42,3 +43,5 @@ export async function POST(
 
   return NextResponse.json(result, { status: 200 });
 }
+
+export const POST = withServerErrors(handlePOST);

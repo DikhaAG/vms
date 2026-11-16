@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { defaultVmsRepository } from "@/lib/vms/repository";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(): Promise<NextResponse> {
+async function handleGET(): Promise<NextResponse> {
   try {
     const doors = await defaultVmsRepository.listDoors();
     return NextResponse.json({
@@ -24,3 +25,5 @@ export async function GET(): Promise<NextResponse> {
     );
   }
 }
+
+export const GET = withServerErrors(handleGET);

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { defaultCheckInService } from "@/lib/vms/checkin-service";
 import { isVisitStatus, type VisitStatus } from "@/lib/vms/vms-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request): Promise<NextResponse> {
+async function handleGET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q") ?? "";
   const rawStatus = searchParams.getAll("status");
@@ -41,3 +42,5 @@ export async function GET(request: Request): Promise<NextResponse> {
     );
   }
 }
+
+export const GET = withServerErrors(handleGET);

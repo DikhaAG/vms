@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { lookupReturningVisitor } from "@/lib/vms/group-service";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const { searchParams } = new URL(request.url);
   const certificateNo = searchParams.get("certificateNo")?.trim();
 
@@ -33,3 +34,5 @@ export async function GET(request: Request) {
     profile,
   });
 }
+
+export const GET = withServerErrors(handleGET);

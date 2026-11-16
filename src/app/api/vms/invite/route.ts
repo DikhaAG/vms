@@ -4,6 +4,7 @@ import type {
   CreateInvitationInput,
   CreateInvitationResult,
 } from "@/lib/vms/invitation-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ function statusForCreateResult(result: CreateInvitationResult): number {
  * POST /api/vms/invite
  * Host action to generate an invitation link for upcoming visit.
  */
-export async function POST(request: Request): Promise<NextResponse> {
+async function handlePOST(request: Request): Promise<NextResponse> {
   let body: unknown;
   try {
     body = await request.json();
@@ -60,3 +61,5 @@ export async function POST(request: Request): Promise<NextResponse> {
   const result = await createInvitation(body as CreateInvitationInput);
   return NextResponse.json(result, { status: statusForCreateResult(result) });
 }
+
+export const POST = withServerErrors(handlePOST);

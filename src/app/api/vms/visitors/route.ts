@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { defaultVmsRepository } from "@/lib/vms/repository";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("query")?.trim() || undefined;
   const includeDeleted = searchParams.get("includeDeleted") === "true";
@@ -16,3 +17,5 @@ export async function GET(request: Request) {
     profiles,
   });
 }
+
+export const GET = withServerErrors(handleGET);
