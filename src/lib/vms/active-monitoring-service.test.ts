@@ -76,7 +76,7 @@ describe("ActiveMonitoringService", () => {
     it("returns active visits with computed overstay and quota calculations", async () => {
       // 10:35 UTC -> Alice is overstay (scheduledEnd: 10:00, grace: 15 min, elapsed: 35 min)
       const now = new Date("2026-11-13T10:35:00.000Z");
-      const active = await service.getActiveVisits(undefined, now);
+      const active = await service.getActiveVisits(now);
 
       expect(active).toHaveLength(2);
 
@@ -378,7 +378,7 @@ describe("ActiveMonitoringService", () => {
           { mode: "stub" },
         );
 
-        const summaries = await service.getActiveVisits("fac-bali");
+        const summaries = await service.getActiveVisits();
         const bob = summaries.find((s) => s.visitId === "vis-active-2");
         expect(bob?.lastSeenDoor).toBeDefined();
         expect(bob?.lastSeenDoor?.doorIndexCode).toBe("door-jkt-dc-01");
@@ -528,7 +528,7 @@ describe("ActiveMonitoringService", () => {
         expect(res.grant.reason).toBe("Critical server rack fiber repair");
 
         // Verify active monitoring summary includes the emergency grant
-        const summaries = await service.getActiveVisits("fac-jakarta");
+        const summaries = await service.getActiveVisits();
         const bruce = summaries.find((s) => s.visitId === "vis-restricted-1");
         expect(bruce?.emergencyGrants).toHaveLength(1);
         expect(bruce?.emergencyGrants?.[0].doorIndexCodes).toContain("door-jkt-dc-01");
@@ -628,7 +628,7 @@ describe("ActiveMonitoringService", () => {
         expect(revokeRes.grant.revokedAtUtc).toBeDefined();
 
         // Active grants on visit summary should now be empty
-        const summaries = await service.getActiveVisits("fac-jakarta");
+        const summaries = await service.getActiveVisits();
         const bruce = summaries.find((s) => s.visitId === "vis-restricted-1");
         expect(bruce?.emergencyGrants).toHaveLength(0);
       });

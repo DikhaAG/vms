@@ -265,17 +265,74 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
     });
 
     it("lists active visits and returns occupancy metrics", async () => {
-      const res = await caller.monitoring.listActive({ facilityId: "fac-jakarta" });
+      const res = await caller.monitoring.listActive();
       expect(res.activeVisits).toBeDefined();
       expect(res.activeVisits.length).toBe(1);
       expect(res.activeVisits[0].visitor.fullName).toBe("Diana Prince");
       expect(res.summary.totalOnPremise).toBe(1);
     });
 
+    // Compile-time contract, enforced by `pnpm typecheck` (not by vitest):
+    // the directives fail as unused if a facilityId input reappears.
+    // Never invoked, so no procedure runs.
+    const _monitoringRejectsFacilityInput = () => {
+      // @ts-expect-error facilityId was removed from monitoring.listActive
+      void caller.monitoring.listActive({ facilityId: "fac-jakarta" });
+      // @ts-expect-error facilityId was removed from monitoring.fetchDoorTelemetry
+      void caller.monitoring.fetchDoorTelemetry({ facilityId: "fac-jakarta" });
+    };
+    void _monitoringRejectsFacilityInput;
+
+    it("monitors every active visit site-wide and flags overstay with the global grace setting", async () => {
+      await repository.saveVisit({
+        ...activeVisit,
+        id: "vis-active-trpc-2",
+        facilityId: "fac-bali",
+        facilityName: "Bali Resort Office",
+        visitorGivenName: "Bruce",
+        visitorFamilyName: "Wayne",
+      });
+
+      vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-13T10:25:00.000Z") });
+      try {
+        // 25 minutes past scheduled end, inside a 30-minute global grace.
+        await caller.settings.update({ overstayGraceMinutes: 30 });
+        const withinGrace = await caller.monitoring.listActive();
+        expect(withinGrace.activeVisits.map((v) => v.visitId).sort()).toEqual([
+          "vis-active-trpc-1",
+          "vis-active-trpc-2",
+        ]);
+        expect(withinGrace.summary.overstayAlerts).toBe(0);
+
+        // Same moment, but the global grace shrinks to 20 minutes.
+        await caller.settings.update({ overstayGraceMinutes: 20 });
+        const pastGrace = await caller.monitoring.listActive();
+        expect(pastGrace.summary.overstayAlerts).toBe(2);
+        expect(pastGrace.summary.normal).toBe(0);
+        expect(pastGrace.activeVisits.map((v) => v.status)).toEqual([
+          "OVERSTAY",
+          "OVERSTAY",
+        ]);
+        expect(pastGrace.activeVisits[0].overstayMinutes).toBe(25);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("fetches door telemetry list", async () => {
-      const res = await caller.monitoring.fetchDoorTelemetry({ facilityId: "fac-jakarta" });
-      expect(Array.isArray(res)).toBe(true);
-      expect(res.some((d: FacilityDoor) => d.doorIndexCode === "door-south-01")).toBe(true);
+      await repository.saveDoor({
+        doorIndexCode: "door-bali-01",
+        doorName: "Bali Side Gate",
+        facilityId: "fac-bali",
+        accessType: "DUAL_DIRECTION",
+        isPerimeter: true,
+      });
+
+      const res = await caller.monitoring.fetchDoorTelemetry();
+      expect(res.map((d: FacilityDoor) => d.doorIndexCode).sort()).toEqual([
+        "door-bali-01",
+        "door-south-01",
+      ]);
     });
 
     it("triggers emergency door unlock for checked-in visit", async () => {

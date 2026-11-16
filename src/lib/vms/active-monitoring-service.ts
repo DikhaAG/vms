@@ -59,18 +59,8 @@ export class ActiveMonitoringService {
    * enriched with global systemSettings overstay grace period and tap quota metrics.
    */
   async getActiveVisits(
-    nowUtcOrLegacyFacilityId?: string | Date,
-    maybeNowUtc?: string | Date,
+    nowUtc?: string | Date,
   ): Promise<ActiveVisitSummary[]> {
-    const nowUtc =
-      maybeNowUtc !== undefined
-        ? maybeNowUtc
-        : nowUtcOrLegacyFacilityId instanceof Date ||
-          (typeof nowUtcOrLegacyFacilityId === "string" &&
-            !Number.isNaN(Date.parse(nowUtcOrLegacyFacilityId)))
-          ? nowUtcOrLegacyFacilityId
-          : undefined;
-
     const activeVisits = await this.repository.listActiveVisits();
     const settings = await this.repository.getSettings();
     const systemTimezone =

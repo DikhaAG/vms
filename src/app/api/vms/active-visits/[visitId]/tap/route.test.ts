@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { POST } from "./route";
 import { defaultVmsRepository, TEST_FIXTURE_DOORS } from "@/lib/vms/repository";
-import type { Visit } from "@/lib/vms/vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS, type Visit } from "@/lib/vms/vms-contract";
 
 describe("POST /api/vms/active-visits/[visitId]/tap", () => {
   const visitId = "vis-api-tap-1";
@@ -227,6 +227,35 @@ describe("POST /api/vms/active-visits/[visitId]/tap", () => {
       expect(json.ok).toBe(false);
       expect(json.error.kind).toBe("validation");
       expect(json.error.message).toMatch(/Too early for auto check-in/i);
+    });
+
+    it("widens the auto check-in window when the global early arrival buffer is raised", async () => {
+      const earlyTapTime = "2026-11-13T08:35:00.000Z"; // 25m before 09:00
+      await defaultVmsRepository.updateSettings({ autoCheckInEarlyBufferMinutes: 30 });
+      try {
+        const req = new Request(`http://localhost:3000/api/vms/active-visits/${approvedVisitId}/tap`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            doorIndexCode: "door-turnstile-1",
+            direction: "in",
+            tappedAtUtc: earlyTapTime,
+          }),
+        });
+
+        const context = { params: Promise.resolve({ visitId: approvedVisitId }) };
+        const res = await POST(req, context);
+
+        expect(res.status).toBe(200);
+        const json = await res.json();
+        expect(json.autoCheckedIn).toBe(true);
+        expect(json.visit.status).toBe("CHECKED_IN");
+        expect(json.visit.actualCheckInTimeUtc).toBe(earlyTapTime);
+      } finally {
+        await defaultVmsRepository.updateSettings({
+          autoCheckInEarlyBufferMinutes: DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes,
+        });
+      }
     });
 
     it("returns 400 validation error when APPROVED visit attempts tap on internal non-perimeter door", async () => {

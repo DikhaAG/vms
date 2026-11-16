@@ -3,7 +3,6 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { ActiveMonitoringClient } from "./active-monitoring-client";
-import type { Facility } from "@/lib/vms/vms-contract";
 import type {
   ActiveVisitSummary,
   FacilityDoor,
@@ -12,19 +11,6 @@ import type {
 import { renderWithVmsProviders, createTestQueryClient } from "@/test/test-utils";
 
 describe("ActiveMonitoringClient Component", () => {
-  const mockFacilities: Facility[] = [
-    {
-      id: "fac-jakarta",
-      name: "Jakarta Corporate HQ",
-      timezone: "Asia/Jakarta",
-    },
-    {
-      id: "fac-bali",
-      name: "Bali Innovation Center",
-      timezone: "Asia/Makassar",
-    },
-  ];
-
   const mockDoors: FacilityDoor[] = [
     {
       id: "door-1",
@@ -106,7 +92,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -123,7 +108,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -146,7 +130,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -171,7 +154,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -196,7 +178,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -238,7 +219,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -277,7 +257,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -313,7 +292,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -333,7 +311,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -352,7 +329,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -370,7 +346,6 @@ describe("ActiveMonitoringClient Component", () => {
 
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[visit]}
           doors={mockDoors}
         />,
@@ -427,7 +402,6 @@ describe("ActiveMonitoringClient Component", () => {
     it("renders tabular structure powered by UiDataTable with column headers", () => {
       const { html } = renderWithVmsProviders(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[baseVisit]}
           doors={mockDoors}
         />,
@@ -445,7 +419,6 @@ describe("ActiveMonitoringClient Component", () => {
     it("renders canonical UiKpiGrid and UiKpiCard primitives with tabular counters", () => {
       const { html } = renderWithVmsProviders(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[baseVisit]}
           doors={mockDoors}
         />,
@@ -462,7 +435,6 @@ describe("ActiveMonitoringClient Component", () => {
     it("renders pagination controls and tabular page counters in table footer", () => {
       const { html } = renderWithVmsProviders(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
           initialVisits={[baseVisit]}
           doors={mockDoors}
         />,
@@ -496,7 +468,6 @@ describe("ActiveMonitoringClient Component", () => {
       const { html } = renderWithVmsProviders(
         <NuqsTestingAdapter searchParams={{ q: "Budi" }}>
           <ActiveMonitoringClient
-            facilities={mockFacilities}
             initialVisits={[baseVisit]}
             doors={mockDoors}
           />
@@ -511,7 +482,6 @@ describe("ActiveMonitoringClient Component", () => {
       const { html } = renderWithVmsProviders(
         <NuqsTestingAdapter searchParams={{ q: "ZzzUnknown" }}>
           <ActiveMonitoringClient
-            facilities={mockFacilities}
             initialVisits={[baseVisit]}
             doors={mockDoors}
           />
@@ -534,7 +504,6 @@ describe("ActiveMonitoringClient Component", () => {
       const { html } = renderWithVmsProviders(
         <NuqsTestingAdapter searchParams={{ tab: "overstay" }}>
           <ActiveMonitoringClient
-            facilities={mockFacilities}
             initialVisits={[baseVisit, overstayVisit]}
             doors={mockDoors}
           />

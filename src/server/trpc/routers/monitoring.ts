@@ -5,51 +5,35 @@ import { ActiveMonitoringService } from "@/lib/vms/active-monitoring-service";
 import { HikCentralError } from "@/lib/hikcentral/client";
 
 export const monitoringRouter = router({
-  listActive: publicProcedure
-    .input(
-      z
-        .object({
-          facilityId: z.string().optional(),
-        })
-        .optional(),
-    )
-    .query(async ({ ctx, input }) => {
-      const service = new ActiveMonitoringService(ctx.repository);
-      const activeVisits = await service.getActiveVisits(input?.facilityId);
+  listActive: publicProcedure.query(async ({ ctx }) => {
+    const service = new ActiveMonitoringService(ctx.repository);
+    const activeVisits = await service.getActiveVisits();
 
-      const totalOnPremise = activeVisits.length;
-      const overstayAlerts = activeVisits.filter((v) => v.isOverstay).length;
-      const quotaWarnings = activeVisits.filter(
-        (v) =>
-          v.isQuotaExceeded ||
-          (v.tapQuotaMode === "limited" &&
-            v.maxTaps > 0 &&
-            v.tapCount >= v.maxTaps - 1),
-      ).length;
-      const normal = Math.max(0, totalOnPremise - overstayAlerts);
+    const totalOnPremise = activeVisits.length;
+    const overstayAlerts = activeVisits.filter((v) => v.isOverstay).length;
+    const quotaWarnings = activeVisits.filter(
+      (v) =>
+        v.isQuotaExceeded ||
+        (v.tapQuotaMode === "limited" &&
+          v.maxTaps > 0 &&
+          v.tapCount >= v.maxTaps - 1),
+    ).length;
+    const normal = Math.max(0, totalOnPremise - overstayAlerts);
 
-      return {
-        activeVisits,
-        summary: {
-          totalOnPremise,
-          normal,
-          overstayAlerts,
-          quotaWarnings,
-        },
-      };
-    }),
+    return {
+      activeVisits,
+      summary: {
+        totalOnPremise,
+        normal,
+        overstayAlerts,
+        quotaWarnings,
+      },
+    };
+  }),
 
-  fetchDoorTelemetry: publicProcedure
-    .input(
-      z
-        .object({
-          facilityId: z.string().optional(),
-        })
-        .optional(),
-    )
-    .query(async ({ ctx, input }) => {
-      return ctx.repository.listDoors(input?.facilityId);
-    }),
+  fetchDoorTelemetry: publicProcedure.query(async ({ ctx }) => {
+    return ctx.repository.listDoors();
+  }),
 
   emergencyDoorUnlock: publicProcedure
     .input(

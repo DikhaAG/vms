@@ -2,10 +2,7 @@
 "use client";
 
 import React, { useState, useMemo, useContext, useCallback } from "react";
-import {
-  DEFAULT_SYSTEM_SETTINGS,
-  type Facility,
-} from "@/lib/vms/vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS } from "@/lib/vms/vms-contract";
 import type {
   ActiveVisitSummary,
   Door,
@@ -33,7 +30,6 @@ import { createActiveVisitColumns } from "./columns";
 
 export interface ActiveMonitoringClientProps {
   systemTimezone?: string;
-  facilities?: Facility[];
   initialVisits: ActiveVisitSummary[];
   doors?: Door[];
 }
