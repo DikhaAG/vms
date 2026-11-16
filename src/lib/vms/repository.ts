@@ -1207,11 +1207,13 @@ const globalForVms = globalThis as unknown as {
   vmsRepository?: IVmsRepository;
 };
 
+/**
+ * The application always persists to PostgreSQL (ADR 0006). There is no
+ * in-memory fallback: a missing DATABASE_URL fails on the first query.
+ * `InMemoryVmsRepository` exists only as a test double (see src/test/setup.ts).
+ */
 export function createVmsRepository(): IVmsRepository {
-  if (process.env.DATABASE_URL) {
-    return new PostgresVmsRepository();
-  }
-  return new InMemoryVmsRepository();
+  return new PostgresVmsRepository();
 }
 
 export const defaultVmsRepository: IVmsRepository =
