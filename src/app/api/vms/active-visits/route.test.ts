@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { GET } from "./route";
+import { defaultActiveMonitoringService } from "@/lib/vms/active-monitoring-service";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import type { Visit } from "@/lib/vms/vms-contract";
 import type { ActiveVisitSummary } from "@/lib/vms/checkout-contract";
@@ -82,5 +83,21 @@ describe("GET /api/vms/active-visits", () => {
       (v: ActiveVisitSummary) => v.visitId === "vis-api-act-1",
     );
     expect(foundDiana).toBeDefined();
+  });
+
+  it("returns a structured 500 when the monitoring service throws", async () => {
+    const spy = vi
+      .spyOn(defaultActiveMonitoringService, "getActiveVisits")
+      .mockRejectedValueOnce(new Error("db down"));
+    try {
+      const res = await GET();
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: { kind: "server", message: "db down" },
+      });
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

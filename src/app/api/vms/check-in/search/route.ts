@@ -17,13 +17,27 @@ export async function GET(request: Request): Promise<NextResponse> {
     statusFilter = validStatuses;
   }
 
-  const visits = await defaultCheckInService.searchArrivingVisitors(
-    query,
-    statusFilter,
-  );
+  try {
+    const visits = await defaultCheckInService.searchArrivingVisitors(
+      query,
+      statusFilter,
+    );
 
-  return NextResponse.json({
-    ok: true,
-    data: visits,
-  });
+    return NextResponse.json({
+      ok: true,
+      data: visits,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: {
+          kind: "server",
+          message:
+            error instanceof Error ? error.message : "Failed to search visitors.",
+        },
+      },
+      { status: 500 },
+    );
+  }
 }

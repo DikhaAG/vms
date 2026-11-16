@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
+import { defaultCheckInService } from "@/lib/vms/checkin-service";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import type { Visit } from "@/lib/vms/vms-contract";
 
@@ -50,5 +51,21 @@ describe("GET /api/vms/check-in/search", () => {
     const json = await response.json();
     expect(json.ok).toBe(true);
     expect(json.data).toEqual([]);
+  });
+
+  it("returns a structured 500 when the check-in service throws", async () => {
+    const spy = vi
+      .spyOn(defaultCheckInService, "searchArrivingVisitors")
+      .mockRejectedValueOnce(new Error("db down"));
+    try {
+      const res = await GET(new Request("http://localhost:3000/api/vms/check-in/search?q=x"));
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: { kind: "server", message: "db down" },
+      });
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

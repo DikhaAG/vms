@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import type { FacilityDoor } from "@/lib/vms/checkout-contract";
@@ -70,5 +70,20 @@ describe("GET /api/vms/doors", () => {
     expect(flatDoor.facilityId).toBeUndefined();
     expect(flatDoor.regionIndexCode).toBe("reg-lobby");
   });
-});
 
+  it("returns a structured 500 when the repository throws", async () => {
+    const spy = vi
+      .spyOn(defaultVmsRepository, "listDoors")
+      .mockRejectedValueOnce(new Error("db down"));
+    try {
+      const res = await GET();
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: { kind: "server", message: "db down" },
+      });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
