@@ -380,11 +380,12 @@ describe("ActiveMonitoringClient Component", () => {
     });
   });
 
-  describe("Facility Door Filtering", () => {
-    it("accepts doors prop and renders without throwing", () => {
+  // Ganti bagian Facility Door Filtering & QueryClient cache di src/app/vms/active-monitoring/active-monitoring-client.test.tsx:
+  describe("Single-Site Building Door Checklist", () => {
+    it("renders single-site active monitoring screen without facility dropdown selector", () => {
       const html = renderToStaticMarkup(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
+          systemTimezone="Asia/Jakarta"
           initialVisits={[baseVisit]}
           doors={mockDoors}
         />,
@@ -392,23 +393,8 @@ describe("ActiveMonitoringClient Component", () => {
 
       expect(html).toContain("Total Tamu di Gedung");
       expect(html).toContain("Budi Santoso");
-    });
-
-    it("filters doors by facility correctly", () => {
-      const jakartaDoors = mockDoors.filter(
-        (door) => !door.facilityId || door.facilityId === "fac-jakarta",
-      );
-      expect(jakartaDoors).toHaveLength(2);
-      expect(jakartaDoors.map((d) => d.doorIndexCode)).toEqual([
-        "door-turnstile-1",
-        "door-dc-01",
-      ]);
-
-      const baliDoors = mockDoors.filter(
-        (door) => !door.facilityId || door.facilityId === "fac-bali",
-      );
-      expect(baliDoors).toHaveLength(1);
-      expect(baliDoors.map((d) => d.doorIndexCode)).toEqual(["door-bali-lab"]);
+      expect(html).not.toContain("Semua Gedung Fasilitas");
+      expect(html).not.toContain("Saring Berdasarkan Gedung");
     });
   });
 
@@ -449,7 +435,7 @@ describe("ActiveMonitoringClient Component", () => {
 
       expect(html).toContain("<table");
       expect(html).toContain("Nama Tamu");
-      expect(html).toContain("Gedung &amp; Tuan Rumah");
+      expect(html).toContain("Tuan Rumah &amp; Jadwal");
       expect(html).toContain("Status &amp; Waktu");
       expect(html).toContain("Telemetri Pintu &amp; Akses");
       expect(html).toContain("Aksi Operator");
@@ -488,11 +474,11 @@ describe("ActiveMonitoringClient Component", () => {
       expect(html).toContain("Selanjutnya");
     });
 
-    it("populates initial visits in QueryClient cache and renders without errors", () => {
+    it("populates initial visits in QueryClient cache under single-site query keys", () => {
       const queryClient = createTestQueryClient();
       const { html } = renderWithVmsProviders(
         <ActiveMonitoringClient
-          facilities={mockFacilities}
+          systemTimezone="Asia/Jakarta"
           initialVisits={[baseVisit]}
           doors={mockDoors}
         />,
@@ -500,11 +486,10 @@ describe("ActiveMonitoringClient Component", () => {
       );
 
       expect(html).toContain("Budi Santoso");
-      expect(html).toContain("Jakarta Corporate HQ");
-      expect(queryClient.getQueryData(["active-visits", "all"])).toEqual([
+      expect(queryClient.getQueryData(["active-visits"])).toEqual([
         baseVisit,
       ]);
-      expect(queryClient.getQueryData(["doors", "all"])).toEqual(mockDoors);
+      expect(queryClient.getQueryData(["doors"])).toEqual(mockDoors);
     });
 
     it("filters active visits table matching search query from URL search params (?q=...)", () => {

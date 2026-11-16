@@ -23,7 +23,11 @@ import {
   defaultVmsRepository,
   type IVmsRepository,
 } from "./repository";
-import { VISIT_REASON_LABELS, type Visit } from "./vms-contract";
+import {
+  DEFAULT_SYSTEM_SETTINGS,
+  VISIT_REASON_LABELS,
+  type Visit,
+} from "./vms-contract";
 
 export interface TapEnforcementResult {
   event: DoorTapEvent;
@@ -48,27 +52,35 @@ export interface EmergencyAccessResult {
 }
 
 export class ActiveMonitoringService {
-  constructor(private readonly repository: IVmsRepository) {}
+  constructor(private readonly repository: IVmsRepository) { }
 
   /**
-   * Retrieves all currently active on-premise visitors, enriched with
-   * overstay calculations (against facility grace period) and tap quota metrics.
+   * Retrieves all currently active on-premise visitors across the single site,
+   * enriched with global systemSettings overstay grace period and tap quota metrics.
    */
   async getActiveVisits(
-    facilityId?: string,
-    nowUtc?: string | Date,
+    nowUtcOrLegacyFacilityId?: string | Date,
+    maybeNowUtc?: string | Date,
   ): Promise<ActiveVisitSummary[]> {
-    const activeVisits = await this.repository.listActiveVisits(facilityId);
-    const facilities = await this.repository.listFacilities();
-    const facilityMap = new Map(facilities.map((f) => [f.id, f]));
+    const nowUtc =
+      maybeNowUtc !== undefined
+        ? maybeNowUtc
+        : nowUtcOrLegacyFacilityId instanceof Date ||
+          (typeof nowUtcOrLegacyFacilityId === "string" &&
+            !Number.isNaN(Date.parse(nowUtcOrLegacyFacilityId)))
+          ? nowUtcOrLegacyFacilityId
+          : undefined;
+
+    const activeVisits = await this.repository.listActiveVisits();
+    const settings = await this.repository.getSettings();
+    const systemTimezone =
+      settings.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
 
     const summaries: ActiveVisitSummary[] = [];
 
     for (const visit of activeVisits) {
-      const facility = visit.facilityId ? facilityMap.get(visit.facilityId) : undefined;
-      const overstay = evaluateOverstayStatus(visit, facility, nowUtc);
+      const overstay = evaluateOverstayStatus(visit, settings, nowUtc);
 
-      // State machine enforcement: transition CHECKED_IN -> OVERSTAY upon exceeding cutoff
       if (overstay.isOverstay && visit.status === "CHECKED_IN") {
         await this.repository.updateVisit(visit.id, {
           status: "OVERSTAY",
@@ -90,17 +102,18 @@ export class ActiveMonitoringService {
       const checkInEvents = await this.repository.listCheckInEvents(visit.id);
       const isFastTrack = Boolean(
         visit.isFastTrack ||
-          checkInEvents.some(
-            (c) =>
-              c.receptionistUserId === "system-auto-checkin" ||
-              c.receptionistName?.toLowerCase().includes("fast-track") ||
-              c.notes?.toLowerCase().includes("auto check-in") ||
-              (c.verificationMethod === "biometric" &&
-                c.receptionistUserId.includes("auto")),
-          ),
+        checkInEvents.some(
+          (c) =>
+            c.receptionistUserId === "system-auto-checkin" ||
+            c.receptionistName?.toLowerCase().includes("fast-track") ||
+            c.notes?.toLowerCase().includes("auto check-in") ||
+            (c.verificationMethod === "biometric" &&
+              c.receptionistUserId.includes("auto")),
+        ),
       );
 
-      const fullName = `${visit.visitorGivenName} ${visit.visitorFamilyName}`.trim();
+      const fullName =
+        `${visit.visitorGivenName} ${visit.visitorFamilyName}`.trim();
       const maxTaps =
         visit.tapQuota?.mode === "limited"
           ? (visit.tapQuota.maxTaps ?? 0)
@@ -121,14 +134,14 @@ export class ActiveMonitoringService {
         },
         host: visit.hostName
           ? {
-              id: visit.hostId,
-              name: visit.hostName,
-            }
+            id: visit.hostId,
+            name: visit.hostName,
+          }
           : undefined,
         facility: {
-          id: facility?.id ?? visit.facilityId ?? "",
-          name: facility?.name ?? visit.facilityName ?? "Facility",
-          timezone: facility?.timezone ?? "Asia/Jakarta",
+          id: visit.facilityId ?? "default",
+          name: visit.facilityName ?? "Gedung Utama",
+          timezone: systemTimezone,
         },
         visitReason: VISIT_REASON_LABELS[visit.visitReasonType] ?? "Visit",
         checkInTimeUtc:
@@ -155,9 +168,8 @@ export class ActiveMonitoringService {
   }
 
   /**
-   * Records a door entry/exit tap event and verifies tap quota limits.
-   * If the visitor reaches or exceeds their allotted quota, immediately
-   * triggers automated checkout and revokes hardware terminal access!
+   * Records a door entry/exit tap event, evaluates Fast-Track Auto Check-In
+   * using global systemSettings.autoCheckInEarlyBufferMinutes, and enforces tap quotas.
    */
   async recordTapAndEnforceQuota(
     visitId: string,
@@ -169,23 +181,19 @@ export class ActiveMonitoringService {
       throw new Error(`Visit not found: ${visitId}`);
     }
 
-    // Lookup door topology metadata
     const door =
-      (await this.repository.findDoor(tapData.doorIndexCode, visit.facilityId)) ||
+      (await this.repository.findDoor(tapData.doorIndexCode)) ||
       (tapData.doorName
-        ? await this.repository.getDoorByName(tapData.doorName, visit.facilityId)
-        : undefined) ||
-      (await this.repository.findDoor(tapData.doorIndexCode));
+        ? await this.repository.getDoorByName(tapData.doorName)
+        : undefined);
 
     const isPerimeter = tapData.isPerimeter ?? door?.isPerimeter ?? false;
 
-    // Fast-track touchless auto check-in handling for visits in APPROVED status
     if (visit.status === "APPROVED") {
-      const facility = visit.facilityId
-        ? await this.repository.getFacility(visit.facilityId)
-        : undefined;
+      const settings = await this.repository.getSettings();
       const earlyArrivalBufferMinutes =
-        facility?.autoCheckInEarlyBufferMinutes ?? 15;
+        settings.autoCheckInEarlyBufferMinutes ??
+        DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes;
 
       const autoCheckInEval = evaluateAutoCheckIn({
         visit,
@@ -238,11 +246,7 @@ export class ActiveMonitoringService {
         hostNotification,
       });
 
-      const quotaExceeded = isTapQuotaExceeded(
-        1,
-        autoResult.visit.tapQuota,
-      );
-
+      const quotaExceeded = isTapQuotaExceeded(1, autoResult.visit.tapQuota);
       let remainingTaps: number | undefined;
       if (autoResult.visit.tapQuota?.mode === "limited") {
         const max = autoResult.visit.tapQuota.maxTaps ?? 0;
@@ -260,13 +264,11 @@ export class ActiveMonitoringService {
           mode: options.mode,
           stubScenario: options.stubScenario,
         };
-
         const checkOutRes = await this.performCheckOut(
           visitId,
           autoCheckOutInput,
           options,
         );
-
         return {
           event: autoResult.event,
           visit: checkOutRes.visit ?? autoResult.visit,
@@ -297,7 +299,6 @@ export class ActiveMonitoringService {
       );
     }
 
-    // Door directionality validation: SINGLE_DIRECTION_IN doors have no exit reader
     const isImplicit = Boolean(tapData.isImplicit || tapData.implicit);
     if (
       door &&
@@ -310,11 +311,9 @@ export class ActiveMonitoringService {
       );
     }
 
-    // Evaluate door access permission against standard access levels AND active emergency grants
     if (visit.accessLevelIds && visit.accessLevelIds.length > 0) {
       let isPermitted = false;
 
-      // 1. Check standard access levels
       for (const alId of visit.accessLevelIds) {
         const al = await this.repository.getAccessLevel(alId);
         if (al && al.doors) {
@@ -334,16 +333,16 @@ export class ActiveMonitoringService {
         }
       }
 
-      // 2. If not permitted by standard access levels, check active non-expired emergency grants
       if (!isPermitted) {
         const grants =
           visit.emergencyGrants && visit.emergencyGrants.length > 0
             ? visit.emergencyGrants
             : await this.repository.getEmergencyGrants(visitId);
-
         const tapTime = tapData.tappedAtUtc || new Date().toISOString();
+
         const matchingGrant = grants.find((g) => {
           if (!isEmergencyGrantActive(g, tapTime)) return false;
+
           const codeMatch = g.doorIndexCodes.some(
             (code) =>
               code.toLowerCase() === tapData.doorIndexCode.toLowerCase() ||
@@ -351,6 +350,7 @@ export class ActiveMonitoringService {
                 code.toLowerCase() === door.doorIndexCode.toLowerCase()),
           );
           if (codeMatch) return true;
+
           if (g.doorNames && g.doorNames.length > 0) {
             return g.doorNames.some((name) => {
               const nNorm = name.toLowerCase();
@@ -361,6 +361,7 @@ export class ActiveMonitoringService {
               );
             });
           }
+
           return false;
         });
 
@@ -370,7 +371,8 @@ export class ActiveMonitoringService {
       }
 
       if (!isPermitted) {
-        const doorLabel = door?.doorName || tapData.doorName || tapData.doorIndexCode;
+        const doorLabel =
+          door?.doorName || tapData.doorName || tapData.doorIndexCode;
         throw new Error(
           `Access denied: Door '${doorLabel}' (${tapData.doorIndexCode}) is not authorized for visit ${visitId}. Emergency grant may be expired or revoked.`,
         );
@@ -385,20 +387,16 @@ export class ActiveMonitoringService {
         tapData.inAndOutType ?? (tapData.direction === "in" ? 1 : 2),
     };
 
-    // Implicit room transition:
-    // If visitor's last seen location was a SINGLE_DIRECTION_IN door and they now scan
-    // into a different room, log an implicit departure breadcrumb from the previous door.
     if (
       visit.lastSeenDoor &&
       visit.lastSeenDoor.doorIndexCode !== enrichedTapData.doorIndexCode &&
       visit.lastSeenDoor.direction === "in"
     ) {
       const prevDoor =
-        (await this.repository.findDoor(visit.lastSeenDoor.doorIndexCode, visit.facilityId)) ||
+        (await this.repository.findDoor(visit.lastSeenDoor.doorIndexCode)) ||
         (visit.lastSeenDoor.doorName
-          ? await this.repository.getDoorByName(visit.lastSeenDoor.doorName, visit.facilityId)
-          : undefined) ||
-        (await this.repository.findDoor(visit.lastSeenDoor.doorIndexCode));
+          ? await this.repository.getDoorByName(visit.lastSeenDoor.doorName)
+          : undefined);
 
       const isPrevSingleDirection =
         visit.lastSeenDoor.accessType === "SINGLE_DIRECTION_IN" ||
@@ -406,7 +404,9 @@ export class ActiveMonitoringService {
 
       if (isPrevSingleDirection) {
         const prevDoorName =
-          visit.lastSeenDoor.doorName || prevDoor?.doorName || visit.lastSeenDoor.doorIndexCode;
+          visit.lastSeenDoor.doorName ||
+          prevDoor?.doorName ||
+          visit.lastSeenDoor.doorIndexCode;
         const currentDoorName =
           enrichedTapData.doorName || enrichedTapData.doorIndexCode;
 
@@ -440,7 +440,6 @@ export class ActiveMonitoringService {
     }
 
     if (quotaExceeded) {
-      // Auto-trigger check-out to de-authorize hardware terminal access
       const autoCheckOutInput: CheckOutInput = {
         visitId,
         operatorUserId: "system-tap-quota-enforcer",
@@ -451,13 +450,11 @@ export class ActiveMonitoringService {
         mode: options.mode,
         stubScenario: options.stubScenario,
       };
-
       const checkOutRes = await this.performCheckOut(
         visitId,
         autoCheckOutInput,
         options,
       );
-
       return {
         event: tapResult.event,
         visit: checkOutRes.visit ?? tapResult.visit,
@@ -480,11 +477,6 @@ export class ActiveMonitoringService {
     };
   }
 
-  /**
-   * Executes normal or forced check-out:
-   * 1. If appointRecordId exists, triggers HikCentral POST /artemis/api/visitor/v1/visitor/out.
-   * 2. Updates visit status to CHECKED_OUT and logs audit details.
-   */
   async performCheckOut(
     visitId: string,
     input: CheckOutInput,
@@ -502,7 +494,6 @@ export class ActiveMonitoringService {
     }
 
     const appointRecordId = visit.hikCentral?.appointRecordId;
-
     if (appointRecordId) {
       const adapterOptions: CheckOutAdapterOptions = {
         ...options,
@@ -513,7 +504,6 @@ export class ActiveMonitoringService {
       await executeHikCentralCheckOut(appointRecordId, adapterOptions);
     }
 
-    // Auto-revoke all ACTIVE emergency grants for this visit and de-authorize on hardware
     const grants = await this.repository.getEmergencyGrants(visitId);
     const activeGrants = grants.filter((g) => g.status === "ACTIVE");
     for (const grant of activeGrants) {
@@ -543,7 +533,6 @@ export class ActiveMonitoringService {
     }
 
     const checkOutTimeUtc = input.checkOutTimeUtc || new Date().toISOString();
-
     const updatedVisit = await this.repository.checkOutVisit(visitId, {
       actualCheckOutTimeUtc: checkOutTimeUtc,
       operatorUserId: input.operatorUserId,
@@ -559,10 +548,6 @@ export class ActiveMonitoringService {
     };
   }
 
-  /**
-   * Grants immediate, time-bounded emergency access to additional doors for an active visit.
-   * Synchronizes hardware terminal privileges immediately via HikCentral adapter.
-   */
   async grantEmergencyAccess(
     visitId: string,
     input: GrantEmergencyAccessInput,
@@ -580,7 +565,9 @@ export class ActiveMonitoringService {
     }
 
     if (!input.reason || input.reason.trim().length < 10) {
-      throw new Error("A business justification reason of at least 10 characters is required.");
+      throw new Error(
+        "A business justification reason of at least 10 characters is required.",
+      );
     }
 
     if (!input.doorIndexCodes || input.doorIndexCodes.length === 0) {
@@ -611,10 +598,9 @@ export class ActiveMonitoringService {
       throw new Error("Expiration must be in the future.");
     }
 
-    // Resolve door names
     const resolvedDoorNames: string[] = [];
     for (const code of input.doorIndexCodes) {
-      const door = await this.repository.findDoor(code, visit.facilityId);
+      const door = await this.repository.findDoor(code);
       resolvedDoorNames.push(door?.doorName || code);
     }
 
@@ -622,16 +608,19 @@ export class ActiveMonitoringService {
       id: `emg-grant-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       visitId,
       doorIndexCodes: input.doorIndexCodes,
-      doorNames: input.doorNames && input.doorNames.length > 0 ? input.doorNames : resolvedDoorNames,
+      doorNames:
+        input.doorNames && input.doorNames.length > 0
+          ? input.doorNames
+          : resolvedDoorNames,
       grantedByUserId: input.grantedByUserId.trim(),
-      grantedByName: input.grantedByName?.trim() || input.grantedByUserId.trim(),
+      grantedByName:
+        input.grantedByName?.trim() || input.grantedByUserId.trim(),
       reason: input.reason.trim(),
       grantedAtUtc,
       expiresAtUtc,
       status: "ACTIVE",
     };
 
-    // Synchronize privileges to HikCentral physical controllers first
     const adapterOptions: EmergencyAdapterOptions = {
       ...options,
       mode: input.mode ?? options.mode ?? "live",
@@ -650,20 +639,15 @@ export class ActiveMonitoringService {
       adapterOptions,
     );
 
-    // Save grant in repository only AFTER successful upstream hardware sync
-    // to guarantee state is not corrupted if upstream controller synchronization fails
     await this.repository.saveEmergencyGrant(grant);
-
     const updatedVisit = await this.repository.getVisit(visitId);
+
     return {
       grant,
       visit: updatedVisit,
     };
   }
 
-  /**
-   * Manually revokes an emergency access grant early and de-authorizes terminal privileges on hardware.
-   */
   async revokeEmergencyAccess(
     visitId: string,
     grantId: string,
@@ -700,6 +684,7 @@ export class ActiveMonitoringService {
     );
 
     const updatedVisit = await this.repository.getVisit(visitId);
+
     return {
       grant: revokedGrant,
       visit: updatedVisit,

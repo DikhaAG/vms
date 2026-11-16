@@ -229,10 +229,11 @@ describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
       expect(html).toContain("Buat Undangan Tamu Terjadwal");
       expect(html).toContain("Kunjungan Individual");
       expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("1. Pilih Gedung &amp; Zona Waktu Fasilitas");
-      expect(html).toContain("2. Data Identitas Tamu");
-      expect(html).toContain("3. Pengambilan &amp; Verifikasi Foto Biometrik Wajah");
-      expect(html).toContain("6. Kelompok Hak Akses Pintu &amp; Batas Tap");
+      expect(html).toContain("1. Data Identitas Tamu");
+      expect(html).toContain("2. Pengambilan &amp; Verifikasi Foto Biometrik Wajah");
+      expect(html).toContain("3. Jadwal Kunjungan &amp; Keperluan");
+      expect(html).toContain("4. Karyawan Tuan Rumah Internal");
+      expect(html).toContain("5. Kelompok Hak Akses Pintu &amp; Batas Tap");
       expect(html).toContain("Buat Tautan Pendaftaran Mandiri");
       expect(html).toContain("Kirim Janji Temu Tamu");
     });

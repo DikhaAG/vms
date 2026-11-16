@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useRef } from "react";
 import type {
   ActiveVisitSummary,
-  FacilityDoor,
+  Door,
   EmergencyAccessGrant,
 } from "@/lib/vms/checkout-contract";
 import { idDict } from "@/lib/vms/i18n/id";
@@ -11,7 +11,7 @@ import { useModalFocusTrap } from "@/components/vms/use-modal-focus-trap";
 
 export interface EmergencyAccessModalProps {
   visit: ActiveVisitSummary | null;
-  doors: FacilityDoor[];
+  doors: Door[];
   onClose: () => void;
   onSuccess: (grant: EmergencyAccessGrant, notificationMessage: string) => void;
 }
@@ -28,6 +28,7 @@ export function EmergencyAccessModal({
   const [emergencyReason, setEmergencyReason] = useState("");
   const [operatorUserId, setOperatorUserId] = useState("sec-officer-01");
   const [operatorName, setOperatorName] = useState("Petugas Keamanan");
+
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,14 +39,9 @@ export function EmergencyAccessModal({
     onClose,
   });
 
-  const availableDoors = useMemo(() => {
-    if (!visit) return [];
-    return (doors || []).filter(
-      (door) => !door.facilityId || door.facilityId === visit.facility.id,
-    );
-  }, [doors, visit]);
-
   if (!visit) return null;
+
+  const availableDoors = doors || [];
 
   const handleToggleDoor = (doorCode: string) => {
     setSelectedDoorCodes((prev) =>
@@ -55,29 +51,25 @@ export function EmergencyAccessModal({
     );
   };
 
-  const selectedDoors = (doors || []).filter((d) =>
+  const selectedDoors = availableDoors.filter((d) =>
     selectedDoorCodes.includes(d.doorIndexCode),
   );
   const selectedDoorNames = selectedDoors.map((d) => d.doorName);
 
   const handlePreConfirm = () => {
     setError(null);
-
     if (selectedDoorCodes.length === 0) {
       setError("Silakan pilih minimal satu pintu fisik.");
       return;
     }
-
     if (emergencyReason.trim().length < 10) {
       setError("Alasan justifikasi operasional minimal harus 10 karakter.");
       return;
     }
-
     if (!operatorUserId.trim()) {
       setError("ID Petugas Keamanan penanggung jawab wajib diisi.");
       return;
     }
-
     setIsConfirming(true);
   };
 
@@ -117,6 +109,7 @@ export function EmergencyAccessModal({
 
       const receiptId = (data.grant?.id || "").slice(0, 8);
       const summaryMessage = `Izin akses darurat ke ${selectedDoorNames.join(", ")} berhasil diberikan untuk ${visit.visitor.fullName} (${durationHours} jam). Bukti Transaksi Gateway: #${receiptId || "OK"}.`;
+
       onSuccess(data.grant, summaryMessage);
     } catch (err) {
       setError(
@@ -144,7 +137,7 @@ export function EmergencyAccessModal({
             id="emergencyAccessTitle"
             className="text-base font-bold text-[var(--ks-ink)] flex items-center gap-2"
           >
-            <span className="text-[var(--ks-kinpaku)]">🛡️</span>
+            <span className="text-[var(--ks-kinpaku)]">&#9889;</span>
             Izin Akses Pintu Darurat Sementara
           </h3>
           <button
@@ -169,11 +162,10 @@ export function EmergencyAccessModal({
         )}
 
         {isConfirming ? (
-          /* Confirmation Screen */
           <div className="mt-4 space-y-4">
             <div className="rounded-xl border border-[var(--ks-vermilion)]/40 bg-[var(--ks-vermilion)]/10 p-4 text-xs text-[var(--ks-ink)]">
               <h4 className="font-bold flex items-center gap-1.5 text-sm text-[var(--ks-vermilion)]">
-                <span>⚠️</span> Konfirmasi Pembukaan Akses Pintu Fisik
+                Konfirmasi Pembukaan Akses Pintu Fisik
               </h4>
               <p className="mt-2 leading-relaxed">
                 Tindakan ini akan <strong>langsung mengirimkan sinyal kontrol hardware</strong> ke server HikCentral untuk mengizinkan akses pintu fisik bagi <strong>{visit.visitor.fullName}</strong>:
@@ -184,7 +176,7 @@ export function EmergencyAccessModal({
                 ))}
               </ul>
               <p className="mt-2 text-[11px] text-[var(--ks-muted)]">
-                Durasi Akses: {durationHours} Jam • Petugas Penanggung Jawab: {operatorName} ({operatorUserId})
+                Durasi Akses: {durationHours} Jam &bull; Petugas Penanggung Jawab: {operatorName} ({operatorUserId})
               </p>
             </div>
 
@@ -208,7 +200,6 @@ export function EmergencyAccessModal({
             </div>
           </div>
         ) : (
-          /* Normal Configuration Screen */
           <>
             <div className="mt-4 space-y-4">
               {/* Visitor Summary Banner */}
@@ -217,21 +208,21 @@ export function EmergencyAccessModal({
                   {visit.visitor.fullName}
                 </p>
                 <p className="text-[var(--ks-muted)] mt-0.5">
-                  Fasilitas: <span className="font-medium text-[var(--ks-ink)]">{visit.facility.name}</span> • Tuan Rumah: {visit.host?.name || "N/A"}
+                  Tuan Rumah: <span className="font-medium text-[var(--ks-ink)]">{visit.host?.name || "Tamu Meja Depan"}</span>
                 </p>
                 <p className="text-[11px] text-[var(--ks-muted)] mt-1">
                   Keperluan: {visit.visitReason}
                 </p>
               </div>
 
-              {/* Door Selection List */}
+              {/* Single Authoritative Building Door Checklist */}
               <div>
                 <span className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1.5">
                   Pilih Pintu Fisik yang Dibuka Aksesnya <span className="text-[var(--ks-vermilion)]">*</span>
                 </span>
                 {availableDoors.length === 0 ? (
                   <p className="text-xs text-[var(--ks-muted)] italic">
-                    Tidak ada pintu terdaftar untuk fasilitas ini.
+                    Belum ada pintu fisik yang terdaftar dari HikCentral.
                   </p>
                 ) : (
                   <div className="max-h-40 overflow-y-auto space-y-1 rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] p-2">
@@ -241,8 +232,8 @@ export function EmergencyAccessModal({
                         <label
                           key={door.doorIndexCode}
                           className={`flex items-center justify-between rounded-md p-2 text-xs cursor-pointer transition ${isSelected
-                            ? "bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)] font-semibold border border-[var(--ks-kinpaku)]/30"
-                            : "hover:bg-[var(--ks-paper-deep)] text-[var(--ks-text)] border border-transparent"
+                              ? "bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)] font-semibold border border-[var(--ks-kinpaku)]/30"
+                              : "hover:bg-[var(--ks-paper-deep)] text-[var(--ks-text)] border border-transparent"
                             }`}
                         >
                           <div className="flex items-center gap-2">
@@ -264,7 +255,7 @@ export function EmergencyAccessModal({
                 )}
               </div>
 
-              {/* Duration Slider / Select */}
+              {/* Duration Slider */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label htmlFor="durationHours" className="text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)]">

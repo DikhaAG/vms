@@ -51,8 +51,7 @@ describe("GET /api/vms/active-visits", () => {
   });
 
   it("returns active on-premise visits and summary metrics", async () => {
-    const req = new Request("http://localhost:3000/api/vms/active-visits");
-    const res = await GET(req);
+    const res = await GET();
 
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -73,14 +72,15 @@ describe("GET /api/vms/active-visits", () => {
     expect(typeof json.summary.quotaWarnings).toBe("number");
   });
 
-  it("filters active visits by facilityId query param", async () => {
-    const req = new Request("http://localhost:3000/api/vms/active-visits?facilityId=fac-bali");
-    const res = await GET(req);
-
+  it("returns all active visits across the single site regardless of legacy facilityId query param", async () => {
+    const res = await GET();
     expect(res.status).toBe(200);
+
     const json = await res.json();
     expect(json.ok).toBe(true);
-    const foundDiana = json.activeVisits.find((v: ActiveVisitSummary) => v.visitId === "vis-api-act-1");
-    expect(foundDiana).toBeUndefined();
+    const foundDiana = json.activeVisits.find(
+      (v: ActiveVisitSummary) => v.visitId === "vis-api-act-1",
+    );
+    expect(foundDiana).toBeDefined();
   });
 });

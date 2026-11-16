@@ -10,7 +10,7 @@ export const metadata = {
 };
 
 export default async function PreRegistrationPage() {
-  const facilities = await defaultVmsRepository.listFacilities();
+  const settings = await defaultVmsRepository.getSettings();
   const accessLevels = await defaultVmsRepository.listAccessLevels();
 
   const pageInfo = idDict.pages.preRegistration;
@@ -25,7 +25,7 @@ export default async function PreRegistrationPage() {
       />
 
       <PreRegistrationForm
-        initialFacilities={facilities}
+        systemTimezone={settings.timezone}
         initialAccessLevels={accessLevels}
       />
     </div>

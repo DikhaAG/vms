@@ -32,8 +32,7 @@ describe("GET /api/vms/doors", () => {
       },
     ]);
 
-    const req = new Request("http://localhost:3000/api/vms/doors");
-    const res = await GET(req);
+    const res = await GET();
     expect(res.status).toBe(200);
 
     const data = await res.json();
@@ -48,17 +47,28 @@ describe("GET /api/vms/doors", () => {
     expect(turnstile?.isOnline).toBe(true);
   });
 
-  it("filters doors by facilityId query parameter if specified", async () => {
-    const req = new Request("http://localhost:3000/api/vms/doors?facilityId=fac-jakarta");
-    const res = await GET(req);
+  it("returns all doors flatly across the single site without facilityId scoping", async () => {
+    await defaultVmsRepository.saveDoor({
+      id: "door-flat-test-1",
+      doorIndexCode: "door-flat-test-1",
+      doorName: "Flat Building Gate",
+      regionIndexCode: "reg-lobby",
+      accessType: "DUAL_DIRECTION",
+      isPerimeter: true,
+    });
+
+    const res = await GET();
     expect(res.status).toBe(200);
 
     const data = await res.json();
     expect(data.ok).toBe(true);
     expect(Array.isArray(data.doors)).toBe(true);
-    for (const door of data.doors) {
-      expect(door.facilityId).toBe("fac-jakarta");
-    }
+    const flatDoor = data.doors.find(
+      (d: { doorIndexCode: string }) => d.doorIndexCode === "door-flat-test-1",
+    );
+    expect(flatDoor).toBeDefined();
+    expect(flatDoor.facilityId).toBeUndefined();
+    expect(flatDoor.regionIndexCode).toBe("reg-lobby");
   });
 });
 

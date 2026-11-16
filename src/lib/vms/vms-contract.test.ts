@@ -116,12 +116,18 @@ describe("vms-contract", () => {
       const result = validatePreRegistrationInput({});
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.errors.facilityId).toBeDefined();
         expect(result.errors.visitorFamilyName).toBeDefined();
         expect(result.errors.visitorGivenName).toBeDefined();
         expect(result.errors.scheduledStartTime).toBeDefined();
         expect(result.errors.scheduledEndTime).toBeDefined();
       }
+    });
+
+    it("allows facilityId to be omitted in single-site architecture", () => {
+      const inputWithoutFacility = { ...validInput };
+      delete (inputWithoutFacility as Record<string, unknown>).facilityId;
+      const result = validatePreRegistrationInput(inputWithoutFacility);
+      expect(result.valid).toBe(true);
     });
 
     it("validates scheduled end time is strictly after start time", () => {

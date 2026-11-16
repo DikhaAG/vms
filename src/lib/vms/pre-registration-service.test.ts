@@ -4,6 +4,10 @@ import {
   cancelVisit,
   createPreRegistration,
 } from "./pre-registration-service";
+import {
+  createSampleFaceJpegDataUri,
+  stripDataUriPrefix,
+} from "./face-normalizer";
 import type { CreatePreRegistrationInput } from "./vms-contract";
 import type {
   HikCentralAppointmentParams,
@@ -53,7 +57,7 @@ describe("createPreRegistration", () => {
     expect(visit.scheduledStartTimeUtc).toBe("2026-11-13T03:00:00.000Z");
     expect(visit.scheduledEndTimeUtc).toBe("2026-11-13T05:00:00.000Z");
 
-    // Facility formatted times
+    // Local formatted times
     expect(visit.scheduledStartTimeFacility).toBe("2026-11-13T10:00:00+07:00");
     expect(visit.scheduledEndTimeFacility).toBe("2026-11-13T12:00:00+07:00");
 
@@ -86,15 +90,17 @@ describe("createPreRegistration", () => {
     expect(visit.monitoringListFlag?.matches?.[0].certificateNo).toBe("3171012345670001");
   });
 
-  it("correctly handles different facility timezones (e.g. Asia/Makassar for Bali)", async () => {
-    const baliInput: CreatePreRegistrationInput = {
-      ...baseInput,
-      facilityId: "fac-bali",
-      scheduledStartTime: "2026-11-13T10:00:00",
-      scheduledEndTime: "2026-11-13T12:00:00",
-    };
+  it("correctly handles global system timezone (e.g. Asia/Makassar)", async () => {
+    await repo.updateSettings({ timezone: "Asia/Makassar" });
 
-    const result = await createPreRegistration(baliInput, { repository: repo });
+    const result = await createPreRegistration(
+      {
+        ...baseInput,
+        scheduledStartTime: "2026-11-13T10:00:00",
+        scheduledEndTime: "2026-11-13T12:00:00",
+      },
+      { repository: repo },
+    );
     expect(result.ok).toBe(true);
     const visit = result.visit!;
 
@@ -117,18 +123,17 @@ describe("createPreRegistration", () => {
     expect(result.error?.fieldErrors?.visitorFamilyName).toBeDefined();
   });
 
-  it("returns not_found error when facility does not exist", async () => {
-    const unknownFacilityInput = {
+  it("ignores legacy or omitted facilityId under single-site architecture", async () => {
+    const legacyFacilityInput = {
       ...baseInput,
-      facilityId: "non-existent-facility",
+      facilityId: "legacy-or-omitted-facility",
     };
 
-    const result = await createPreRegistration(unknownFacilityInput, {
+    const result = await createPreRegistration(legacyFacilityInput, {
       repository: repo,
     });
-    expect(result.ok).toBe(false);
-    expect(result.error?.kind).toBe("not_found");
-    expect(result.error?.message).toContain("non-existent-facility");
+    expect(result.ok).toBe(true);
+    expect(result.visit).toBeDefined();
   });
 
   it("handles upstream HikCentral errors cleanly without crashing", async () => {
@@ -186,7 +191,7 @@ describe("createPreRegistration", () => {
       };
     };
 
-    const faceDataUri = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/";
+    const faceDataUri = createSampleFaceJpegDataUri();
     const inputWithFace: CreatePreRegistrationInput = {
       ...baseInput,
       facePhoto: faceDataUri,
@@ -198,7 +203,7 @@ describe("createPreRegistration", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(dispatchedParams?.facePhotoData).toBe(faceDataUri);
+    expect(dispatchedParams?.facePhotoData).toBe(stripDataUriPrefix(faceDataUri));
     expect(result.visit?.facePhoto).toBe(faceDataUri);
     expect(result.visit?.credentialSyncStatus).toBe("Applied");
   });
@@ -245,6 +250,40 @@ describe("createPreRegistration", () => {
       { id: "acc-jkt-exec", name: "Executive Floor 3" },
     ]);
     expect(dispatchedParams?.qrCodeValidNum).toBe(4);
+  });
+
+  it("automatically assigns default building access levels when accessLevelIds is omitted", async () => {
+    let dispatchedParams: HikCentralAppointmentParams | undefined;
+    const mockDispatcher = async (
+      params: HikCentralAppointmentParams,
+    ): Promise<HikCentralAppointmentSuccess> => {
+      dispatchedParams = params;
+      return {
+        appointRecordId: "mock-rec-def-1",
+        visitorId: "mock-vis-def-1",
+      };
+    };
+
+    const inputWithoutFacilityOrAccess = { ...baseInput };
+    delete (inputWithoutFacilityOrAccess as Record<string, unknown>).facilityId;
+    delete (inputWithoutFacilityOrAccess as Record<string, unknown>).accessLevelIds;
+
+    const result = await createPreRegistration(inputWithoutFacilityOrAccess, {
+      repository: repo,
+      appointmentDispatcher: mockDispatcher,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.visit?.accessLevelIds).toEqual([
+      "acc-jkt-lobby",
+      "acc-bali-main",
+      "acc-jay-warehouse",
+    ]);
+    expect(dispatchedParams?.accessLevels).toEqual([
+      { id: "acc-jkt-lobby", name: "Lobby & 1st Floor Turnstiles" },
+      { id: "acc-bali-main", name: "Innovation Hub General Access" },
+      { id: "acc-jay-warehouse", name: "Logistics Hub & Warehouse" },
+    ]);
   });
 
   describe("cancelVisit", () => {

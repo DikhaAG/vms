@@ -66,11 +66,11 @@ export type CheckInInput = z.infer<typeof checkInInputSchema>;
 
 export const walkInRegistrationSchema = z
   .object({
-    facilityId: z.string().trim().min(1, "Facility is required."),
+    facilityId: z.string().trim().optional(),
     hostId: z.string().trim().optional(),
     hostName: z.string().trim().optional(),
     visitorFamilyName: z
-      .string()
+      .string({ error: "Visitor family name is required." })
       .trim()
       .min(1, "Visitor family name is required.")
       .max(256, "Visitor family name must be at most 256 characters.")
@@ -79,7 +79,7 @@ export const walkInRegistrationSchema = z
           "Visitor family name cannot contain special characters like ' / \\ : * ? \" < > |",
       }),
     visitorGivenName: z
-      .string()
+      .string({ error: "Visitor given name is required." })
       .trim()
       .min(1, "Visitor given name is required.")
       .max(256, "Visitor given name must be at most 256 characters.")
@@ -87,7 +87,7 @@ export const walkInRegistrationSchema = z
         message:
           "Visitor given name cannot contain special characters like ' / \\ : * ? \" < > |",
       }),
-    visitorPhone: z.string().trim().max(20, "Phone number must be at most 20 characters.").optional(),
+    visitorPhone: z.string().trim().max(20).optional(),
     visitorEmail: z
       .string()
       .trim()
@@ -96,37 +96,34 @@ export const walkInRegistrationSchema = z
       })
       .optional(),
     certificateType: certificateTypeSchema.optional(),
-    certificateNo: z.string().trim().max(20, "Certificate number must be at most 20 characters.").optional(),
+    certificateNo: z.string().trim().max(20).optional(),
     visitReasonType: visitReasonTypeSchema,
-    visitReasonDetail: z.string().trim().max(128, "Visit reason detail must be at most 128 characters.").optional(),
+    visitReasonDetail: z.string().trim().max(128).optional(),
     scheduledStartTime: z.string().trim().optional(),
     scheduledEndTime: z.string().trim().optional(),
     accessLevelIds: z.array(z.string().trim()).optional(),
     tapQuota: tapQuotaSchema.optional(),
     facePhoto: z.string().trim().optional(),
     receptionistUserId: z
-      .string()
+      .string({ error: "Receptionist user ID is required." })
       .trim()
       .min(1, "Receptionist user ID is required."),
     receptionistName: z.string().trim().optional(),
     verificationMethod: verificationMethodSchema.optional(),
-    notes: z.string().trim().optional(),
+    notes: z.string().trim().max(500).optional(),
     mode: preRegistrationModeSchema.optional(),
     stubScenario: stubScenarioSchema.optional(),
   })
   .superRefine((data, ctx) => {
-    if (data.visitReasonType === 4 && (!data.visitReasonDetail || !data.visitReasonDetail.trim())) {
+    if (
+      data.visitReasonType === 4 &&
+      (!data.visitReasonDetail || !data.visitReasonDetail.trim())
+    ) {
       ctx.addIssue({
         code: "custom",
         path: ["visitReasonDetail"],
-        message: "Visit reason detail is required when reason type is 'Others' (4).",
-      });
-    }
-    if (data.certificateNo && data.certificateNo.trim() && data.certificateType === undefined) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["certificateType"],
-        message: "Certificate type is required when certificate number is provided.",
+        message:
+          "Visit reason detail is required when reason type is 'Others' (4).",
       });
     }
   });
@@ -268,12 +265,12 @@ export function validateWalkInRegistrationInput(
       accessLevelIds: result.data.accessLevelIds,
       tapQuota: result.data.tapQuota
         ? {
-            mode: result.data.tapQuota.mode,
-            maxTaps:
-              result.data.tapQuota.mode === "unlimited"
-                ? 0
-                : result.data.tapQuota.maxTaps ?? 0,
-          }
+          mode: result.data.tapQuota.mode,
+          maxTaps:
+            result.data.tapQuota.mode === "unlimited"
+              ? 0
+              : result.data.tapQuota.maxTaps ?? 0,
+        }
         : undefined,
       facePhoto: result.data.facePhoto,
       receptionistUserId: result.data.receptionistUserId,

@@ -45,33 +45,36 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
   const dummyAccessLevels: AccessLevel[] = [
     {
       id: "al-lobby",
-      facilityId: "fac-jakarta",
       name: "Pintu Masuk Lobi Utama",
       description: "Akses gerbang lobi dan pintu putar lantai 1",
       doors: ["Lobby SpeedGate A"],
       floors: ["1F"],
       timeScheduleId: 2,
       isDefault: true,
-      createdAtUtc: "2026-01-01T00:00:00Z",
-      updatedAtUtc: "2026-01-01T00:00:00Z",
     },
   ];
 
-  it("renders localized form legends and action buttons in Indonesian", () => {
+  it("renders localized form legends and action buttons in Indonesian without a facility dropdown", () => {
     const { html } = renderWithVmsProviders(
       <PreRegistrationForm
+        systemTimezone="Asia/Jakarta"
         initialFacilities={dummyFacilities}
         initialAccessLevels={dummyAccessLevels}
       />
     );
 
+    // Ticket 04 AC #1: No facility dropdown rendered
+    expect(html).not.toContain('name="facilityId"');
+    expect(html).not.toContain("Kantor Pusat Jakarta");
+    expect(html).not.toContain("Cabang Surabaya");
+    expect(html).toContain("Asia/Jakarta");
+
     // Section Legends
-    expect(html).toContain("1. Pilih Gedung &amp; Zona Waktu Fasilitas");
-    expect(html).toContain("2. Data Identitas Tamu");
-    expect(html).toContain("3. Pengambilan &amp; Verifikasi Foto Biometrik Wajah");
-    expect(html).toContain("4. Jadwal Kunjungan &amp; Keperluan");
-    expect(html).toContain("5. Karyawan Tuan Rumah Internal");
-    expect(html).toContain("6. Kelompok Hak Akses Pintu &amp; Batas Tap");
+    expect(html).toContain("1. Data Identitas Tamu");
+    expect(html).toContain("2. Pengambilan &amp; Verifikasi Foto Biometrik Wajah");
+    expect(html).toContain("3. Jadwal Kunjungan &amp; Keperluan");
+    expect(html).toContain("4. Karyawan Tuan Rumah Internal");
+    expect(html).toContain("5. Kelompok Hak Akses Pintu &amp; Batas Tap");
 
     // Action buttons
     expect(html).toContain("Buat Tautan Pendaftaran Mandiri");
@@ -87,13 +90,14 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
     expect(html).toContain("Buat Undangan Tamu Terjadwal");
     expect(html).toContain("Kunjungan Individual");
     expect(html).toContain("Panduan Halaman Ini");
-    expect(html).toContain("aria-haspopup=\"dialog\"");
+    expect(html).toContain('aria-haspopup="dialog"');
+    expect(html).not.toContain('name="facilityId"');
   });
 
   it("Seam 1: wires canonical UiFormField and accessible form controls", () => {
     const { html } = renderWithVmsProviders(
       <PreRegistrationForm
-        initialFacilities={dummyFacilities}
+        systemTimezone="Asia/Jakarta"
         initialAccessLevels={dummyAccessLevels}
       />
     );
@@ -123,12 +127,22 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
     expect(html).toContain('name="visitReasonType"');
   });
 
-  it("Seam 2: validates input using preRegistrationInputSchema Zod schema", () => {
+  it("Seam 2: validates input using preRegistrationInputSchema Zod schema with or without facilityId", () => {
     expect(preRegistrationInputSchema).toBeDefined();
     expect(preRegistrationInputSchema).toBe(createPreRegistrationSchema);
 
-    // Test valid input passes
-    const valid = preRegistrationInputSchema.safeParse({
+    // Ticket 04 AC #2: Valid input without facilityId passes
+    const validSingleSite = preRegistrationInputSchema.safeParse({
+      visitorGivenName: "Budi",
+      visitorFamilyName: "Santoso",
+      scheduledStartTime: "2026-11-20T10:00",
+      scheduledEndTime: "2026-11-20T12:00",
+      visitReasonType: 0,
+    });
+    expect(validSingleSite.success).toBe(true);
+
+    // Backward-compatible input with optional facilityId also passes
+    const validWithFacility = preRegistrationInputSchema.safeParse({
       facilityId: "fac-jakarta",
       visitorGivenName: "Budi",
       visitorFamilyName: "Santoso",
@@ -136,11 +150,10 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
       scheduledEndTime: "2026-11-20T12:00",
       visitReasonType: 0,
     });
-    expect(valid.success).toBe(true);
+    expect(validWithFacility.success).toBe(true);
 
     // Test invalid input fails with required field error
     const invalid = preRegistrationInputSchema.safeParse({
-      facilityId: "",
       visitorGivenName: "",
       visitorFamilyName: "",
       scheduledStartTime: "",
@@ -153,7 +166,7 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
   it("Seam 3: renders tap quota and photo capture controlled containers", () => {
     const { html } = renderWithVmsProviders(
       <PreRegistrationForm
-        initialFacilities={dummyFacilities}
+        systemTimezone="Asia/Jakarta"
         initialAccessLevels={dummyAccessLevels}
       />
     );
@@ -169,21 +182,19 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
     expect(html).toContain("Ambil Foto via Kamera");
   });
 
-  it("Seam 4: renders PreRegistrationResultCard with OpenAPI details and credential sync status", () => {
+  it("Seam 4: renders PreRegistrationResultCard with OpenAPI details, global timezone local time, and credential sync status", () => {
     const dummyVisit = {
       id: "vis-test-123",
-      facilityId: "fac-jakarta",
-      facilityName: "Kantor Pusat Jakarta",
       visitorGivenName: "Rian",
       visitorFamilyName: "Pratama",
       visitorPhone: "+628123456789",
       visitorEmail: "rian.pratama@example.com",
       visitReasonType: 0 as const,
       status: "PENDING_APPROVAL" as const,
-      scheduledStartTimeUtc: "2026-11-20T03:00:00Z",
-      scheduledEndTimeUtc: "2026-11-20T05:00:00Z",
-      scheduledStartTimeFacility: "2026-11-20 10:00",
-      scheduledEndTimeFacility: "2026-11-20 12:00",
+      scheduledStartTimeUtc: "2026-11-20T03:00:00.000Z",
+      scheduledEndTimeUtc: "2026-11-20T05:00:00.000Z",
+      scheduledStartTimeFacility: "2026-11-20T11:00:00+08:00",
+      scheduledEndTimeFacility: "2026-11-20T13:00:00+08:00",
       accessLevelIds: ["al-lobby"],
       tapQuota: { mode: "limited" as const, maxTaps: 3 },
       hikCentral: {
@@ -197,19 +208,21 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
 
     const { html } = renderWithVmsProviders(
       <PreRegistrationForm
-        initialFacilities={dummyFacilities}
+        systemTimezone="Asia/Makassar"
         initialAccessLevels={dummyAccessLevels}
       />
     );
 
-    // Form submit button should exist with correct Indonesian text
+    // Form displays configured global systemTimezone
+    expect(html).toContain("Asia/Makassar");
     expect(html).toContain("Kirim Janji Temu Tamu");
 
-    // Also verify PreRegistrationResultCard directly
+    // Ticket 04 AC #4: PreRegistrationResultCard renders local time according to global systemTimezone
     const resultHtml = renderToStaticMarkup(
       <PreRegistrationResultCard
         visit={dummyVisit}
         accessLevels={dummyAccessLevels}
+        systemTimezone="Asia/Makassar"
         credentialSyncStatus="Applied"
         isRetryingSync={false}
         retrySyncMessage={null}
@@ -219,6 +232,11 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
 
     expect(resultHtml).toContain("Janji Temu Berhasil Terjadwal");
     expect(resultHtml).toContain("vis-test-123");
+    expect(resultHtml).toContain("Waktu Lokal (Asia/Makassar):");
+    // Assert the Intl-formatted local strings, not substrings of the raw ISO line
+    expect(resultHtml).toContain("Nov 20, 2026, 11:00");
+    expect(resultHtml).toContain("Nov 20, 2026, 13:00");
+    expect(resultHtml).toContain("2026-11-20T11:00:00+08:00");
     expect(resultHtml).toContain("rec-888");
     expect(resultHtml).toContain("v-999");
     expect(resultHtml).toContain("CODE-123");
@@ -260,16 +278,14 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
   it("Seam 4: displays non-optimistic Unknown status badge when terminal sync is pending", () => {
     const dummyVisit = {
       id: "vis-test-unknown",
-      facilityId: "fac-jakarta",
-      facilityName: "Kantor Pusat Jakarta",
       visitorGivenName: "Andi",
       visitorFamilyName: "Wijaya",
       visitReasonType: 0 as const,
       status: "PENDING_APPROVAL" as const,
       scheduledStartTimeUtc: "2026-11-20T03:00:00Z",
       scheduledEndTimeUtc: "2026-11-20T05:00:00Z",
-      scheduledStartTimeFacility: "2026-11-20 10:00",
-      scheduledEndTimeFacility: "2026-11-20 12:00",
+      scheduledStartTimeFacility: "2026-11-20T10:00:00+07:00",
+      scheduledEndTimeFacility: "2026-11-20T12:00:00+07:00",
       createdAtUtc: "2026-11-15T00:00:00Z",
       updatedAtUtc: "2026-11-15T00:00:00Z",
     };
@@ -278,6 +294,7 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
       <PreRegistrationResultCard
         visit={dummyVisit}
         accessLevels={dummyAccessLevels}
+        systemTimezone="Asia/Jakarta"
         credentialSyncStatus="Unknown"
         isRetryingSync={false}
         retrySyncMessage={null}

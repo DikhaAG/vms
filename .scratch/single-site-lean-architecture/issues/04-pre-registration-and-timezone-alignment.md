@@ -4,10 +4,10 @@
 
 **Blocked by:** 01: Expand Phase — System Settings Schema, Repository Contracts & Non-Breaking Types, 03: Flat Access Levels & Door Permission Assignment
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Host visitor pre-registration form (`/vms/pre-registration`) schedules visits without displaying a facility dropdown.
-- [ ] Pre-registration API endpoint (`POST /api/vms/pre-registration`) validates and persists visits without requiring `facilityId`.
-- [ ] Appointment synchronization with HikCentral Artemis (`POST /artemis/api/visitor/v2/appointment`) automatically formats UTC appointment timestamps into ISO 8601 strings with local timezone offset derived from global `systemSettings.timezone`.
-- [ ] Pre-registration confirmation displays the scheduled appointment in local time according to the global system timezone.
-- [ ] Integration tests verify pre-registration persistence, access level assignment, and proper HikCentral ISO 8601 offset calculation.
+- [x] Host visitor pre-registration form (`/vms/pre-registration`) schedules visits without displaying a facility dropdown.
+- [x] Pre-registration API endpoint (`POST /api/vms/pre-registration`) validates and persists visits without requiring `facilityId`.
+- [x] Appointment synchronization with HikCentral Artemis (`POST /artemis/api/visitor/v2/appointment`) automatically formats UTC appointment timestamps into ISO 8601 strings with local timezone offset derived from global `systemSettings.timezone`.
+- [x] Pre-registration confirmation displays the scheduled appointment in local time according to the global system timezone.
+- [x] Integration tests verify pre-registration persistence, access level assignment, and proper HikCentral ISO 8601 offset calculation.

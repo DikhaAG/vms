@@ -10,7 +10,6 @@ import {
   type FormEvent,
 } from "react";
 import type {
-  Facility,
   Visit,
   VisitReasonType,
   CertificateType,
@@ -18,6 +17,7 @@ import type {
 import {
   CERTIFICATE_TYPES,
   CERTIFICATE_TYPE_LABELS,
+  DEFAULT_SYSTEM_SETTINGS,
   VISIT_REASON_TYPES,
   VISIT_REASON_LABELS,
 } from "@/lib/vms/vms-contract";
@@ -33,6 +33,7 @@ import {
   processBrowserImageFile,
   toJpegDataUri,
 } from "@/lib/vms/face-normalizer";
+import { formatInFacilityTimezone } from "@/lib/vms/timezone";
 import {
   UiButton,
   UiCard,
@@ -44,49 +45,56 @@ import {
 } from "@/components/vms/ui";
 
 interface ReceptionClientProps {
-  facilities: Facility[];
+  systemTimezone?: string;
   allAccessLevels: AccessLevel[];
   initialVisits: Visit[];
+  initialIssuedPass?: CheckInPass | null;
 }
 
 export function ReceptionClient({
-  facilities,
+  systemTimezone = DEFAULT_SYSTEM_SETTINGS.timezone,
   allAccessLevels,
   initialVisits,
+  initialIssuedPass = null,
 }: ReceptionClientProps) {
   const formId = useId();
 
-  // Active Receptionist User
   const receptionistUser = {
     id: "rec-01",
     name: "Dewi Frontdesk",
     role: "Front-Desk Receptionist",
   };
 
-  // State: Visits & Filter
+  // State: Visits & Filter (Single-Site Global)
   const [visits, setVisits] = useState<Visit[]>(initialVisits);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedFacilityId, setSelectedFacilityId] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<"expected" | "checked_in" | "all">("expected");
+  const [activeTab, setActiveTab] = useState<"expected" | "checked_in" | "all">(
+    "expected",
+  );
   const [isSearching, setIsSearching] = useState(false);
 
   // State: Verification Modal (Check-in Approved Visit)
   const [verifyingVisit, setVerifyingVisit] = useState<Visit | null>(null);
-  const [verificationMethod, setVerificationMethod] = useState<VerificationMethod>("id_card");
+  const [verificationMethod, setVerificationMethod] =
+    useState<VerificationMethod>("id_card");
   const [checkInNotes, setCheckInNotes] = useState("");
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
 
   // State: Issued Pass Modal
-  const [issuedPass, setIssuedPass] = useState<CheckInPass | null>(null);
+  const [issuedPass, setIssuedPass] = useState<CheckInPass | null>(
+    initialIssuedPass,
+  );
   const [isRetryingSync, setIsRetryingSync] = useState(false);
   const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
 
-  // State: Walk-in Modal
+  // Default access levels across building
+  const defaultAccessLevelIds = allAccessLevels
+    .filter((al) => al.isDefault)
+    .map((al) => al.id);
+
+  // State: Walk-in Modal (No facilityId selection)
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
-  const [walkInFacilityId, setWalkInFacilityId] = useState<string>(
-    facilities[0]?.id || "fac-jakarta",
-  );
   const [walkInHostId, setWalkInHostId] = useState("emp-host-01");
   const [walkInHostName, setWalkInHostName] = useState("Budi Santoso");
   const [walkInFamilyName, setWalkInFamilyName] = useState("");
@@ -97,8 +105,11 @@ export function ReceptionClient({
   const [walkInCertNo, setWalkInCertNo] = useState("");
   const [walkInReasonType, setWalkInReasonType] = useState<VisitReasonType>(0);
   const [walkInReasonDetail, setWalkInReasonDetail] = useState("");
-  const [walkInAccessLevelIds, setWalkInAccessLevelIds] = useState<string[]>([]);
-  const [walkInTapQuotaMode, setWalkInTapQuotaMode] = useState<TapQuotaMode>("limited");
+  const [walkInAccessLevelIds, setWalkInAccessLevelIds] = useState<string[]>(
+    defaultAccessLevelIds,
+  );
+  const [walkInTapQuotaMode, setWalkInTapQuotaMode] =
+    useState<TapQuotaMode>("limited");
   const [walkInMaxTaps, setWalkInMaxTaps] = useState<number>(1);
   const [walkInFacePhoto, setWalkInFacePhoto] = useState<string>("");
   const [walkInFaceByteSize, setWalkInFaceByteSize] = useState<number>(0);
@@ -170,35 +181,33 @@ export function ReceptionClient({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // Search execution
-  const fetchVisits = useCallback(
-    async (query: string, facilityId: string) => {
-      setIsSearching(true);
-      try {
-        const params = new URLSearchParams();
-        if (query.trim()) params.set("q", query.trim());
-        if (facilityId !== "all") params.set("facilityId", facilityId);
-
-        const res = await fetch(`/api/vms/check-in/search?${params.toString()}`);
-        const data = await res.json();
-        if (data.ok && Array.isArray(data.data)) {
-          setVisits(data.data);
-        }
-      } catch (err) {
-        console.error("Search error:", err);
-      } finally {
-        setIsSearching(false);
+  // Global search execution
+  const fetchVisits = useCallback(async (query: string) => {
+    setIsSearching(true);
+    try {
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("q", query.trim());
+      const qs = params.toString();
+      const res = await fetch(
+        `/api/vms/check-in/search${qs ? `?${qs}` : ""}`,
+      );
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.data)) {
+        setVisits(data.data);
       }
-    },
-    [],
-  );
+    } catch (err) {
+      console.error("Search error:", err);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchVisits(searchQuery, selectedFacilityId);
+      fetchVisits(searchQuery);
     }, 250);
     return () => clearTimeout(timer);
-  }, [searchQuery, selectedFacilityId, fetchVisits]);
+  }, [searchQuery, fetchVisits]);
 
   // Filtered visits by tab
   const filteredVisits = visits.filter((v) => {
@@ -219,7 +228,11 @@ export function ReceptionClient({
         throw new Error("Camera API is not supported in this browser.");
       }
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+        video: {
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+          facingMode: "user",
+        },
       });
       streamRef.current = stream;
       if (videoRef.current) {
@@ -246,7 +259,6 @@ export function ReceptionClient({
     if (!videoRef.current) return;
     setIsNormalizing(true);
     setFaceError(null);
-
     try {
       const video = videoRef.current;
       const canvas = document.createElement("canvas");
@@ -254,8 +266,8 @@ export function ReceptionClient({
       canvas.height = video.videoHeight || 480;
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Could not initialize canvas context.");
-
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
       const blob = await new Promise<Blob | null>((resolve) => {
         canvas.toBlob(resolve, "image/jpeg", 0.85);
       });
@@ -267,28 +279,34 @@ export function ReceptionClient({
       setWalkInFaceByteSize(normalized.byteSize);
       handleStopCamera();
     } catch (err) {
-      setFaceError(err instanceof Error ? err.message : "Selfie capture failed.");
+      setFaceError(
+        err instanceof Error ? err.message : "Selfie capture failed.",
+      );
     } finally {
       setIsNormalizing(false);
     }
   }, [handleStopCamera]);
 
-  const handleFileUpload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsNormalizing(true);
-    setFaceError(null);
-    try {
-      const normalized = await processBrowserImageFile(file);
-      setWalkInFacePhoto(normalized.dataUri);
-      setWalkInFaceByteSize(normalized.byteSize);
-    } catch (err) {
-      setFaceError(err instanceof Error ? err.message : "Failed to process photo.");
-    } finally {
-      setIsNormalizing(false);
-    }
-  }, []);
+  const handleFileUpload = useCallback(
+    async (e: ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setIsNormalizing(true);
+      setFaceError(null);
+      try {
+        const normalized = await processBrowserImageFile(file);
+        setWalkInFacePhoto(normalized.dataUri);
+        setWalkInFaceByteSize(normalized.byteSize);
+      } catch (err) {
+        setFaceError(
+          err instanceof Error ? err.message : "Failed to process photo.",
+        );
+      } finally {
+        setIsNormalizing(false);
+      }
+    },
+    [],
+  );
 
   const handleClearPhoto = useCallback(() => {
     setWalkInFacePhoto("");
@@ -301,7 +319,6 @@ export function ReceptionClient({
     if (!verifyingVisit) return;
     setIsCheckingIn(true);
     setCheckInError(null);
-
     try {
       const res = await fetch(`/api/vms/check-in/${verifyingVisit.id}`, {
         method: "POST",
@@ -313,31 +330,31 @@ export function ReceptionClient({
           notes: checkInNotes.trim() || undefined,
         }),
       });
-
       const json = await res.json();
       if (!res.ok || !json.ok) {
         throw new Error(json.error?.message || "Check-in failed.");
       }
 
-      // Success
       setVerifyingVisit(null);
       setCheckInNotes("");
       setIssuedPass(json.data.pass);
-      // Refresh list
-      await fetchVisits(searchQuery, selectedFacilityId);
+      await fetchVisits(searchQuery);
     } catch (err) {
-      setCheckInError(err instanceof Error ? err.message : "An error occurred during check-in.");
+      setCheckInError(
+        err instanceof Error
+          ? err.message
+          : "An error occurred during check-in.",
+      );
     } finally {
       setIsCheckingIn(false);
     }
   };
 
-  // Walk-in submit execution
+  // Walk-in submit execution without facilityId
   const handleSubmitWalkIn = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmittingWalkIn(true);
     setWalkInError(null);
-
     try {
       if (!walkInFamilyName.trim() || !walkInGivenName.trim()) {
         throw new Error("Visitor given name and family name are required.");
@@ -347,7 +364,6 @@ export function ReceptionClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          facilityId: walkInFacilityId,
           hostId: walkInHostId,
           hostName: walkInHostName,
           visitorFamilyName: walkInFamilyName.trim(),
@@ -358,10 +374,12 @@ export function ReceptionClient({
           certificateNo: walkInCertNo.trim() || undefined,
           visitReasonType: walkInReasonType,
           visitReasonDetail: walkInReasonDetail.trim() || undefined,
-          accessLevelIds: walkInAccessLevelIds.length > 0 ? walkInAccessLevelIds : undefined,
+          accessLevelIds:
+            walkInAccessLevelIds.length > 0 ? walkInAccessLevelIds : undefined,
           tapQuota: {
             mode: walkInTapQuotaMode,
-            maxTaps: walkInTapQuotaMode === "limited" ? Number(walkInMaxTaps) : 0,
+            maxTaps:
+              walkInTapQuotaMode === "limited" ? Number(walkInMaxTaps) : 0,
           },
           facePhoto: walkInFacePhoto || undefined,
           receptionistUserId: receptionistUser.id,
@@ -369,19 +387,21 @@ export function ReceptionClient({
           verificationMethod: "id_card",
         }),
       });
-
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        throw new Error(json.error?.message || "Walk-in registration failed.");
+        throw new Error(
+          json.error?.message || "Walk-in registration failed.",
+        );
       }
 
-      // Success
       setIsWalkInModalOpen(false);
       resetWalkInForm();
       setIssuedPass(json.data.pass);
-      await fetchVisits(searchQuery, selectedFacilityId);
+      await fetchVisits(searchQuery);
     } catch (err) {
-      setWalkInError(err instanceof Error ? err.message : "Failed to register walk-in.");
+      setWalkInError(
+        err instanceof Error ? err.message : "Failed to register walk-in.",
+      );
     } finally {
       setIsSubmittingWalkIn(false);
     }
@@ -396,7 +416,8 @@ export function ReceptionClient({
     setWalkInReasonDetail("");
     setWalkInFacePhoto("");
     setWalkInFaceByteSize(0);
-    setWalkInAccessLevelIds([]);
+    setWalkInAccessLevelIds(defaultAccessLevelIds);
+    setWalkInReturningProfile(null);
     handleStopCamera();
   };
 
@@ -405,7 +426,6 @@ export function ReceptionClient({
     if (!issuedPass?.visitorId) return;
     setIsRetryingSync(true);
     setSyncFeedback(null);
-
     try {
       const res = await fetch("/api/vms/credentials/retry-sync", {
         method: "POST",
@@ -416,26 +436,39 @@ export function ReceptionClient({
       });
       const json = await res.json();
       if (json.ok) {
-        setSyncFeedback("Sync reapplication dispatched successfully to physical access terminals.");
+        setSyncFeedback(
+          "Perintah sinkronisasi ulang berhasil dikirim ke terminal akses pintu.",
+        );
         setIssuedPass({
           ...issuedPass,
           credentialSyncStatus: "Applied",
         });
-        await fetchVisits(searchQuery, selectedFacilityId);
+        await fetchVisits(searchQuery);
       } else {
-        setSyncFeedback(json.error || "Retry failed.");
+        setSyncFeedback(json.error || "Sinkronisasi ulang gagal.");
       }
     } catch (err) {
-      setSyncFeedback(err instanceof Error ? err.message : "Network error.");
+      setSyncFeedback(
+        err instanceof Error ? err.message : "Gangguan jaringan.",
+      );
     } finally {
       setIsRetryingSync(false);
     }
   };
 
-  // Filter access levels for walk-in form based on chosen facility
-  const availableAccessLevels = allAccessLevels.filter(
-    (al) => al.facilityId === walkInFacilityId,
-  );
+  const formatVisitWindow = (visit: Visit) => {
+    const startTime = formatInFacilityTimezone(
+      visit.scheduledStartTimeUtc,
+      systemTimezone,
+      { dateStyle: undefined, timeStyle: "short" },
+    );
+    const endTime = formatInFacilityTimezone(
+      visit.scheduledEndTimeUtc,
+      systemTimezone,
+      { dateStyle: undefined, timeStyle: "short" },
+    );
+    return `${startTime} - ${endTime}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -456,7 +489,10 @@ export function ReceptionClient({
                 </span>
               </div>
               <p className="text-xs text-[var(--ks-muted)] mt-0.5">
-                Terminal Resepsionis Lobi &bull; {facilities.find((f) => f.id === selectedFacilityId)?.name || "Semua Gedung Fasilitas"}
+                Terminal Resepsionis Lobi &bull; Zona Waktu:{" "}
+                <span className="font-mono font-semibold text-[var(--ks-ink)]">
+                  {systemTimezone}
+                </span>
               </p>
             </div>
           </div>
@@ -475,7 +511,12 @@ export function ReceptionClient({
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               <span>+ Daftarkan Tamu Datang Langsung (Walk-in)</span>
             </UiButton>
@@ -511,36 +552,26 @@ export function ReceptionClient({
         />
       </UiKpiGrid>
 
-      {/* Facility & Search Filter Toolbar */}
+      {/* Unified Site-Wide Search Filter Toolbar (No facilitySlot) */}
       <UiFilterToolbar
-        facilitySlot={
-          <div className="min-w-[200px]">
-            <label htmlFor={`${formId}-facility`} className="sr-only">
-              Saring Berdasarkan Gedung
-            </label>
-            <select
-              id={`${formId}-facility`}
-              value={selectedFacilityId}
-              onChange={(e) => setSelectedFacilityId(e.target.value)}
-              className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
-            >
-              <option value="all">Semua Gedung Fasilitas</option>
-              {facilities.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name} ({f.timezone})
-                </option>
-              ))}
-            </select>
-          </div>
-        }
         searchSlot={
           <div className="relative flex-1 min-w-[240px]">
             <label htmlFor={`${formId}-search`} className="sr-only">
               Cari data tamu
             </label>
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--ks-muted)]">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
             </div>
             <input
@@ -559,6 +590,7 @@ export function ReceptionClient({
                 type="button"
                 onClick={() => setSearchQuery("")}
                 className="absolute inset-y-0 right-0 flex items-center pr-2.5 text-[var(--ks-muted)] hover:text-[var(--ks-ink)] cursor-pointer"
+                aria-label="Hapus pencarian"
               >
                 &times;
               </button>
@@ -568,27 +600,33 @@ export function ReceptionClient({
         actionsSlot={
           <div className="flex items-center gap-1 border-t sm:border-t-0 pt-2 sm:pt-0">
             {[
-              { id: "expected", label: "Tamu Diharapkan Hari Ini", count: countExpected },
-              { id: "checked_in", label: "Sedang di Gedung", count: countCheckedIn },
+              {
+                id: "expected",
+                label: "Tamu Diharapkan Hari Ini",
+                count: countExpected,
+              },
+              {
+                id: "checked_in",
+                label: "Sedang di Gedung",
+                count: countCheckedIn,
+              },
               { id: "all", label: "Semua Kunjungan", count: countAll },
             ].map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                className={`rounded-[var(--ks-radius-md)] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] transition cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === tab.id
+                className={`rounded-[var(--ks-radius-md)] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] transition cursor-pointer flex items-center gap-1.5 ${activeTab === tab.id
                     ? "bg-[var(--ks-ink)] text-[var(--ks-paper-raised)] shadow-xs"
                     : "text-[var(--ks-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper)]"
-                }`}
+                  }`}
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`rounded-full px-1.5 py-0.2 text-2xs font-mono font-bold ${
-                    activeTab === tab.id
+                  className={`rounded-full px-1.5 py-0.2 text-2xs font-mono font-bold ${activeTab === tab.id
                       ? "bg-[var(--ks-paper-raised)]/20 text-[var(--ks-paper-raised)]"
                       : "bg-[var(--ks-paper-deep)] text-[var(--ks-muted)]"
-                  }`}
+                    }`}
                 >
                   {tab.count}
                 </span>
@@ -611,10 +649,17 @@ export function ReceptionClient({
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.5"
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+            />
           </svg>
           <h3 className="mt-3 text-sm font-bold text-[var(--ks-ink)] tracking-tight">
-            {searchQuery ? "Tidak Ada Tamu Ditemukan" : "Belum Ada Kunjungan Terdaftar Hari Ini"}
+            {searchQuery
+              ? "Tidak Ada Tamu Ditemukan"
+              : "Belum Ada Kunjungan Terdaftar Hari Ini"}
           </h3>
           <p className="mt-1 text-xs text-[var(--ks-muted)] max-w-sm mx-auto">
             {searchQuery
@@ -639,17 +684,21 @@ export function ReceptionClient({
           {filteredVisits.map((visit) => {
             const isApproved = visit.status === "APPROVED";
             const isCheckedIn = visit.status === "CHECKED_IN";
+            const visitLevelNames = (visit.accessLevelIds ?? [])
+              .map(
+                (id) => allAccessLevels.find((al) => al.id === id)?.name ?? id,
+              )
+              .filter(Boolean);
 
             return (
               <UiCard
                 key={visit.id}
-                className={`flex flex-col justify-between p-5 transition hover:border-[var(--ks-rule)] ${
-                  isCheckedIn
+                className={`flex flex-col justify-between p-5 transition hover:border-[var(--ks-rule)] ${isCheckedIn
                     ? "border-[var(--ks-kinpaku)]/50 ring-1 ring-[var(--ks-kinpaku)]/30"
                     : isApproved
                       ? "border-[var(--ks-patina)]/50 ring-1 ring-[var(--ks-patina)]/20"
                       : "border-[var(--ks-rule-subtle)]"
-                }`}
+                  }`}
               >
                 <div>
                   {/* Top Badge & Photo Row */}
@@ -676,22 +725,20 @@ export function ReceptionClient({
                           {visit.certificateType
                             ? CERTIFICATE_TYPE_LABELS[visit.certificateType]
                             : "ID"}
-                          : {visit.certificateNo || "None"}
+                          : {visit.certificateNo || "Tidak dicantumkan"}
                         </p>
                       </div>
                     </div>
-
                     <div className="flex flex-col items-end gap-1">
                       <UiBadge status={visit.status} />
                       {visit.credentialSyncStatus && (
                         <span
-                          className={`rounded-full px-2 py-0.5 text-3xs font-mono font-medium border ${
-                            visit.credentialSyncStatus === "Applied"
+                          className={`rounded-full px-2 py-0.5 text-3xs font-mono font-medium border ${visit.credentialSyncStatus === "Applied"
                               ? "bg-[var(--ks-patina)]/10 text-[var(--ks-patina-deep)] border-[var(--ks-patina)]/30"
                               : visit.credentialSyncStatus === "Failed"
                                 ? "bg-[var(--ks-vermilion)]/10 text-[var(--ks-vermilion)] border-[var(--ks-vermilion)]/30"
                                 : "bg-[var(--ks-amber)]/10 text-[var(--ks-amber-deep)] border-[var(--ks-amber)]/30"
-                          }`}
+                            }`}
                         >
                           Sync: {visit.credentialSyncStatus}
                         </span>
@@ -702,39 +749,57 @@ export function ReceptionClient({
                   {/* Visit Details */}
                   <div className="mt-4 space-y-1.5 text-xs text-[var(--ks-text)]">
                     <div className="flex items-center justify-between">
-                      <span className="text-[var(--ks-muted)]">Karyawan Tuan Rumah:</span>
+                      <span className="text-[var(--ks-muted)]">
+                        Karyawan Tuan Rumah:
+                      </span>
                       <span className="font-semibold text-[var(--ks-ink)]">
                         {visit.hostName || "Tamu Meja Depan"}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[var(--ks-muted)]">Gedung:</span>
-                      <span className="font-medium text-[var(--ks-ink)]">{visit.facilityName || visit.facilityId}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
                       <span className="text-[var(--ks-muted)]">Keperluan:</span>
                       <span className="font-semibold text-[var(--ks-ink)]">
                         {VISIT_REASON_LABELS[visit.visitReasonType]}
-                        {visit.visitReasonDetail ? ` (${visit.visitReasonDetail})` : ""}
+                        {visit.visitReasonDetail
+                          ? ` (${visit.visitReasonDetail})`
+                          : ""}
                       </span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-[var(--ks-muted)]">Jadwal:</span>
+                      <span className="text-[var(--ks-muted)]">
+                        Jadwal ({systemTimezone}):
+                      </span>
                       <span className="font-mono text-[var(--ks-ink)] font-semibold">
-                        {visit.scheduledStartTimeFacility.split("T")[1]?.substring(0, 5)} - {visit.scheduledEndTimeFacility.split("T")[1]?.substring(0, 5)}
+                        {formatVisitWindow(visit)}
                       </span>
                     </div>
+                    {visitLevelNames.length > 0 && (
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[var(--ks-muted)]">
+                          Hak Akses:
+                        </span>
+                        <span className="font-medium text-[var(--ks-ink)] text-right truncate max-w-[190px]">
+                          {visitLevelNames.join(", ")}
+                        </span>
+                      </div>
+                    )}
                     {visit.actualCheckInTimeUtc && (
                       <div className="flex items-center justify-between text-[var(--ks-patina-deep)]">
                         <span>Waktu Masuk:</span>
                         <span className="font-mono font-semibold">
-                          {new Date(visit.actualCheckInTimeUtc).toLocaleTimeString()}
+                          {formatInFacilityTimezone(
+                            visit.actualCheckInTimeUtc,
+                            systemTimezone,
+                            { dateStyle: undefined, timeStyle: "short" },
+                          )}
                         </span>
                       </div>
                     )}
                     {visit.hikCentral?.pinCode && (
                       <div className="flex items-center justify-between bg-[var(--ks-paper-deep)] border border-[var(--ks-rule-subtle)] rounded-[var(--ks-radius-md)] px-2 py-1">
-                        <span className="text-[var(--ks-muted)]">Kode PIN:</span>
+                        <span className="text-[var(--ks-muted)]">
+                          Kode PIN:
+                        </span>
                         <span className="font-mono font-bold tracking-wider text-[var(--ks-ink)]">
                           {visit.hikCentral.pinCode}
                         </span>
@@ -774,16 +839,19 @@ export function ReceptionClient({
                           visitorEmail: visit.visitorEmail,
                           certificateNo: visit.certificateNo,
                           hostName: visit.hostName,
-                          facilityId: visit.facilityId,
-                          facilityName: visit.facilityName,
                           scheduledStartTime: visit.scheduledStartTimeFacility,
                           scheduledEndTime: visit.scheduledEndTimeFacility,
-                          actualCheckInTimeUtc: visit.actualCheckInTimeUtc || new Date().toISOString(),
+                          actualCheckInTimeUtc:
+                            visit.actualCheckInTimeUtc ||
+                            new Date().toISOString(),
                           qrCodeImage: visit.hikCentral?.qrCodeImage,
                           pinCode: visit.hikCentral?.pinCode,
-                          appointRecordId: visit.hikCentral?.appointRecordId || "",
+                          appointRecordId:
+                            visit.hikCentral?.appointRecordId || "",
                           visitorId: visit.hikCentral?.visitorId || "",
-                          credentialSyncStatus: visit.credentialSyncStatus || "Applied",
+                          credentialSyncStatus:
+                            visit.credentialSyncStatus || "Applied",
+                          accessLevelNames: visitLevelNames,
                         });
                         setSyncFeedback(null);
                       }}
@@ -835,11 +903,9 @@ export function ReceptionClient({
             {checkInError}
           </div>
         )}
-
         {verifyingVisit && (
           <>
             <div className="flex gap-4">
-              {/* Photo preview */}
               <div className="flex flex-col items-center">
                 {verifyingVisit.facePhoto ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
@@ -854,43 +920,50 @@ export function ReceptionClient({
                   </div>
                 )}
                 <span className="mt-1.5 text-3xs font-medium text-[var(--ks-muted)]">
-                  {verifyingVisit.facePhoto ? "Biometrik Wajah Terdaftar" : "Hanya Lencana Fisik / Kartu"}
+                  {verifyingVisit.facePhoto
+                    ? "Biometrik Wajah Terdaftar"
+                    : "Hanya Lencana Fisik / Kartu"}
                 </span>
               </div>
 
-              {/* Identity details */}
               <div className="flex-1 space-y-1.5 text-xs text-[var(--ks-text)]">
                 <div>
                   <span className="text-[var(--ks-muted)]">Nama Lengkap:</span>
                   <p className="font-bold text-[var(--ks-ink)] text-sm tracking-tight">
-                    {verifyingVisit.visitorGivenName} {verifyingVisit.visitorFamilyName}
+                    {verifyingVisit.visitorGivenName}{" "}
+                    {verifyingVisit.visitorFamilyName}
                   </p>
                 </div>
                 <div>
-                  <span className="text-[var(--ks-muted)]">Nomor Identitas:</span>
+                  <span className="text-[var(--ks-muted)]">
+                    Nomor Identitas:
+                  </span>
                   <p className="font-mono text-[var(--ks-ink)] font-semibold">
                     {verifyingVisit.certificateType
                       ? CERTIFICATE_TYPE_LABELS[verifyingVisit.certificateType]
                       : "ID"}
-                    : {verifyingVisit.certificateNo || "N/A"}
+                    : {verifyingVisit.certificateNo || "Tidak dicantumkan"}
                   </p>
                 </div>
                 <div>
-                  <span className="text-[var(--ks-muted)]">Tuan Rumah &amp; Fasilitas:</span>
+                  <span className="text-[var(--ks-muted)]">
+                    Karyawan Tuan Rumah:
+                  </span>
                   <p className="text-[var(--ks-ink)] font-semibold">
-                    {verifyingVisit.hostName || "Host"} &bull; {verifyingVisit.facilityName || verifyingVisit.facilityId}
+                    {verifyingVisit.hostName || "Tamu Meja Depan"}
                   </p>
                 </div>
                 <div>
-                  <span className="text-[var(--ks-muted)]">Jam Kunjungan:</span>
+                  <span className="text-[var(--ks-muted)]">
+                    Jam Kunjungan ({systemTimezone}):
+                  </span>
                   <p className="font-mono text-[var(--ks-ink)] font-semibold">
-                    {verifyingVisit.scheduledStartTimeFacility.split("T")[1]?.substring(0, 5)} - {verifyingVisit.scheduledEndTimeFacility.split("T")[1]?.substring(0, 5)}
+                    {formatVisitWindow(verifyingVisit)}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Verification Method Radio Selection */}
             <div className="mt-5 border-t border-[var(--ks-rule-subtle)] pt-4">
               <span className="block text-xs font-bold text-[var(--ks-ink)] mb-2">
                 Metode Verifikasi yang Diterapkan:
@@ -906,11 +979,10 @@ export function ReceptionClient({
                   return (
                     <label
                       key={m}
-                      className={`flex items-center gap-2 rounded-[var(--ks-radius-md)] border p-2 cursor-pointer transition ${
-                        verificationMethod === m
+                      className={`flex items-center gap-2 rounded-[var(--ks-radius-md)] border p-2 cursor-pointer transition ${verificationMethod === m
                           ? "border-[var(--ks-patina-deep)] bg-[var(--ks-patina)]/15 text-[var(--ks-ink)] font-bold shadow-2xs"
                           : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] hover:border-[var(--ks-rule)] text-[var(--ks-text)]"
-                      }`}
+                        }`}
                     >
                       <input
                         type="radio"
@@ -927,9 +999,11 @@ export function ReceptionClient({
               </div>
             </div>
 
-            {/* Receptionist Notes */}
             <div className="mt-3">
-              <label htmlFor="checkInNotes" className="block text-xs font-semibold text-[var(--ks-text)] mb-1">
+              <label
+                htmlFor="checkInNotes"
+                className="block text-xs font-semibold text-[var(--ks-text)] mb-1"
+              >
                 Catatan Resepsionis (Opsional):
               </label>
               <input
@@ -968,14 +1042,19 @@ export function ReceptionClient({
         }
       >
         <div className="relative rounded-[var(--ks-radius-md)] overflow-hidden bg-black aspect-4/3 flex items-center justify-center">
-          <video ref={videoRef} autoPlay playsInline className="h-full w-full object-cover" />
+          <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            className="h-full w-full object-cover"
+          />
         </div>
         {cameraError && (
           <p className="text-xs text-[var(--ks-vermilion)]">{cameraError}</p>
         )}
       </UiModal>
 
-      {/* Walk-in Registration Modal */}
+      {/* Walk-in Registration Modal (Single-Site, No Facility Selector) */}
       <UiModal
         isOpen={isWalkInModalOpen}
         onClose={() => {
@@ -1016,29 +1095,18 @@ export function ReceptionClient({
             {walkInError}
           </div>
         )}
-
-        <form id="walk-in-form" onSubmit={handleSubmitWalkIn} className="space-y-4">
-          {/* Facility & Host row */}
+        <form
+          id="walk-in-form"
+          onSubmit={handleSubmitWalkIn}
+          className="space-y-4"
+        >
+          {/* Host & Timezone Info Row */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="walkInFacilityId" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
-                Gedung Fasilitas *
-              </label>
-              <select
-                id="walkInFacilityId"
-                value={walkInFacilityId}
-                onChange={(e) => setWalkInFacilityId(e.target.value)}
-                className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
+              <label
+                htmlFor="walkInHostId"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
               >
-                {facilities.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name} ({f.timezone})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="walkInHostId" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
                 Karyawan Tuan Rumah *
               </label>
               <select
@@ -1051,11 +1119,25 @@ export function ReceptionClient({
                 }}
                 className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
               >
-                <option value="emp-host-01">Budi Santoso (Engineering Manager)</option>
-                <option value="emp-host-02">Siti Rahma (Operations Lead)</option>
-                <option value="emp-host-03">Andi Pratama (Executive Director)</option>
+                <option value="emp-host-01">
+                  Budi Santoso (Engineering Manager)
+                </option>
+                <option value="emp-host-02">
+                  Siti Rahma (Operations Lead)
+                </option>
+                <option value="emp-host-03">
+                  Andi Pratama (Executive Director)
+                </option>
                 <option value="emp-general">Front Desk General Host</option>
               </select>
+            </div>
+            <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-3 py-2 flex flex-col justify-center">
+              <span className="text-3xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)]">
+                Zona Waktu Sistem
+              </span>
+              <span className="font-mono text-xs font-semibold text-[var(--ks-ink)] mt-0.5">
+                {systemTimezone} (Durasi Standar 4 Jam)
+              </span>
             </div>
           </div>
 
@@ -1136,13 +1218,18 @@ export function ReceptionClient({
           {/* Certificate row */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="walkInCertType" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label
+                htmlFor="walkInCertType"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
                 Jenis Kartu Identitas
               </label>
               <select
                 id="walkInCertType"
                 value={walkInCertType}
-                onChange={(e) => setWalkInCertType(Number(e.target.value) as CertificateType)}
+                onChange={(e) =>
+                  setWalkInCertType(Number(e.target.value) as CertificateType)
+                }
                 className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
               >
                 {CERTIFICATE_TYPES.map((ct) => (
@@ -1153,7 +1240,10 @@ export function ReceptionClient({
               </select>
             </div>
             <div>
-              <label htmlFor="walkInIdNumber" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label
+                htmlFor="walkInIdNumber"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
                 Nomor Dokumen Identitas (NIK/Paspor)
               </label>
               <div className="relative">
@@ -1226,13 +1316,18 @@ export function ReceptionClient({
           {/* Purpose row */}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="walkInReasonType" className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1">
+              <label
+                htmlFor="walkInReasonType"
+                className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
+              >
                 Keperluan Kunjungan *
               </label>
               <select
                 id="walkInReasonType"
                 value={walkInReasonType}
-                onChange={(e) => setWalkInReasonType(Number(e.target.value) as VisitReasonType)}
+                onChange={(e) =>
+                  setWalkInReasonType(Number(e.target.value) as VisitReasonType)
+                }
                 className="w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
               >
                 {VISIT_REASON_TYPES.map((rt) => (
@@ -1247,7 +1342,8 @@ export function ReceptionClient({
                 htmlFor="walkInReason"
                 className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-muted)] mb-1"
               >
-                Rincian Keperluan {walkInReasonType === 4 ? "*" : "(opsional)"}
+                Rincian Keperluan{" "}
+                {walkInReasonType === 4 ? "*" : "(opsional)"}
               </label>
               <input
                 id="walkInReason"
@@ -1261,41 +1357,52 @@ export function ReceptionClient({
             </div>
           </div>
 
-          {/* Access Levels selection */}
+          {/* Flat Building-Wide Access Levels selection */}
           <div>
             <span className="block text-xs font-semibold text-[var(--ks-ink)] mb-1.5">
-              Hak Akses Pintu Fisik (Khusus Gedung Terpilih):
+              Hak Akses Pintu Fisik Gedung:
             </span>
-            {availableAccessLevels.length === 0 ? (
+            {allAccessLevels.length === 0 ? (
               <p className="text-xs text-[var(--ks-muted)] italic">
-                Belum ada kelompok hak akses yang terdaftar untuk fasilitas ini.
+                Belum ada kelompok hak akses pintu yang terdaftar. Tamu akan
+                mendapat akses lobi standar.
               </p>
             ) : (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {availableAccessLevels.map((al) => (
+                {allAccessLevels.map((al) => (
                   <label
                     key={al.id}
-                    className={`flex items-start gap-2 rounded-[var(--ks-radius-md)] border p-2 text-xs cursor-pointer transition-colors ${
-                      walkInAccessLevelIds.includes(al.id)
+                    className={`flex items-start gap-2 rounded-[var(--ks-radius-md)] border p-2 text-xs cursor-pointer transition-colors ${walkInAccessLevelIds.includes(al.id)
                         ? "border-[var(--ks-kinpaku)] bg-[var(--ks-kinpaku)]/10 text-[var(--ks-ink)] shadow-xs"
                         : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] text-[var(--ks-muted)] hover:border-[var(--ks-rule)]"
-                    }`}
+                      }`}
                   >
                     <input
                       type="checkbox"
                       checked={walkInAccessLevelIds.includes(al.id)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setWalkInAccessLevelIds([...walkInAccessLevelIds, al.id]);
+                          setWalkInAccessLevelIds([
+                            ...walkInAccessLevelIds,
+                            al.id,
+                          ]);
                         } else {
-                          setWalkInAccessLevelIds(walkInAccessLevelIds.filter((id) => id !== al.id));
+                          setWalkInAccessLevelIds(
+                            walkInAccessLevelIds.filter((id) => id !== al.id),
+                          );
                         }
                       }}
                       className="mt-0.5 accent-[var(--ks-kinpaku)]"
                     />
                     <div>
-                      <div className="font-medium text-[var(--ks-ink)]">{al.name}</div>
-                      {al.description && <div className="text-3xs text-[var(--ks-muted)]">{al.description}</div>}
+                      <div className="font-medium text-[var(--ks-ink)]">
+                        {al.name}
+                      </div>
+                      {al.description && (
+                        <div className="text-3xs text-[var(--ks-muted)]">
+                          {al.description}
+                        </div>
+                      )}
                     </div>
                   </label>
                 ))}
@@ -1306,9 +1413,9 @@ export function ReceptionClient({
           {/* Tap Quota Configuration */}
           <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] p-3">
             <span className="block text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-ink)] mb-2">
-              Door Tap Quota Enforcement:
+              Jatah Buka Pintu (Kuota Tap):
             </span>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex flex-wrap items-center gap-4 text-xs">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
                   type="radio"
@@ -1318,7 +1425,7 @@ export function ReceptionClient({
                   onChange={() => setWalkInTapQuotaMode("limited")}
                   className="accent-[var(--ks-kinpaku)]"
                 />
-                <span className="text-[var(--ks-text)]">Limited Taps:</span>
+                <span className="text-[var(--ks-text)]">Batas Tap:</span>
               </label>
               {walkInTapQuotaMode === "limited" && (
                 <input
@@ -1326,7 +1433,9 @@ export function ReceptionClient({
                   min={1}
                   max={100}
                   value={walkInMaxTaps}
-                  onChange={(e) => setWalkInMaxTaps(Math.max(1, parseInt(e.target.value) || 1))}
+                  onChange={(e) =>
+                    setWalkInMaxTaps(Math.max(1, parseInt(e.target.value) || 1))
+                  }
                   className="w-16 rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-2 py-1 text-xs font-mono text-[var(--ks-ink)]"
                 />
               )}
@@ -1339,7 +1448,9 @@ export function ReceptionClient({
                   onChange={() => setWalkInTapQuotaMode("unlimited")}
                   className="accent-[var(--ks-kinpaku)]"
                 />
-                <span className="text-[var(--ks-text)]">Unlimited during visiting hours</span>
+                <span className="text-[var(--ks-text)]">
+                  Bebas selama jam kunjungan
+                </span>
               </label>
             </div>
           </div>
@@ -1348,39 +1459,38 @@ export function ReceptionClient({
           <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] p-3">
             <div className="flex items-center justify-between mb-2">
               <span className="text-2xs font-bold uppercase tracking-[0.08em] text-[var(--ks-ink)]">
-                Biometric Face Photo (MinMoe Terminal Enrollment)
+                Foto Wajah Biometrik (Terminal MinMoe)
               </span>
               {walkInFacePhoto && (
                 <span
-                  className={`text-3xs font-semibold px-2 py-0.5 rounded-full border ${
-                    isFacePhotoSizeValid(walkInFaceByteSize)
+                  className={`text-3xs font-semibold px-2 py-0.5 rounded-full border ${isFacePhotoSizeValid(walkInFaceByteSize)
                       ? "border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/15 text-[var(--ks-patina)]"
                       : "border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/15 text-[var(--ks-vermilion)]"
-                  }`}
+                    }`}
                 >
-                  {formatFacePhotoSize(walkInFaceByteSize)} (10–100 KB)
+                  {formatFacePhotoSize(walkInFaceByteSize)} (10-100 KB)
                 </span>
               )}
             </div>
-
             {walkInFacePhoto ? (
               <div className="flex items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={walkInFacePhoto}
-                  alt="Enrolled Face"
+                  alt="Foto Wajah Terdaftar"
                   className="h-20 w-20 rounded-[var(--ks-radius-md)] object-cover border border-[var(--ks-rule-subtle)]"
                 />
                 <div className="space-y-1">
                   <p className="text-xs text-[var(--ks-muted)]">
-                    Normalized Base64 JPEG photo ready for physical terminal distribution.
+                    Foto JPEG ternormalisasi siap didistribusikan ke terminal
+                    pintu fisik.
                   </p>
                   <button
                     type="button"
                     onClick={handleClearPhoto}
                     className="text-xs text-[var(--ks-vermilion)] hover:underline cursor-pointer"
                   >
-                    Remove Photo
+                    Hapus Foto
                   </button>
                 </div>
               </div>
@@ -1392,25 +1502,53 @@ export function ReceptionClient({
                   size="sm"
                   onClick={handleStartCamera}
                 >
-                  <svg className="h-4 w-4 text-[var(--ks-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <svg
+                    className="h-4 w-4 text-[var(--ks-muted)]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
                   </svg>
                   <span>Buka Kamera Resepsionis</span>
                 </UiButton>
                 <label className="ks-btn inline-flex items-center gap-1.5 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-2.5 py-1 text-xs font-semibold text-[var(--ks-ink)] hover:bg-[var(--ks-paper)] cursor-pointer">
                   <span>Unggah Berkas Foto</span>
-                  <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
                 </label>
               </div>
             )}
-            {cameraError && <p className="mt-2 text-xs text-[var(--ks-vermilion)]">{cameraError}</p>}
-            {faceError && <p className="mt-2 text-xs text-[var(--ks-vermilion)]">{faceError}</p>}
+            {cameraError && (
+              <p className="mt-2 text-xs text-[var(--ks-vermilion)]">
+                {cameraError}
+              </p>
+            )}
+            {faceError && (
+              <p className="mt-2 text-xs text-[var(--ks-vermilion)]">
+                {faceError}
+              </p>
+            )}
           </div>
         </form>
       </UiModal>
 
-      {/* Check-in Pass Modal (QR & Digital Badge) */}
+      {/* Check-in Pass Modal (QR, PIN, Site-Wide Access & Print Badge) */}
       <UiModal
         isOpen={Boolean(issuedPass)}
         onClose={() => {
@@ -1419,13 +1557,13 @@ export function ReceptionClient({
         }}
         title={
           <div className="flex items-center gap-2">
-            <span>{issuedPass?.facilityName || "Lencana Kunjungan Tamu"}</span>
+            <span>Lencana Kunjungan Tamu</span>
             <UiBadge variant="normal" showDot={false}>
               Lencana Masuk Aktif
             </UiBadge>
           </div>
         }
-        description="Lencana akses digital dan kode verifikasi pintu fisik."
+        description="Lencana akses digital dan kode verifikasi pintu fisik seluruh gedung."
         size="md"
         footer={
           <div className="flex gap-2 w-full">
@@ -1435,8 +1573,18 @@ export function ReceptionClient({
               className="flex-1"
               onClick={() => window.print()}
             >
-              <svg className="h-4 w-4 text-[var(--ks-muted)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              <svg
+                className="h-4 w-4 text-[var(--ks-muted)]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                />
               </svg>
               <span>Cetak Lencana Tamu</span>
             </UiButton>
@@ -1456,7 +1604,6 @@ export function ReceptionClient({
       >
         {issuedPass && (
           <div className="flex flex-col items-center text-center">
-            {/* QR Code Pass */}
             <div className="rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-white p-4 shadow-sm">
               {issuedPass.qrCodeImage ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
@@ -1472,7 +1619,6 @@ export function ReceptionClient({
               )}
             </div>
 
-            {/* PIN Code */}
             {issuedPass.pinCode && (
               <div className="mt-3 w-full rounded-[var(--ks-radius-md)] bg-[var(--ks-ink)] py-2.5 text-[var(--ks-paper-raised)] border border-black">
                 <span className="block text-3xs uppercase tracking-widest text-[var(--ks-muted)] font-mono">
@@ -1484,62 +1630,88 @@ export function ReceptionClient({
               </div>
             )}
 
-            {/* Visitor Details */}
             <div className="mt-4 w-full space-y-1.5 text-left text-xs bg-[var(--ks-paper-deep)] p-3.5 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)]">
               <div className="flex justify-between">
                 <span className="text-[var(--ks-muted)]">Nama Tamu:</span>
-                <span className="font-bold text-[var(--ks-ink)]">{issuedPass.visitorName}</span>
+                <span className="font-bold text-[var(--ks-ink)]">
+                  {issuedPass.visitorName}
+                </span>
               </div>
               {issuedPass.hostName && (
                 <div className="flex justify-between">
                   <span className="text-[var(--ks-muted)]">Tuan Rumah:</span>
-                  <span className="font-medium text-[var(--ks-ink)]">{issuedPass.hostName}</span>
+                  <span className="font-medium text-[var(--ks-ink)]">
+                    {issuedPass.hostName}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-[var(--ks-muted)]">Jam Kunjungan:</span>
+                <span className="text-[var(--ks-muted)]">
+                  Jam Kunjungan ({systemTimezone}):
+                </span>
                 <span className="font-mono text-[var(--ks-ink)]">
-                  {issuedPass.scheduledStartTime.split("T")[1]?.substring(0, 5)} - {issuedPass.scheduledEndTime.split("T")[1]?.substring(0, 5)}
+                  {issuedPass.scheduledStartTime.split("T")[1]?.substring(0, 5)}{" "}
+                  -{" "}
+                  {issuedPass.scheduledEndTime.split("T")[1]?.substring(0, 5)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-[var(--ks-muted)]">Waktu Masuk:</span>
                 <span className="font-mono text-[var(--ks-patina)] font-medium">
-                  {new Date(issuedPass.actualCheckInTimeUtc).toLocaleTimeString()}
+                  {formatInFacilityTimezone(
+                    issuedPass.actualCheckInTimeUtc,
+                    systemTimezone,
+                    { dateStyle: undefined, timeStyle: "short" },
+                  )}
                 </span>
               </div>
+              {issuedPass.accessLevelNames &&
+                issuedPass.accessLevelNames.length > 0 && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-[var(--ks-muted)]">
+                      Hak Akses Pintu:
+                    </span>
+                    <span className="font-semibold text-[var(--ks-ink)] text-right">
+                      {issuedPass.accessLevelNames.join(", ")}
+                    </span>
+                  </div>
+                )}
 
-              {/* Credential Sync Status */}
               <div className="flex items-center justify-between pt-2 border-t border-[var(--ks-rule-subtle)]">
-                <span className="text-[var(--ks-muted)] font-medium">Sinkronisasi Terminal:</span>
+                <span className="text-[var(--ks-muted)] font-medium">
+                  Sinkronisasi Terminal:
+                </span>
                 <div className="flex items-center gap-2">
                   <span
-                    className={`rounded-full px-2 py-0.5 text-2xs font-semibold border ${
-                      issuedPass.credentialSyncStatus === "Applied"
+                    className={`rounded-full px-2 py-0.5 text-2xs font-semibold border ${issuedPass.credentialSyncStatus === "Applied"
                         ? "border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/15 text-[var(--ks-patina)]"
                         : issuedPass.credentialSyncStatus === "Failed"
                           ? "border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/15 text-[var(--ks-vermilion)]"
                           : "border-[var(--ks-kinpaku)]/30 bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)]"
-                    }`}
+                      }`}
                   >
                     {issuedPass.credentialSyncStatus}
                   </span>
                   {(issuedPass.credentialSyncStatus === "Failed" ||
                     issuedPass.credentialSyncStatus === "Syncing" ||
                     issuedPass.credentialSyncStatus === "Unknown") && (
-                    <UiButton
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleRetrySync}
-                      isLoading={isRetryingSync}
-                    >
-                      Kirim Ulang
-                    </UiButton>
-                  )}
+                      <UiButton
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleRetrySync}
+                        isLoading={isRetryingSync}
+                      >
+                        Kirim Ulang
+                      </UiButton>
+                    )}
                 </div>
               </div>
-              {syncFeedback && <p className="text-3xs text-[var(--ks-patina)] pt-1">{syncFeedback}</p>}
+              {syncFeedback && (
+                <p className="text-3xs text-[var(--ks-patina)] pt-1">
+                  {syncFeedback}
+                </p>
+              )}
             </div>
           </div>
         )}

@@ -2,8 +2,13 @@
 
 import React from "react";
 import Image from "next/image";
-import { toJpegDataUri } from "@/lib/vms/face-normalizer";
-import type { CredentialSyncStatus, Visit } from "@/lib/vms/vms-contract";
+import { toJpegDataUri, toPngDataUri } from "@/lib/vms/face-normalizer";
+import { formatInFacilityTimezone } from "@/lib/vms/timezone";
+import {
+  DEFAULT_SYSTEM_SETTINGS,
+  type CredentialSyncStatus,
+  type Visit,
+} from "@/lib/vms/vms-contract";
 import type { AccessLevel } from "@/lib/vms/access-level-contract";
 import { UiBadge, UiButton, UiCard } from "@/components/vms/ui";
 import { idDict } from "@/lib/vms/i18n/id";
@@ -11,6 +16,7 @@ import { idDict } from "@/lib/vms/i18n/id";
 export interface PreRegistrationResultCardProps {
   visit: Visit;
   accessLevels: AccessLevel[];
+  systemTimezone?: string;
   credentialSyncStatus: CredentialSyncStatus;
   isRetryingSync: boolean;
   retrySyncMessage: string | null;
@@ -20,11 +26,21 @@ export interface PreRegistrationResultCardProps {
 export function PreRegistrationResultCard({
   visit,
   accessLevels,
+  systemTimezone = DEFAULT_SYSTEM_SETTINGS.timezone,
   credentialSyncStatus,
   isRetryingSync,
   retrySyncMessage,
   onRetrySync,
 }: PreRegistrationResultCardProps) {
+  const formattedLocalStart = formatInFacilityTimezone(
+    visit.scheduledStartTimeUtc,
+    systemTimezone,
+  );
+  const formattedLocalEnd = formatInFacilityTimezone(
+    visit.scheduledEndTimeUtc,
+    systemTimezone,
+  );
+
   return (
     <UiCard
       aria-label="Detail Kunjungan Terjadwal"
@@ -70,7 +86,7 @@ export function PreRegistrationResultCard({
                 (
                 {visit.certificateType
                   ? idDict.certificateTypes[visit.certificateType] ??
-                    `Tipe ${visit.certificateType}`
+                  `Tipe ${visit.certificateType}`
                   : ""}
                 )
               </p>
@@ -79,15 +95,25 @@ export function PreRegistrationResultCard({
 
           <div className="border-t border-[var(--ks-rule-subtle)] pt-3">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ks-muted)]">
-              Gedung & Jadwal Kunjungan
+              Jadwal Kunjungan
             </h3>
-            <p className="mt-1 text-sm font-medium text-[var(--ks-ink)]">
-              {visit.facilityName}
-            </p>
+            {visit.facilityName ? (
+              <p className="mt-1 text-sm font-medium text-[var(--ks-ink)]">
+                {visit.facilityName}
+              </p>
+            ) : null}
             <div className="mt-1 space-y-1 text-xs text-[var(--ks-text)]">
               <p>
                 <span className="font-medium text-[var(--ks-muted)]">
-                  Waktu Lokal Gedung:
+                  Waktu Lokal ({systemTimezone}):
+                </span>{" "}
+                <span className="font-semibold text-[var(--ks-ink)]">
+                  {formattedLocalStart} &rarr; {formattedLocalEnd}
+                </span>
+              </p>
+              <p>
+                <span className="font-medium text-[var(--ks-muted)]">
+                  ISO 8601 Offset:
                 </span>{" "}
                 <span className="font-mono">
                   {visit.scheduledStartTimeFacility} &rarr;{" "}
@@ -221,7 +247,7 @@ export function PreRegistrationResultCard({
             <div className="flex h-32 w-32 items-center justify-center rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-2 shadow-xs">
               {visit.hikCentral?.qrCodeImage ? (
                 <Image
-                  src={`data:image/png;base64,${visit.hikCentral.qrCodeImage}`}
+                  src={toPngDataUri(visit.hikCentral.qrCodeImage)}
                   alt={`Tiket QR Tamu untuk ${visit.visitorGivenName}`}
                   width={112}
                   height={112}

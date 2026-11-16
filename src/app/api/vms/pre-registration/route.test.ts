@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { POST } from "./route";
+import { createSampleFaceJpegDataUri } from "@/lib/vms/face-normalizer";
 
 describe("POST /api/vms/pre-registration", () => {
   const validPayload = {
-    facilityId: "fac-jakarta",
     hostId: "emp-host-01",
     hostName: "Budi Santoso",
     visitorFamilyName: "Pratama",
@@ -70,22 +70,34 @@ describe("POST /api/vms/pre-registration", () => {
     expect(body.error.fieldErrors.visitorGivenName).toBeDefined();
   });
 
-  it("returns 404 when facility does not exist", async () => {
+  it("succeeds without requiring facilityId in payload", async () => {
     const request = new Request("http://localhost:3000/api/vms/pre-registration", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...validPayload,
-        facilityId: "unknown-fac-999",
-      }),
+      body: JSON.stringify(validPayload),
     });
 
     const response = await POST(request);
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(201);
 
     const body = await response.json();
-    expect(body.ok).toBe(false);
-    expect(body.error.kind).toBe("not_found");
+    expect(body.ok).toBe(true);
+    expect(body.visit.scheduledStartTimeFacility).toContain("+07:00");
+  });
+
+  it("formats appointment timestamps with timezone offset derived from system settings", async () => {
+    const request = new Request("http://localhost:3000/api/vms/pre-registration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(validPayload),
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(201);
+
+    const body = await response.json();
+    expect(body.visit.scheduledStartTimeFacility).toBe("2026-11-13T10:00:00+07:00");
+    expect(body.visit.scheduledEndTimeFacility).toBe("2026-11-13T12:00:00+07:00");
   });
 
   it("returns 502 when upstream HikCentral fails without leaking secrets", async () => {
@@ -104,11 +116,11 @@ describe("POST /api/vms/pre-registration", () => {
 
     const body = await response.json();
     expect(body.ok).toBe(false);
-    expect(body.error.kind).toBe("upstream");
+    expect(body.error.kind).toBe("network");
   });
 
   it("successfully persists facePhoto and initializes credentialSyncStatus", async () => {
-    const faceDataUri = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
+    const faceDataUri = createSampleFaceJpegDataUri();
     const request = new Request("http://localhost:3000/api/vms/pre-registration", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

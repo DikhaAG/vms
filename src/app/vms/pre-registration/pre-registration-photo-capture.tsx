@@ -153,7 +153,7 @@ export function PreRegistrationPhotoCapture({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <legend className="text-sm font-semibold text-[var(--ks-ink)]">
-            3. Pengambilan & Verifikasi Foto Biometrik Wajah
+            2. Pengambilan & Verifikasi Foto Biometrik Wajah
           </legend>
           <p className="text-xs text-[var(--ks-muted)]">
             Terminal pintu MinMoe mewajibkan foto format JPEG dengan ukuran antara 10 KB hingga 100 KB.

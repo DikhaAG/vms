@@ -93,7 +93,9 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
     const storedVisit = await defaultVmsRepository.getVisit(visitJakarta.id);
     expect(storedVisit).toEqual(visitJakarta);
 
-    // 3. Submit pre-registration for Bali facility (UTC+8) at the same local clock time (10:00)
+    // 3. Update global system settings timezone to Bali (UTC+8) at the same local clock time (10:00)
+    await defaultVmsRepository.updateSettings({ timezone: "Asia/Makassar" });
+
     const baliPayload = {
       ...jakartaPayload,
       facilityId: "fac-bali",
@@ -121,6 +123,9 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
       "2026-11-13T10:00:00+08:00",
     );
     expect(visitBali.scheduledEndTimeFacility).toBe("2026-11-13T12:00:00+08:00");
+
+    // Reset settings back to default Jakarta timezone
+    await defaultVmsRepository.updateSettings({ timezone: "Asia/Jakarta" });
   });
 
   it("handles upstream failures gracefully without leaking internal secrets", async () => {

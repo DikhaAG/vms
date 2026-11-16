@@ -1,29 +1,12 @@
 import { NextResponse } from "next/server";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 
-export async function GET(request: Request) {
-  try {
-    const url = new URL(request.url);
-    const facilityId = url.searchParams.get("facilityId") || undefined;
-    const doors = await defaultVmsRepository.listDoors(facilityId);
+export const dynamic = "force-dynamic";
 
-    return NextResponse.json({
-      ok: true,
-      doors,
-    });
-  } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to retrieve facility doors";
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          kind: "server",
-          message,
-        },
-      },
-      { status: 500 },
-    );
-  }
+export async function GET(): Promise<NextResponse> {
+  const doors = await defaultVmsRepository.listDoors();
+  return NextResponse.json({
+    ok: true,
+    doors,
+  });
 }
-

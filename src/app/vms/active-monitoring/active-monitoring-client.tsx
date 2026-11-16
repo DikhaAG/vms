@@ -1,10 +1,14 @@
+// src/app/vms/active-monitoring/active-monitoring-client.tsx
 "use client";
 
 import React, { useState, useMemo, useContext, useCallback } from "react";
-import type { Facility } from "@/lib/vms/vms-contract";
+import {
+  DEFAULT_SYSTEM_SETTINGS,
+  type Facility,
+} from "@/lib/vms/vms-contract";
 import type {
   ActiveVisitSummary,
-  FacilityDoor,
+  Door,
   EmergencyAccessGrant,
 } from "@/lib/vms/checkout-contract";
 import {
@@ -13,7 +17,7 @@ import {
   useQueryClient,
   QueryClientContext,
 } from "@tanstack/react-query";
-import { useQueryState, parseAsString, parseAsStringLiteral } from "nuqs";
+import { useQueryState, parseAsStringLiteral } from "nuqs";
 import { toast } from "sonner";
 import {
   UiDataTable,
@@ -28,9 +32,10 @@ import { ForceCheckoutModal } from "./force-checkout-modal";
 import { createActiveVisitColumns } from "./columns";
 
 export interface ActiveMonitoringClientProps {
-  facilities: Facility[];
+  systemTimezone?: string;
+  facilities?: Facility[];
   initialVisits: ActiveVisitSummary[];
-  doors?: FacilityDoor[];
+  doors?: Door[];
 }
 
 export const FILTER_TAB_IDS = ["all", "normal", "overstay", "quota"] as const;
@@ -44,23 +49,17 @@ export const FILTER_TABS: readonly { id: FilterTab; label: string }[] = [
 ] as const;
 
 function ActiveMonitoringClientInner({
-  facilities,
+  systemTimezone = DEFAULT_SYSTEM_SETTINGS.timezone,
   initialVisits,
   doors = [],
 }: ActiveMonitoringClientProps) {
   const queryClient = useQueryClient();
 
-  // nuqs URL synchronization for facility and status tab
-  const [selectedFacilityId, setSelectedFacilityId] = useQueryState(
-    "facilityId",
-    parseAsString.withDefault("all"),
-  );
   const [activeTab, setActiveTab] = useQueryState(
     "tab",
     parseAsStringLiteral(FILTER_TAB_IDS).withDefault("all"),
   );
 
-  // nuqs URL state for data table search, pagination, and sorting
   const tableUrlState = useTableUrlState({
     searchKey: "q",
     pageKey: "page",
@@ -72,33 +71,22 @@ function ActiveMonitoringClientInner({
   });
 
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-
-  // Force check-out modal state
   const [forceVisit, setForceVisit] = useState<ActiveVisitSummary | null>(null);
   const [isForceSubmitting, setIsForceSubmitting] = useState(false);
-
-  // Emergency Access modal state
   const [emergencyVisit, setEmergencyVisit] = useState<ActiveVisitSummary | null>(null);
-
-  // Notification banners (for backward compatibility & high accessibility)
   const [notification, setNotification] = useState<{
     type: "success" | "error" | "warning";
     message: string;
   } | null>(null);
 
-  // TanStack Query for Active Visits with automated 5-second background polling
   const {
     data: visits = initialVisits,
     isFetching: isVisitsFetching,
     refetch: refetchVisits,
   } = useQuery<ActiveVisitSummary[]>({
-    queryKey: ["active-visits", selectedFacilityId],
+    queryKey: ["active-visits"],
     queryFn: async () => {
-      const url =
-        selectedFacilityId !== "all"
-          ? `/api/vms/active-visits?facilityId=${encodeURIComponent(selectedFacilityId)}`
-          : "/api/vms/active-visits";
-      const res = await fetch(url);
+      const res = await fetch("/api/vms/active-visits");
       if (!res.ok) throw new Error("Gagal memuat daftar tamu aktif.");
       const data = await res.json();
       if (!data.ok || !Array.isArray(data.activeVisits)) {
@@ -106,39 +94,33 @@ function ActiveMonitoringClientInner({
       }
       return data.activeVisits;
     },
-    initialData: selectedFacilityId === "all" ? initialVisits : undefined,
+    initialData: initialVisits,
     refetchInterval: 5000,
     refetchIntervalInBackground: false,
   });
 
-  // TanStack Query for Doors with automated 5-second background polling
   const {
     data: doorsList = doors,
     isFetching: isDoorsFetching,
     refetch: refetchDoors,
-  } = useQuery<FacilityDoor[]>({
-    queryKey: ["doors", selectedFacilityId],
+  } = useQuery<Door[]>({
+    queryKey: ["doors"],
     queryFn: async () => {
-      const doorsUrl =
-        selectedFacilityId !== "all"
-          ? `/api/vms/doors?facilityId=${encodeURIComponent(selectedFacilityId)}`
-          : "/api/vms/doors";
-      const doorsRes = await fetch(doorsUrl);
-      if (!doorsRes.ok) throw new Error("Gagal memuat data pintu fasilitas.");
+      const doorsRes = await fetch("/api/vms/doors");
+      if (!doorsRes.ok) throw new Error("Gagal memuat data pintu gedung.");
       const doorsData = await doorsRes.json();
       if (!doorsData.ok || !Array.isArray(doorsData.doors)) {
         throw new Error(doorsData.error?.message || "Format data pintu tidak valid.");
       }
       return doorsData.doors;
     },
-    initialData: selectedFacilityId === "all" ? doors : undefined,
+    initialData: doors,
     refetchInterval: 5000,
     refetchIntervalInBackground: false,
   });
 
   const isRefreshing = isVisitsFetching || isDoorsFetching;
 
-  // Manual refresh trigger
   const handleManualRefresh = useCallback(async () => {
     try {
       await Promise.all([refetchVisits(), refetchDoors()]);
@@ -150,7 +132,6 @@ function ActiveMonitoringClientInner({
     }
   }, [refetchVisits, refetchDoors]);
 
-  // Checkout Mutation with automatic query cache invalidation
   const checkoutMutation = useMutation({
     mutationFn: async ({
       visit,
@@ -180,17 +161,16 @@ function ActiveMonitoringClientInner({
       if (!res.ok || !data.ok) {
         throw new Error(
           data.error?.message ||
-            data.errors?.reason ||
-            (isForced
-              ? "Gagal mengeksekusi check-out paksa."
-              : "Gagal menyelesaikan kunjungan tamu."),
+          data.errors?.reason ||
+          (isForced
+            ? "Gagal mengeksekusi check-out paksa."
+            : "Gagal menyelesaikan kunjungan tamu."),
         );
       }
       return { data, visit, isForced, reason };
     },
     onSuccess: ({ data, visit, isForced, reason }) => {
       queryClient.invalidateQueries({ queryKey: ["active-visits"] });
-
       if (isForced) {
         const receipt =
           data.visit?.appointRecordId ||
@@ -217,7 +197,6 @@ function ActiveMonitoringClientInner({
     },
   });
 
-  // Revoke Emergency Access Mutation with automatic query cache invalidation
   const revokeEmergencyAccessMutation = useMutation({
     mutationFn: async ({
       visit,
@@ -260,7 +239,6 @@ function ActiveMonitoringClientInner({
     },
   });
 
-  // Handle Normal Check-out
   const handleNormalCheckOut = useCallback(
     (visit: ActiveVisitSummary) => {
       if (
@@ -272,7 +250,6 @@ function ActiveMonitoringClientInner({
       ) {
         return;
       }
-
       checkoutMutation.mutate({
         visit,
         isForced: false,
@@ -284,15 +261,12 @@ function ActiveMonitoringClientInner({
     [checkoutMutation],
   );
 
-  // Open Force Check-out Modal
   const openForceCheckOutModal = useCallback((visit: ActiveVisitSummary) => {
     setForceVisit(visit);
   }, []);
 
-  // Submit Force Check-out
   const handleConfirmForceCheckOut = (reason: string) => {
     if (!forceVisit) return;
-
     setIsForceSubmitting(true);
     checkoutMutation.mutate(
       {
@@ -311,68 +285,55 @@ function ActiveMonitoringClientInner({
     );
   };
 
-  // Handle Revoke Emergency Access
   const handleRevokeEmergencyAccess = useCallback(
     (visit: ActiveVisitSummary, grant: EmergencyAccessGrant) => {
       const confirmed =
         typeof window !== "undefined" && window.confirm
           ? window.confirm(
-              `Apakah Anda yakin ingin mencabut izin akses darurat pintu ${grant.doorNames?.join(", ") || "terkait"} untuk ${visit.visitor.fullName}? Tindakan ini langsung berlaku seketika.`,
-            )
+            `Apakah Anda yakin ingin mencabut izin akses darurat pintu ${grant.doorNames?.join(", ") || "terkait"} untuk ${visit.visitor.fullName}? Tindakan ini langsung berlaku seketika.`,
+          )
           : true;
-
       if (!confirmed) return;
-
       revokeEmergencyAccessMutation.mutate({ visit, grant });
     },
     [revokeEmergencyAccessMutation],
   );
 
-  // Filtered visits based on facility and status tab
   const tabFilteredVisits = useMemo(() => {
     return visits.filter((v) => {
-      // Facility filter
-      if (selectedFacilityId !== "all" && v.facility.id !== selectedFacilityId) {
-        return false;
-      }
-
-      // Status tab
       if (activeTab === "overstay") return v.isOverstay;
       if (activeTab === "quota") {
         return (
           v.isQuotaExceeded ||
-          (v.tapQuotaMode === "limited" && v.maxTaps > 0 && v.tapCount >= v.maxTaps - 1)
+          (v.tapQuotaMode === "limited" &&
+            v.maxTaps > 0 &&
+            v.tapCount >= v.maxTaps - 1)
         );
       }
       if (activeTab === "normal") return !v.isOverstay && !v.isQuotaExceeded;
-
       return true;
     });
-  }, [visits, selectedFacilityId, activeTab]);
+  }, [visits, activeTab]);
 
-  // Statistics calculation
   const stats = useMemo(() => {
-    const relevantVisits =
-      selectedFacilityId !== "all"
-        ? visits.filter((v) => v.facility.id === selectedFacilityId)
-        : visits;
-
-    const total = relevantVisits.length;
-    const overstay = relevantVisits.filter((v) => v.isOverstay).length;
-    const quota = relevantVisits.filter(
+    const total = visits.length;
+    const overstay = visits.filter((v) => v.isOverstay).length;
+    const quota = visits.filter(
       (v) =>
         v.isQuotaExceeded ||
-        (v.tapQuotaMode === "limited" && v.maxTaps > 0 && v.tapCount >= v.maxTaps - 1),
+        (v.tapQuotaMode === "limited" &&
+          v.maxTaps > 0 &&
+          v.tapCount >= v.maxTaps - 1),
     ).length;
     const normal = Math.max(0, total - overstay);
     return { total, overstay, quota, normal };
-  }, [visits, selectedFacilityId]);
+  }, [visits]);
 
-  // Table Columns
   const columns = useMemo(
     () =>
       createActiveVisitColumns({
         doors: doorsList,
+        systemTimezone,
         actionLoadingId,
         onGrantEmergency: (v) => setEmergencyVisit(v),
         onNormalCheckOut: handleNormalCheckOut,
@@ -381,6 +342,7 @@ function ActiveMonitoringClientInner({
       }),
     [
       doorsList,
+      systemTimezone,
       actionLoadingId,
       handleNormalCheckOut,
       openForceCheckOutModal,
@@ -390,28 +352,25 @@ function ActiveMonitoringClientInner({
 
   return (
     <div className="space-y-6">
-      {/* Action / Refresh Bar */}
       <div className="flex items-center justify-end">
         <button
           onClick={handleManualRefresh}
           disabled={isRefreshing}
           className="ks-btn inline-flex items-center gap-1.5 rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-[var(--ks-ink)] shadow-xs hover:bg-[var(--ks-paper)] disabled:opacity-50 cursor-pointer transition-colors"
         >
-          {isRefreshing ? "Menyegarkan..." : "↻ Segarkan Daftar Tamu Aktif"}
+          {isRefreshing ? "Menyegarkan..." : "Segarkan Daftar Tamu Aktif"}
         </button>
       </div>
 
-      {/* Notification Banner */}
       {notification && (
         <div
           role="alert"
-          className={`flex items-start justify-between rounded-lg p-4 text-xs ${
-            notification.type === "success"
+          className={`flex items-start justify-between rounded-lg p-4 text-xs ${notification.type === "success"
               ? "border border-[var(--ks-patina)]/30 bg-[var(--ks-patina)]/10 text-[var(--ks-ink)]"
               : notification.type === "warning"
                 ? "border border-[var(--ks-kinpaku)]/40 bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)] font-medium"
                 : "border border-[var(--ks-vermilion)]/30 bg-[var(--ks-vermilion)]/10 text-[var(--ks-vermilion)]"
-          }`}
+            }`}
         >
           <div className="flex items-center gap-2">
             <span>{notification.message}</span>
@@ -438,7 +397,6 @@ function ActiveMonitoringClientInner({
         </div>
       )}
 
-      {/* Canonical Summary KPI Cards */}
       <UiKpiGrid>
         <UiKpiCard
           label="Total Tamu di Gedung"
@@ -448,7 +406,6 @@ function ActiveMonitoringClientInner({
           isSelected={activeTab === "all"}
           onClick={() => setActiveTab("all")}
         />
-
         <UiKpiCard
           label="Status Normal"
           value={stats.normal}
@@ -458,7 +415,6 @@ function ActiveMonitoringClientInner({
           isSelected={activeTab === "normal"}
           onClick={() => setActiveTab("normal")}
         />
-
         <UiKpiCard
           label="Peringatan Overstay"
           value={stats.overstay}
@@ -468,7 +424,6 @@ function ActiveMonitoringClientInner({
           isSelected={activeTab === "overstay"}
           onClick={() => setActiveTab("overstay")}
         />
-
         <UiKpiCard
           label="Peringatan Kuota Tap"
           value={stats.quota}
@@ -480,40 +435,19 @@ function ActiveMonitoringClientInner({
         />
       </UiKpiGrid>
 
-      {/* Facility & Tab Filter Toolbar */}
+      {/* Single-Site Tab Filter Toolbar (No facilitySlot) */}
       <UiFilterToolbar
-        facilitySlot={
-          <div className="min-w-[200px]">
-            <label htmlFor="facilityFilter" className="sr-only">
-              Saring Berdasarkan Gedung
-            </label>
-            <select
-              id="facilityFilter"
-              value={selectedFacilityId}
-              onChange={(e) => setSelectedFacilityId(e.target.value)}
-              className="w-full rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-xs text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
-            >
-              <option value="all">Semua Gedung Fasilitas</option>
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id}>
-                  {fac.name} ({fac.timezone})
-                </option>
-              ))}
-            </select>
-          </div>
-        }
         actionsSlot={
-          <div className="flex items-center gap-1 border-t sm:border-t-0 pt-2 sm:pt-0">
+          <div className="flex items-center gap-1">
             {FILTER_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={`rounded-lg px-2.5 py-1 text-xs font-bold uppercase tracking-[0.08em] transition cursor-pointer ${
-                  activeTab === tab.id
+                className={`rounded-lg px-2.5 py-1 text-xs font-bold uppercase tracking-[0.08em] transition cursor-pointer ${activeTab === tab.id
                     ? "bg-[var(--ks-ink)] text-[var(--ks-paper-raised)]"
                     : "text-[var(--ks-muted)] hover:text-[var(--ks-ink)] hover:bg-[var(--ks-paper)]"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -522,7 +456,6 @@ function ActiveMonitoringClientInner({
         }
       />
 
-      {/* Canonical Headless Data Table */}
       <UiDataTable
         columns={columns}
         data={tabFilteredVisits}
@@ -545,13 +478,12 @@ function ActiveMonitoringClientInner({
             <p className="mt-1 text-xs text-[var(--ks-muted)]">
               {visits.length === 0
                 ? "Seluruh tamu telah selesai berkunjung atau belum melakukan check-in."
-                : "Coba sesuaikan kata kunci pencarian, pemilihan fasilitas gedung, atau tab penyaring."}
+                : "Coba sesuaikan kata kunci pencarian atau tab penyaring."}
             </p>
           </div>
         }
       />
 
-      {/* Force Check-out Modal */}
       <ForceCheckoutModal
         key={`${forceVisit?.visitId ?? "none"}-${Boolean(forceVisit)}`}
         visit={forceVisit}
@@ -561,7 +493,6 @@ function ActiveMonitoringClientInner({
         onConfirm={handleConfirmForceCheckOut}
       />
 
-      {/* Emergency Access Escalation Modal */}
       {emergencyVisit && (
         <EmergencyAccessModal
           key={`${emergencyVisit.visitId}-${emergencyVisit.emergencyGrants?.length ?? 0}`}
@@ -583,13 +514,8 @@ function ActiveMonitoringClientInner({
   );
 }
 
-/**
- * ActiveMonitoringClient with automatic VmsProviders boundary wrapping
- * when mounted outside of a QueryClientProvider (e.g. in standalone renderToStaticMarkup).
- */
 export function ActiveMonitoringClient(props: ActiveMonitoringClientProps) {
   const contextClient = useContext(QueryClientContext);
-
   if (!contextClient) {
     return (
       <VmsProviders>
@@ -597,6 +523,5 @@ export function ActiveMonitoringClient(props: ActiveMonitoringClientProps) {
       </VmsProviders>
     );
   }
-
   return <ActiveMonitoringClientInner {...props} />;
 }

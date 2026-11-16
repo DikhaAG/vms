@@ -143,6 +143,27 @@ describe("checkin-contract", () => {
         expect(outcome.errors.visitReasonDetail).toBeDefined();
       }
     });
+    it("accepts single-site walk-in payload without facilityId", () => {
+      const outcome = validateWalkInRegistrationInput({
+        hostId: "emp-host-01",
+        hostName: "Budi Santoso",
+        visitorFamilyName: "Pratama",
+        visitorGivenName: "Rian",
+        visitorPhone: "08123456789",
+        certificateType: 111,
+        certificateNo: "3171000000000001",
+        visitReasonType: 0,
+        receptionistUserId: "rec-01",
+        receptionistName: "Dewi Frontdesk",
+        verificationMethod: "id_card",
+      });
+
+      expect(outcome.valid).toBe(true);
+      if (outcome.valid) {
+        expect(outcome.input.facilityId).toBeUndefined();
+        expect(outcome.input.visitorFamilyName).toBe("Pratama");
+      }
+    });
   });
 
   describe("validateVisitorSearchQuery", () => {

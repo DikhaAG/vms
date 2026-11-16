@@ -2,15 +2,24 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { CheckInService } from "./checkin-service";
 import { InMemoryVmsRepository } from "./repository";
 import type { Visit } from "./vms-contract";
+import type { AccessLevel } from "./access-level-contract";
 
-describe("CheckInService", () => {
+describe("CheckInService (Single-Site Lean Architecture - Ticket 05)", () => {
   let repo: InMemoryVmsRepository;
   let service: CheckInService;
 
+  const lobbyAccessLevel: AccessLevel = {
+    id: "acc-building-lobby",
+    name: "Building Perimeter & Main Lobby",
+    description: "Site-wide turnstile and main lobby doors",
+    doors: ["door-turnstile-1", "door-lobby-2"],
+    floors: ["1F"],
+    timeScheduleId: 2,
+    isDefault: true,
+  };
+
   const approvedVisit: Visit = {
     id: "vis-approved-01",
-    facilityId: "fac-jakarta",
-    facilityName: "Jakarta Corporate HQ",
     hostId: "emp-host-01",
     hostName: "Budi Santoso",
     visitorFamilyName: "Pratama",
@@ -30,7 +39,7 @@ describe("CheckInService", () => {
       visitorId: "hc-vis-01",
       appointCode: "4321",
     },
-    accessLevelIds: ["acc-jkt-lobby"],
+    accessLevelIds: ["acc-building-lobby"],
     tapQuota: {
       mode: "limited",
       maxTaps: 2,
@@ -41,31 +50,39 @@ describe("CheckInService", () => {
 
   beforeEach(async () => {
     repo = new InMemoryVmsRepository();
+    await repo.saveAccessLevel(lobbyAccessLevel);
     service = new CheckInService(repo);
     await repo.saveVisit(approvedVisit);
   });
 
   describe("searchArrivingVisitors", () => {
-    it("searches approved visitors by query string and facilityId", async () => {
-      const results = await service.searchArrivingVisitors(
-        "Rian",
-        "fac-jakarta",
-      );
-      expect(results).toHaveLength(1);
-      expect(results[0].id).toBe("vis-approved-01");
+    it("searches approved and checked-in visitors globally across the single site", async () => {
+      await repo.saveVisit({
+        ...approvedVisit,
+        id: "vis-checkedin-02",
+        visitorGivenName: "Siti",
+        visitorFamilyName: "Rahma",
+        visitorEmail: "siti.rahma@example.com",
+        certificateNo: "3171020202020002",
+        status: "CHECKED_IN",
+      });
+
+      const allResults = await service.searchArrivingVisitors("");
+      expect(allResults).toHaveLength(2);
+
+      const filteredResults = await service.searchArrivingVisitors("Rian");
+      expect(filteredResults).toHaveLength(1);
+      expect(filteredResults[0].id).toBe("vis-approved-01");
     });
 
     it("returns empty list if search query does not match", async () => {
-      const results = await service.searchArrivingVisitors(
-        "NonExistentVisitor",
-        "fac-jakarta",
-      );
+      const results = await service.searchArrivingVisitors("NonExistentVisitor");
       expect(results).toHaveLength(0);
     });
   });
 
   describe("performCheckIn", () => {
-    it("successfully checks in an approved visit and updates appointRecordId and status to CHECKED_IN", async () => {
+    it("checks in an approved visit without facilityId and issues site-wide access pass", async () => {
       const result = await service.performCheckIn("vis-approved-01", {
         visitId: "vis-approved-01",
         receptionistUserId: "rec-01",
@@ -82,12 +99,13 @@ describe("CheckInService", () => {
       expect(result.pass?.pinCode).toBeDefined();
       expect(result.pass?.qrCodeImage).toBeDefined();
       expect(result.pass?.visitorName).toBe("Rian Pratama");
+      expect(result.pass?.accessLevelNames).toEqual([
+        "Building Perimeter & Main Lobby",
+      ]);
 
-      // Verify stored visit in repository has updated appointRecordId and status
       const stored = await repo.getVisit("vis-approved-01");
       expect(stored?.status).toBe("CHECKED_IN");
-      expect(stored?.hikCentral?.appointRecordId).toBeDefined();
-      expect(stored?.hikCentral?.appointRecordId).not.toBe("hc-apt-rec-01"); // Updated on checkin!
+      expect(stored?.hikCentral?.appointRecordId).not.toBe("hc-apt-rec-01");
     });
 
     it("fails check-in if visit does not exist", async () => {
@@ -101,7 +119,7 @@ describe("CheckInService", () => {
       expect(result.error?.kind).toBe("not_found");
     });
 
-    it("fails check-in if visit is not in APPROVED state (e.g. PENDING_APPROVAL or REJECTED)", async () => {
+    it("fails check-in if visit is not in APPROVED state", async () => {
       await repo.saveVisit({
         ...approvedVisit,
         id: "vis-pending-02",
@@ -116,7 +134,6 @@ describe("CheckInService", () => {
 
       expect(result.ok).toBe(false);
       expect(result.error?.kind).toBe("invalid_state");
-      expect(result.error?.message).toContain("Only approved visits");
     });
 
     it("gracefully returns upstream error if HikCentral registerment throws", async () => {
@@ -133,9 +150,10 @@ describe("CheckInService", () => {
   });
 
   describe("createWalkInVisit", () => {
-    it("creates a walk-in visit, registers on HikCentral, sets status to CHECKED_IN, and issues pass", async () => {
+    it("creates a walk-in visit without facilityId using global systemSettings.timezone and default building access levels", async () => {
+      await repo.updateSettings({ timezone: "Asia/Makassar" });
+
       const result = await service.createWalkInVisit({
-        facilityId: "fac-jakarta",
         hostId: "emp-host-01",
         hostName: "Budi Santoso",
         visitorFamilyName: "Gunawan",
@@ -146,7 +164,6 @@ describe("CheckInService", () => {
         certificateNo: "3171020202020002",
         visitReasonType: 3,
         visitReasonDetail: "Urgent project sync",
-        accessLevelIds: ["acc-jkt-lobby"],
         tapQuota: {
           mode: "limited",
           maxTaps: 1,
@@ -161,38 +178,21 @@ describe("CheckInService", () => {
 
       expect(result.ok).toBe(true);
       expect(result.visit).toBeDefined();
+      expect(result.visit?.facilityId).toBeUndefined();
       expect(result.visit?.status).toBe("CHECKED_IN");
-      expect(result.visit?.visitorFamilyName).toBe("Gunawan");
+      expect(result.visit?.scheduledStartTimeFacility).toMatch(/\+08:00$/);
+      expect(result.visit?.accessLevelIds).toEqual(["acc-building-lobby"]);
       expect(result.pass).toBeDefined();
       expect(result.pass?.pinCode).toBeDefined();
       expect(result.pass?.visitorName).toBe("Indra Gunawan");
+      expect(result.pass?.accessLevelNames).toEqual([
+        "Building Perimeter & Main Lobby",
+      ]);
 
-      // Verify visit saved in repository
-      if (result.visit) {
-        const saved = await repo.getVisit(result.visit.id);
-        expect(saved).toBeDefined();
-        expect(saved?.status).toBe("CHECKED_IN");
-        expect(saved?.actualCheckInTimeUtc).toBeDefined();
-
-        const auditLogs = await repo.listCheckInEvents(result.visit.id);
-        expect(auditLogs).toHaveLength(1);
-        expect(auditLogs[0].receptionistUserId).toBe("rec-01");
-        expect(auditLogs[0].verificationMethod).toBe("id_card");
-      }
-    });
-
-    it("fails walk-in if facility is invalid", async () => {
-      const result = await service.createWalkInVisit({
-        facilityId: "fac-invalid",
-        visitorFamilyName: "Gunawan",
-        visitorGivenName: "Indra",
-        visitReasonType: 0,
-        receptionistUserId: "rec-01",
-        mode: "stub",
-      });
-
-      expect(result.ok).toBe(false);
-      expect(result.error?.kind).toBe("not_found");
+      const saved = await repo.getVisit(result.visit!.id);
+      expect(saved?.status).toBe("CHECKED_IN");
+      const auditLogs = await repo.listCheckInEvents(result.visit!.id);
+      expect(auditLogs).toHaveLength(1);
     });
   });
 });

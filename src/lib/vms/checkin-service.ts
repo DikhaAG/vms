@@ -7,10 +7,11 @@ import {
   validateWalkInRegistrationInput,
   type CheckInPass,
 } from "./checkin-contract";
-import type {
-  CredentialSyncStatus,
-  Visit,
-  VisitStatus,
+import {
+  DEFAULT_SYSTEM_SETTINGS,
+  type CredentialSyncStatus,
+  type Visit,
+  type VisitStatus,
 } from "./vms-contract";
 import { formatFacilityIso, parseLocalDateTimeToUtc } from "./timezone";
 import { executeHikCentralCheckIn } from "./hikcentral-checkin-adapter";
@@ -42,24 +43,22 @@ export interface CheckInResult {
 }
 
 export class CheckInService {
-  constructor(private readonly repository: IVmsRepository = defaultVmsRepository) {}
+  constructor(
+    private readonly repository: IVmsRepository = defaultVmsRepository,
+  ) { }
 
   /**
-   * Fast lookup for visitors arriving at the front desk by name, phone, certificateNo, appointment code, or ID.
+   * Global lookup for arriving and active visitors across the entire site.
    */
   async searchArrivingVisitors(
     query: string,
-    facilityId?: string,
     status?: VisitStatus | VisitStatus[],
   ): Promise<Visit[]> {
-    return this.repository.searchVisits(query, facilityId, status);
+    return this.repository.searchVisits(query, undefined, status);
   }
 
   /**
-   * Executes one-click check-in for an approved visitor booking.
-   * Calls HikCentral registerment, updates visit status to CHECKED_IN,
-   * updates the stored appointRecordId (which changes upon check-in!),
-   * updates credential sync status, and issues the CheckInPass.
+   * Executes one-click check-in for an approved visitor booking across the single site.
    */
   async performCheckIn(
     visitId: string,
@@ -105,26 +104,16 @@ export class CheckInService {
       };
     }
 
-    // 3. Fetch facility for timezone and name
-    const facility = visit.facilityId
-      ? await this.repository.getFacility(visit.facilityId)
-      : undefined;
-    if (visit.facilityId && !facility) {
-      return {
-        ok: false,
-        error: {
-          kind: "not_found",
-          message: `Facility '${visit.facilityId}' not found.`,
-          status: 404,
-        },
-      };
-    }
+    // 3. Load global system settings for canonical timezone
+    const settings = await this.repository.getSettings();
+    const systemTimezone =
+      settings.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
 
-    // 4. Resolve access levels
+    // 4. Resolve building-wide access levels without facility boundaries
     let accessLevels: Array<{ id: string | number; name?: string }> | undefined;
     let accessLevelNames: string[] = [];
     if (visit.accessLevelIds && visit.accessLevelIds.length > 0) {
-      const allLevels = await this.repository.listAccessLevels(visit.facilityId);
+      const allLevels = await this.repository.listAccessLevels();
       const matched = allLevels.filter((al) =>
         visit.accessLevelIds?.includes(al.id),
       );
@@ -144,12 +133,12 @@ export class CheckInService {
       qrCodeValidNum = visit.tapQuota.maxTaps;
     }
 
-    // 6. Time formatting in facility timezone
+    // 6. Time formatting in global system timezone
     const nowUtc = new Date();
-    const facilityTimezone = facility?.timezone ?? "Asia/Jakarta";
-    const facilityName = facility?.name ?? visit.facilityName ?? "Facility";
-    const checkInTimeFacility = formatFacilityIso(nowUtc, facilityTimezone);
-    const checkOutTimeFacility = visit.scheduledEndTimeFacility;
+    const checkInTimeLocal = formatFacilityIso(nowUtc, systemTimezone);
+    const checkOutTimeLocal =
+      visit.scheduledEndTimeFacility ||
+      formatFacilityIso(visit.scheduledEndTimeUtc, systemTimezone);
 
     // 7. Invoke HikCentral check-in adapter (POST /artemis/api/visitor/v1/registerment)
     let hcResult;
@@ -158,8 +147,8 @@ export class CheckInService {
         {
           appointId: visit.hikCentral?.appointRecordId,
           hostId: visit.hostId || input.receptionistUserId,
-          visitStartTime: checkInTimeFacility,
-          visitEndTime: checkOutTimeFacility,
+          visitStartTime: checkInTimeLocal,
+          visitEndTime: checkOutTimeLocal,
           visitPurposeType: visit.visitReasonType,
           visitPurpose: visit.visitReasonDetail,
           visitorFamilyName: visit.visitorFamilyName,
@@ -214,7 +203,7 @@ export class CheckInService {
       );
       credentialSyncStatus = syncReport.overallStatus;
     } catch {
-      // Non-fatal if status probe fails immediately; will default to Applied/Syncing
+      // Non-fatal fallback
     }
 
     const updatedVisit = await this.repository.checkInVisit(visitId, {
@@ -233,11 +222,7 @@ export class CheckInService {
       credentialSyncStatus,
     });
 
-    const pass = this.buildCheckInPass(
-      updatedVisit,
-      facilityName,
-      accessLevelNames,
-    );
+    const pass = this.buildCheckInPass(updatedVisit, accessLevelNames);
 
     return {
       ok: true,
@@ -247,7 +232,7 @@ export class CheckInService {
   }
 
   /**
-   * Registers and immediately checks in an unscheduled walk-in visitor arriving at reception.
+   * Registers and immediately checks in an unscheduled walk-in visitor directly to the single site.
    */
   async createWalkInVisit(rawInput: unknown): Promise<CheckInResult> {
     const validation = validateWalkInRegistrationInput(rawInput);
@@ -265,18 +250,10 @@ export class CheckInService {
 
     const input = validation.input;
 
-    // 1. Fetch facility
-    const facility = await this.repository.getFacility(input.facilityId);
-    if (!facility) {
-      return {
-        ok: false,
-        error: {
-          kind: "not_found",
-          message: `Facility '${input.facilityId}' not found.`,
-          status: 404,
-        },
-      };
-    }
+    // 1. Load global system settings
+    const settings = await this.repository.getSettings();
+    const systemTimezone =
+      settings.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
 
     // 2. Normalization of face photo if supplied
     let normalizedFacePhoto: string | undefined;
@@ -296,7 +273,7 @@ export class CheckInService {
       }
     }
 
-    // 3. Resolve schedule times
+    // 3. Resolve schedule times in global system timezone
     const now = new Date();
     let startUtc: Date;
     let endUtc: Date;
@@ -305,11 +282,11 @@ export class CheckInService {
       try {
         startUtc = parseLocalDateTimeToUtc(
           input.scheduledStartTime,
-          facility.timezone,
+          systemTimezone,
         );
         endUtc = parseLocalDateTimeToUtc(
           input.scheduledEndTime,
-          facility.timezone,
+          systemTimezone,
         );
       } catch (err) {
         return {
@@ -325,35 +302,26 @@ export class CheckInService {
         };
       }
     } else {
-      // Default: now until +4 hours
       startUtc = now;
       endUtc = new Date(now.getTime() + 4 * 60 * 60 * 1000);
     }
 
     const scheduledStartTimeUtc = startUtc.toISOString();
     const scheduledEndTimeUtc = endUtc.toISOString();
-    const scheduledStartTimeFacility = formatFacilityIso(
-      startUtc,
-      facility.timezone,
-    );
-    const scheduledEndTimeFacility = formatFacilityIso(
-      endUtc,
-      facility.timezone,
-    );
+    const scheduledStartTimeLocal = formatFacilityIso(startUtc, systemTimezone);
+    const scheduledEndTimeLocal = formatFacilityIso(endUtc, systemTimezone);
 
-    // 4. Resolve access levels
-    const allFacilityLevels = await this.repository.listAccessLevels(
-      input.facilityId,
-    );
+    // 4. Resolve building-wide access levels without facility boundaries
+    const allLevels = await this.repository.listAccessLevels();
     let resolvedAccessLevelIds = input.accessLevelIds;
     if (!resolvedAccessLevelIds || resolvedAccessLevelIds.length === 0) {
-      const defaultLevel = allFacilityLevels.find((al) => al.isDefault);
-      if (defaultLevel) {
-        resolvedAccessLevelIds = [defaultLevel.id];
+      const defaults = allLevels.filter((al) => al.isDefault);
+      if (defaults.length > 0) {
+        resolvedAccessLevelIds = defaults.map((al) => al.id);
       }
     }
 
-    const matchedLevels = allFacilityLevels.filter((al) =>
+    const matchedLevels = allLevels.filter((al) =>
       resolvedAccessLevelIds?.includes(al.id),
     );
     const accessLevels =
@@ -378,8 +346,8 @@ export class CheckInService {
       hcResult = await executeHikCentralCheckIn(
         {
           hostId: input.hostId || input.receptionistUserId,
-          visitStartTime: scheduledStartTimeFacility,
-          visitEndTime: scheduledEndTimeFacility,
+          visitStartTime: scheduledStartTimeLocal,
+          visitEndTime: scheduledEndTimeLocal,
           visitPurposeType: input.visitReasonType,
           visitPurpose: input.visitReasonDetail,
           visitorFamilyName: input.visitorFamilyName,
@@ -440,8 +408,6 @@ export class CheckInService {
 
     const newVisit: Visit = {
       id: visitId,
-      facilityId: input.facilityId,
-      facilityName: facility.name,
       hostId: input.hostId,
       hostName: input.hostName,
       visitorFamilyName: input.visitorFamilyName,
@@ -454,8 +420,8 @@ export class CheckInService {
       visitReasonDetail: input.visitReasonDetail,
       scheduledStartTimeUtc,
       scheduledEndTimeUtc,
-      scheduledStartTimeFacility,
-      scheduledEndTimeFacility,
+      scheduledStartTimeFacility: scheduledStartTimeLocal,
+      scheduledEndTimeFacility: scheduledEndTimeLocal,
       actualCheckInTimeUtc,
       status: "CHECKED_IN",
       facePhoto: normalizedFacePhoto,
@@ -474,7 +440,6 @@ export class CheckInService {
 
     await this.repository.saveVisit(newVisit);
 
-    // Save check-in audit event
     await this.repository.saveCheckInEvent({
       id: `chk-audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       visitId,
@@ -485,11 +450,7 @@ export class CheckInService {
       notes: input.notes,
     });
 
-    const pass = this.buildCheckInPass(
-      newVisit,
-      facility.name,
-      accessLevelNames,
-    );
+    const pass = this.buildCheckInPass(newVisit, accessLevelNames);
 
     return {
       ok: true,
@@ -500,7 +461,6 @@ export class CheckInService {
 
   private buildCheckInPass(
     visit: Visit,
-    facilityName?: string,
     accessLevelNames?: string[],
   ): CheckInPass {
     return {
@@ -513,8 +473,6 @@ export class CheckInService {
       certificateNo: visit.certificateNo,
       hostId: visit.hostId,
       hostName: visit.hostName,
-      facilityId: visit.facilityId,
-      facilityName: facilityName ?? visit.facilityName,
       scheduledStartTime: visit.scheduledStartTimeFacility,
       scheduledEndTime: visit.scheduledEndTimeFacility,
       actualCheckInTimeUtc:

@@ -1,57 +1,64 @@
 import { NextResponse } from "next/server";
 import { defaultCheckInService } from "@/lib/vms/checkin-service";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ visitId: string }> },
-) {
+): Promise<NextResponse> {
   const { visitId } = await context.params;
+  let body: Record<string, unknown> = {};
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          kind: "validation",
-          message: "Request payload must be valid JSON.",
+  const rawText = await request.text();
+  if (rawText.trim().length > 0) {
+    try {
+      const parsed: unknown = JSON.parse(rawText);
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: {
+              kind: "validation",
+              message: "Request payload must be a JSON object.",
+              status: 400,
+            },
+          },
+          { status: 400 },
+        );
+      }
+      body = parsed as Record<string, unknown>;
+    } catch {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: {
+            kind: "validation",
+            message: "Request body must be valid JSON.",
+            status: 400,
+          },
         },
-      },
-      { status: 400 },
-    );
+        { status: 400 },
+      );
+    }
   }
 
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: {
-          kind: "validation",
-          message: "Request payload must be an object.",
-        },
-      },
-      { status: 400 },
-    );
-  }
-
-  const payload = {
-    ...(body as Record<string, unknown>),
+  const result = await defaultCheckInService.performCheckIn(visitId, {
+    ...body,
     visitId,
-  };
+  });
 
-  const result = await defaultCheckInService.performCheckIn(visitId, payload);
-
-  if (!result.ok) {
-    const status = result.error?.status ?? 500;
-    return NextResponse.json(
-      {
-        ok: false,
-        error: result.error,
-      },
-      { status },
-    );
+  if (!result.ok || !result.visit || !result.pass) {
+    const status =
+      result.error?.status ??
+      (result.error?.kind === "not_found"
+        ? 404
+        : result.error?.kind === "invalid_state"
+          ? 409
+          : result.error?.kind === "validation"
+            ? 400
+            : 502);
+    return NextResponse.json(result, { status });
   }
 
   return NextResponse.json(
@@ -61,6 +68,8 @@ export async function POST(
         visit: result.visit,
         pass: result.pass,
       },
+      visit: result.visit,
+      pass: result.pass,
     },
     { status: 200 },
   );

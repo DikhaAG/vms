@@ -154,10 +154,7 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
     );
 
     // Verify presence in active monitoring dashboard
-    const activeMonitoringReq = new Request(
-      "http://localhost:3000/api/vms/active-visits?facilityId=fac-jakarta",
-    );
-    const activeMonitoringRes = await getActiveVisits(activeMonitoringReq);
+    const activeMonitoringRes = await getActiveVisits();
     expect(activeMonitoringRes.status).toBe(200);
     const activeMonitoringBody = await activeMonitoringRes.json();
     expect(activeMonitoringBody.ok).toBe(true);
@@ -461,7 +458,7 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
     }
 
     // Verify checked out visitor no longer appears in active occupancy
-    const postCheckOutMonitoring = await getActiveVisits(activeMonitoringReq);
+    const postCheckOutMonitoring = await getActiveVisits();
     const activeList = (await postCheckOutMonitoring.json()).activeVisits;
     expect(activeList.some((v: { visitId: string }) => v.visitId === visitId)).toBe(false);
   });

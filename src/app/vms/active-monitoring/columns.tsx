@@ -6,18 +6,20 @@ import { createColumnHelper } from "@tanstack/react-table";
 import type { UiTableFeatures } from "@/components/vms/ui";
 import type {
   ActiveVisitSummary,
-  FacilityDoor,
+  Door,
   EmergencyAccessGrant,
   DoorAccessType,
   VisitLastSeenDoor,
 } from "@/lib/vms/checkout-contract";
 import { isEmergencyGrantActive } from "@/lib/vms/checkout-contract";
+import { DEFAULT_SYSTEM_SETTINGS } from "@/lib/vms/vms-contract";
+import { formatInFacilityTimezone } from "@/lib/vms/timezone";
 
 export type ActiveVisit = ActiveVisitSummary;
 
 export function resolveDoorAccessType(
   lastSeenDoor: VisitLastSeenDoor | undefined,
-  availableDoors: FacilityDoor[],
+  availableDoors: Door[],
 ): DoorAccessType | undefined {
   if (lastSeenDoor?.accessType) {
     return lastSeenDoor.accessType;
@@ -32,7 +34,8 @@ export function resolveDoorAccessType(
 }
 
 export interface ActiveVisitColumnOptions {
-  doors: FacilityDoor[];
+  doors: Door[];
+  systemTimezone?: string;
   actionLoadingId?: string | null;
   onGrantEmergency: (visit: ActiveVisit) => void;
   onNormalCheckOut: (visit: ActiveVisit) => void;
@@ -45,6 +48,7 @@ export interface ActiveVisitColumnOptions {
 
 export function createActiveVisitColumns({
   doors,
+  systemTimezone = DEFAULT_SYSTEM_SETTINGS.timezone,
   actionLoadingId,
   onGrantEmergency,
   onNormalCheckOut,
@@ -105,7 +109,9 @@ export function createActiveVisitColumns({
                 </div>
               )}
               <p className="text-xs text-[var(--ks-muted)]">
-                {visit.visitor.phone || visit.visitor.email || "Tanpa data kontak"}
+                {visit.visitor.phone ||
+                  visit.visitor.email ||
+                  "Tanpa data kontak"}
                 {visit.visitor.certificateNo &&
                   ` • No. Identitas: ${visit.visitor.certificateNo}`}
               </p>
@@ -118,31 +124,30 @@ export function createActiveVisitColumns({
       },
     }),
 
-    // Column 2: Facility & Host information
-    columnHelper.accessor((row): unknown => row.facility.name, {
-      id: "facilityAndHost",
-      header: "Gedung & Tuan Rumah",
+    // Column 2: Host & Schedule information (Single-Site, formatted in global systemTimezone)
+    columnHelper.accessor((row): unknown => row.host?.name ?? "", {
+      id: "hostAndSchedule",
+      header: "Tuan Rumah & Jadwal",
       enableSorting: true,
       cell: (info) => {
         const visit = info.row.original;
-        const checkInFormatted = new Date(visit.checkInTimeUtc).toLocaleTimeString(
-          [],
-          { hour: "2-digit", minute: "2-digit" },
+        const checkInFormatted = formatInFacilityTimezone(
+          visit.checkInTimeUtc,
+          systemTimezone,
+          { dateStyle: undefined, timeStyle: "short" },
         );
-        const scheduledEndFormatted = new Date(
+        const scheduledEndFormatted = formatInFacilityTimezone(
           visit.scheduledEndTimeUtc,
-        ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          systemTimezone,
+          { dateStyle: undefined, timeStyle: "short" },
+        );
 
         return (
           <div className="space-y-1 text-xs min-w-[180px]">
             <div>
-              <span className="text-[var(--ks-muted)]">Gedung:</span>{" "}
-              <span className="font-semibold text-[var(--ks-ink)]">
-                {visit.facility.name}
-              </span>
-            </div>
-            <div>
-              <span className="text-[var(--ks-muted)]">Karyawan Tuan Rumah:</span>{" "}
+              <span className="text-[var(--ks-muted)]">
+                Karyawan Tuan Rumah:
+              </span>{" "}
               <span className="font-semibold text-[var(--ks-ink)]">
                 {visit.host?.name || "Tamu Datang Langsung (Walk-in)"}
               </span>
@@ -157,11 +162,10 @@ export function createActiveVisitColumns({
               <div>
                 <span className="text-[var(--ks-muted)]">Jadwal Keluar:</span>{" "}
                 <span
-                  className={`font-semibold ${
-                    visit.isOverstay
+                  className={`font-semibold ${visit.isOverstay
                       ? "text-[var(--ks-vermilion)]"
                       : "text-[var(--ks-ink)]"
-                  }`}
+                    }`}
                 >
                   {scheduledEndFormatted}
                 </span>
@@ -186,10 +190,7 @@ export function createActiveVisitColumns({
         const visit = info.row.original;
         const tapRatio =
           visit.tapQuotaMode === "limited" && visit.maxTaps > 0
-            ? Math.min(
-                100,
-                Math.round((visit.tapCount / visit.maxTaps) * 100),
-              )
+            ? Math.min(100, Math.round((visit.tapCount / visit.maxTaps) * 100))
             : 0;
 
         return (
@@ -245,13 +246,12 @@ export function createActiveVisitColumns({
               {visit.tapQuotaMode === "limited" && (
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--ks-paper-deep)] border border-[var(--ks-rule-subtle)]">
                   <div
-                    className={`h-full transition-all duration-300 ${
-                      visit.tapCount >= visit.maxTaps
+                    className={`h-full transition-all duration-300 ${visit.tapCount >= visit.maxTaps
                         ? "bg-[var(--ks-vermilion)]"
                         : tapRatio >= 75
                           ? "bg-[var(--ks-kinpaku)]"
                           : "bg-[var(--ks-ink)]"
-                    }`}
+                      }`}
                     style={{ width: `${tapRatio}%` }}
                   />
                 </div>
@@ -275,7 +275,6 @@ export function createActiveVisitColumns({
 
         return (
           <div className="space-y-2 min-w-[260px]">
-            {/* Last seen door */}
             {visit.lastSeenDoor && (
               <div
                 data-testid="visitor-last-seen-door"
@@ -292,12 +291,11 @@ export function createActiveVisitColumns({
                   <span className="text-[11px] text-[var(--ks-muted)]">
                     ({visit.lastSeenDoor.direction === "in" ? "Masuk" : "Keluar"}{" "}
                     pada{" "}
-                    {new Date(
+                    {formatInFacilityTimezone(
                       visit.lastSeenDoor.tappedAtUtc,
-                    ).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                      systemTimezone,
+                      { dateStyle: undefined, timeStyle: "short" },
+                    )}
                     )
                   </span>
                 </div>
@@ -320,7 +318,6 @@ export function createActiveVisitColumns({
               </div>
             )}
 
-            {/* Movement Breadcrumbs */}
             {visit.movementBreadcrumbs &&
               visit.movementBreadcrumbs.length > 0 && (
                 <div className="rounded-lg border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] p-2">
@@ -342,15 +339,14 @@ export function createActiveVisitColumns({
                         >
                           {idx > 0 && (
                             <span className="text-[var(--ks-muted)] font-bold">
-                              →
+                              &rarr;
                             </span>
                           )}
                           <span
-                            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium border ${
-                              isImplicit
+                            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium border ${isImplicit
                                 ? "bg-[var(--ks-kinpaku)]/15 text-[var(--ks-ink)] border-[var(--ks-kinpaku)]/30 font-semibold"
                                 : "bg-[var(--ks-paper-raised)] text-[var(--ks-ink)] border-[var(--ks-rule-subtle)] shadow-2xs"
-                            }`}
+                              }`}
                           >
                             <span>{crumb.doorName || crumb.doorIndexCode}</span>
                             <span
@@ -376,7 +372,6 @@ export function createActiveVisitColumns({
                 </div>
               )}
 
-            {/* Emergency Grants */}
             {visit.emergencyGrants && visit.emergencyGrants.length > 0 && (
               <div
                 className="space-y-1.5"
@@ -396,26 +391,23 @@ export function createActiveVisitColumns({
                   );
                   const remainingLabel =
                     minsRemaining >= 60
-                      ? `${Math.floor(minsRemaining / 60)}j ${
-                          minsRemaining % 60
-                        }m tersisa`
+                      ? `${Math.floor(minsRemaining / 60)}j ${minsRemaining % 60
+                      }m tersisa`
                       : `${minsRemaining}m tersisa`;
 
-                  const expiryFormatted = new Date(
+                  const expiryFormatted = formatInFacilityTimezone(
                     grant.expiresAtUtc,
-                  ).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+                    systemTimezone,
+                    { dateStyle: undefined, timeStyle: "short" },
+                  );
 
                   return (
                     <div
                       key={grant.id}
-                      className={`flex flex-wrap items-center justify-between gap-1.5 rounded-lg p-2 text-xs border ${
-                        isActive
+                      className={`flex flex-wrap items-center justify-between gap-1.5 rounded-lg p-2 text-xs border ${isActive
                           ? "border-[var(--ks-kinpaku)]/40 bg-[var(--ks-kinpaku)]/10 text-[var(--ks-ink)]"
                           : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] text-[var(--ks-muted)] opacity-75"
-                      }`}
+                        }`}
                     >
                       <div className="flex flex-col gap-0.5">
                         <div className="flex items-center gap-1.5">
@@ -446,18 +438,17 @@ export function createActiveVisitColumns({
                           <span className="font-medium text-[var(--ks-ink)]">
                             Alasan:
                           </span>{" "}
-                          {grant.reason} •{" "}
+                          {grant.reason} &bull;{" "}
                           <span className="font-medium text-[var(--ks-ink)]">
                             Berakhir:
                           </span>{" "}
-                          {expiryFormatted} •{" "}
+                          {expiryFormatted} &bull;{" "}
                           <span className="font-medium text-[var(--ks-ink)]">
                             Oleh:
                           </span>{" "}
                           {grant.grantedByName || grant.grantedByUserId}
                         </p>
                       </div>
-
                       {isActive && (
                         <button
                           type="button"
@@ -504,7 +495,6 @@ export function createActiveVisitColumns({
                 <span>Izin Akses Darurat</span>
               </button>
             )}
-
             <button
               type="button"
               onClick={() => onNormalCheckOut(visit)}
@@ -513,7 +503,6 @@ export function createActiveVisitColumns({
             >
               {isLoading ? "Memproses..." : "Check-Out Normal"}
             </button>
-
             <button
               type="button"
               onClick={() => onForceCheckOut(visit)}

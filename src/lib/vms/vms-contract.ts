@@ -212,10 +212,7 @@ export const FORBIDDEN_HIKCENTRAL_CHARS = /['\/\\:*?"<>|]/;
 
 export const createPreRegistrationSchema = z
   .object({
-    facilityId: z
-      .string({ error: "Facility is required." })
-      .trim()
-      .min(1, "Facility is required."),
+    facilityId: z.string().trim().optional(),
     hostId: z.string().trim().optional(),
     hostName: z.string().trim().optional(),
     visitorFamilyName: z
@@ -446,7 +443,7 @@ export function validatePreRegistrationInput(raw: unknown): ValidationOutcome {
                 : result.data.tapQuota.maxTaps ?? 0,
           }
         : undefined,
-      mode: result.data.mode || "live",
+      mode: result.data.mode,
       stubScenario: result.data.stubScenario,
     },
   };

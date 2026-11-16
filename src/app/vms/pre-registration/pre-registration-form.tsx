@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import {
   CERTIFICATE_TYPES,
   CERTIFICATE_TYPE_LABELS,
+  DEFAULT_SYSTEM_SETTINGS,
   VISIT_REASON_LABELS,
   VISIT_REASON_TYPES,
   preRegistrationInputSchema,
@@ -36,40 +37,44 @@ import { PreRegistrationResultCard } from "./pre-registration-result-card";
 import { PreRegistrationInviteCard } from "./pre-registration-invite-card";
 
 interface PreRegistrationFormProps {
-  initialFacilities: Facility[];
+  systemTimezone?: string;
+  initialFacilities?: Facility[];
   initialAccessLevels?: AccessLevel[];
 }
 
+function getTomorrowDateInTimezone(timeZone: string): string {
+  const tomorrowMs = Date.now() + 24 * 60 * 60 * 1000;
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(tomorrowMs));
+}
+
 export function PreRegistrationForm({
+  systemTimezone,
   initialFacilities,
   initialAccessLevels = [],
 }: PreRegistrationFormProps) {
   const formId = useId();
+  const effectiveTimezone =
+    systemTimezone ??
+    initialFacilities?.[0]?.timezone ??
+    DEFAULT_SYSTEM_SETTINGS.timezone;
 
-  // Tomorrow 10:00 - 12:00 default schedule
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowDateStr = tomorrow.toISOString().slice(0, 10);
-
-  const initialFacilityId = initialFacilities[0]?.id ?? "fac-jakarta";
+  // Tomorrow 10:00 - 12:00 default schedule in canonical system timezone
+  const tomorrowDateStr = getTomorrowDateInTimezone(effectiveTimezone);
 
   const defaultAccessLevelIds = (() => {
-    const defaults = initialAccessLevels.filter(
-      (al) => al.facilityId === initialFacilityId && al.isDefault,
-    );
+    const defaults = initialAccessLevels.filter((al) => al.isDefault);
     return defaults.length > 0
       ? defaults.map((d) => d.id)
-      : initialAccessLevels
-          .filter((al) => al.facilityId === initialFacilityId)
-          .slice(0, 1)
-          .map((d) => d.id);
+      : initialAccessLevels.slice(0, 1).map((d) => d.id);
   })();
 
-  // Access Levels pool state (for dynamic facility switches)
-  const [accessLevels, setAccessLevels] =
-    useState<AccessLevel[]>(initialAccessLevels);
+  const accessLevels = initialAccessLevels;
 
-  // React Hook Form initialization with Zod Schema
   const {
     register,
     handleSubmit,
@@ -80,7 +85,6 @@ export function PreRegistrationForm({
   } = useForm<PreRegistrationInput>({
     resolver: zodResolver(preRegistrationInputSchema),
     defaultValues: {
-      facilityId: initialFacilityId,
       hostId: "emp-host-01",
       hostName: "Budi Santoso",
       visitorGivenName: "Rian",
@@ -103,44 +107,7 @@ export function PreRegistrationForm({
     mode: "onBlur",
   });
 
-  const selectedFacilityId = useWatch({ control, name: "facilityId" });
   const watchVisitReasonType = useWatch({ control, name: "visitReasonType" });
-
-  // Re-fetch or synchronize access levels when facility changes
-  useEffect(() => {
-    let ignore = false;
-    async function loadFacilityAccessLevels() {
-      try {
-        const res = await fetch(
-          `/api/vms/access-levels?facilityId=${selectedFacilityId}`,
-        );
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!ignore && data.ok && Array.isArray(data.accessLevels)) {
-          setAccessLevels((prev) => {
-            const others = prev.filter(
-              (al) => al.facilityId !== selectedFacilityId,
-            );
-            return [...others, ...data.accessLevels];
-          });
-          const facilityLevels: AccessLevel[] = data.accessLevels;
-          const defaultLevel =
-            facilityLevels.find((l) => l.isDefault) ?? facilityLevels[0];
-          if (defaultLevel) {
-            setValue("accessLevelIds", [defaultLevel.id]);
-          } else {
-            setValue("accessLevelIds", []);
-          }
-        }
-      } catch {
-        // Fallback to local filtering
-      }
-    }
-    loadFacilityAccessLevels();
-    return () => {
-      ignore = true;
-    };
-  }, [selectedFacilityId, setValue]);
 
   // Result & Sync States
   const [createdVisit, setCreatedVisit] = useState<Visit | null>(null);
@@ -220,10 +187,6 @@ export function PreRegistrationForm({
   );
   const [copiedInvite, setCopiedInvite] = useState(false);
 
-  const selectedFacility =
-    initialFacilities.find((f) => f.id === selectedFacilityId) ??
-    initialFacilities[0];
-
   async function handleRetrySync() {
     if (!createdVisit?.hikCentral?.visitorId) return;
 
@@ -271,7 +234,6 @@ export function PreRegistrationForm({
     try {
       const currentValues = getValues();
       const payload = {
-        facilityId: currentValues.facilityId,
         hostId: currentValues.hostId?.trim() || undefined,
         hostName: currentValues.hostName?.trim() || undefined,
         visitReasonType: currentValues.visitReasonType,
@@ -341,10 +303,7 @@ export function PreRegistrationForm({
       }
 
       setCreatedVisit(data.visit);
-      const rawData = data as unknown as {
-        credentialSyncStatus?: CredentialSyncStatus;
-      };
-      setCredentialSyncStatus(rawData.credentialSyncStatus ?? "Unknown");
+      setCredentialSyncStatus(data.visit.credentialSyncStatus ?? "Applied");
       toast.success(idDict.pages.preRegistration.toasts.success);
     } catch (err) {
       toast.error(
@@ -366,72 +325,10 @@ export function PreRegistrationForm({
         onSubmit={handleSubmit(onSubmit, onInvalid)}
         className="space-y-8 rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] p-6 shadow-xs"
       >
-        {/* Section 1: Facility Selection */}
-        <fieldset className="space-y-3">
+        {/* Section 1: Visitor Details */}
+        <fieldset className="space-y-4">
           <legend className="text-sm font-semibold text-[var(--ks-ink)]">
-            1. Pilih Gedung & Zona Waktu Fasilitas
-          </legend>
-          <p className="text-xs text-[var(--ks-muted)]">
-            Setiap lokasi gedung beroperasi berdasarkan zona waktu lokal IANA masing-masing.
-          </p>
-
-          <Controller
-            name="facilityId"
-            control={control}
-            render={({ field }) => (
-              <div className="grid gap-3 sm:grid-cols-3">
-                {initialFacilities.map((fac) => {
-                  const checked = fac.id === field.value;
-                  return (
-                    <label
-                      key={fac.id}
-                      htmlFor={`${formId}-fac-${fac.id}`}
-                      className="block cursor-pointer"
-                    >
-                      <UiCard
-                        className={`flex flex-col justify-between p-3.5 transition-colors ${
-                          checked
-                            ? "border-[var(--ks-ink)] bg-[var(--ks-paper)] ring-1 ring-[var(--ks-ink)]"
-                            : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold text-[var(--ks-ink)]">
-                              {fac.name}
-                            </span>
-                            <input
-                              id={`${formId}-fac-${fac.id}`}
-                              type="radio"
-                              name={field.name}
-                              value={fac.id}
-                              checked={checked}
-                              onChange={() => field.onChange(fac.id)}
-                              className="h-4 w-4 accent-[var(--ks-ink)]"
-                            />
-                          </div>
-                          <span className="mt-1 inline-block rounded-[var(--ks-radius-sm)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-deep)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--ks-ink)]">
-                            {fac.timezone}
-                          </span>
-                          {fac.address ? (
-                            <p className="mt-2 text-[11px] text-[var(--ks-muted)] line-clamp-2">
-                              {fac.address}
-                            </p>
-                          ) : null}
-                        </div>
-                      </UiCard>
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          />
-        </fieldset>
-
-        {/* Section 2: Visitor Details */}
-        <fieldset className="space-y-4 border-t border-[var(--ks-rule-subtle)] pt-6">
-          <legend className="text-sm font-semibold text-[var(--ks-ink)]">
-            2. Data Identitas Tamu
+            1. Data Identitas Tamu
           </legend>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -569,7 +466,7 @@ export function PreRegistrationForm({
           )}
         </fieldset>
 
-        {/* Section 3: Biometric Face Photo Capture & Verification */}
+        {/* Section 2: Biometric Face Photo Capture & Verification */}
         <Controller
           name="facePhoto"
           control={control}
@@ -582,10 +479,10 @@ export function PreRegistrationForm({
           )}
         />
 
-        {/* Section 4: Visit Schedule & Reason */}
+        {/* Section 3: Visit Schedule & Reason */}
         <fieldset className="space-y-4 border-t border-[var(--ks-rule-subtle)] pt-6">
           <legend className="text-sm font-semibold text-[var(--ks-ink)]">
-            4. Jadwal Kunjungan & Keperluan
+            3. Jadwal Kunjungan & Keperluan
           </legend>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -594,7 +491,7 @@ export function PreRegistrationForm({
                 <span>
                   Waktu Mulai Kunjungan (
                   <span className="font-semibold text-[var(--ks-ink)]">
-                    {selectedFacility?.timezone}
+                    {effectiveTimezone}
                   </span>
                   )
                 </span>
@@ -613,7 +510,7 @@ export function PreRegistrationForm({
                 <span>
                   Waktu Selesai Kunjungan (
                   <span className="font-semibold text-[var(--ks-ink)]">
-                    {selectedFacility?.timezone}
+                    {effectiveTimezone}
                   </span>
                   )
                 </span>
@@ -668,10 +565,10 @@ export function PreRegistrationForm({
           </div>
         </fieldset>
 
-        {/* Section 5: Internal Host Sponsorship */}
+        {/* Section 4: Internal Host Sponsorship */}
         <fieldset className="space-y-4 border-t border-[var(--ks-rule-subtle)] pt-6">
           <legend className="text-sm font-semibold text-[var(--ks-ink)]">
-            5. Karyawan Tuan Rumah Internal
+            4. Karyawan Tuan Rumah Internal
           </legend>
           <p className="text-xs text-[var(--ks-muted)]">
             Karyawan internal penanggung jawab yang mengundang atau menerima kedatangan tamu.
@@ -703,11 +600,11 @@ export function PreRegistrationForm({
           </div>
         </fieldset>
 
-        {/* Section 6: Dynamic Access Levels & Tap Quota */}
+        {/* Section 5: Dynamic Access Levels & Tap Quota */}
         <fieldset className="space-y-4 border-t border-[var(--ks-rule-subtle)] pt-6">
           <div className="flex items-center justify-between">
             <legend className="text-sm font-semibold text-[var(--ks-ink)]">
-              6. Kelompok Hak Akses Pintu & Batas Tap
+              5. Kelompok Hak Akses Pintu & Batas Tap
             </legend>
             <UiBadge variant="normal" showDot={false}>
               Keamanan Terpadu
@@ -719,29 +616,26 @@ export function PreRegistrationForm({
 
           <div className="space-y-3">
             <span className="block text-xs font-medium text-[var(--ks-text)]">
-              Kelompok Hak Akses Tersedia untuk Gedung Terpilih
+              Kelompok Hak Akses Tersedia
             </span>
 
             <Controller
               name="accessLevelIds"
               control={control}
               render={({ field }) => {
-                const facilityLevels = accessLevels.filter(
-                  (l) => l.facilityId === selectedFacilityId,
-                );
                 const currentIds = field.value ?? [];
 
-                if (facilityLevels.length === 0) {
+                if (accessLevels.length === 0) {
                   return (
                     <p className="text-xs text-[var(--ks-muted)] italic">
-                      Belum ada kelompok hak akses khusus untuk gedung ini. Tamu akan menggunakan akses lobi standar.
+                      Belum ada kelompok hak akses khusus yang tersedia. Tamu akan menggunakan akses lobi standar.
                     </p>
                   );
                 }
 
                 return (
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {facilityLevels.map((lvl) => {
+                    {accessLevels.map((lvl) => {
                       const isChecked = currentIds.includes(lvl.id);
                       return (
                         <label
@@ -751,11 +645,10 @@ export function PreRegistrationForm({
                         >
                           <span className="sr-only">{lvl.name}</span>
                           <UiCard
-                            className={`p-3 text-xs transition-colors flex items-start gap-3 ${
-                              isChecked
-                                ? "border-[var(--ks-ink)] bg-[var(--ks-paper)] ring-1 ring-[var(--ks-ink)]"
-                                : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
-                            }`}
+                            className={`p-3 text-xs transition-colors flex items-start gap-3 ${isChecked
+                              ? "border-[var(--ks-ink)] bg-[var(--ks-paper)] ring-1 ring-[var(--ks-ink)]"
+                              : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                              }`}
                           >
                             <input
                               id={`access-level-${lvl.id}`}
@@ -833,11 +726,10 @@ export function PreRegistrationForm({
                         {idDict.tapQuotaModes.unlimited.label}
                       </span>
                       <UiCard
-                        className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${
-                          currentMode === "unlimited"
-                            ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
-                            : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
-                        }`}
+                        className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${currentMode === "unlimited"
+                          ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
+                          : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                          }`}
                       >
                         <input
                           id="tap-quota-unlimited"
@@ -872,11 +764,10 @@ export function PreRegistrationForm({
                         {idDict.tapQuotaModes.limited.label}
                       </span>
                       <UiCard
-                        className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${
-                          currentMode === "limited"
-                            ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
-                            : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
-                        }`}
+                        className={`flex items-start gap-2.5 p-3 text-xs transition-colors ${currentMode === "limited"
+                          ? "border-[var(--ks-ink)] bg-[var(--ks-paper-raised)] ring-1 ring-[var(--ks-ink)]"
+                          : "border-[var(--ks-rule-subtle)] bg-[var(--ks-paper-raised)] hover:border-[var(--ks-edge)]"
+                          }`}
                       >
                         <input
                           id="tap-quota-limited"
@@ -984,6 +875,7 @@ export function PreRegistrationForm({
         <PreRegistrationResultCard
           visit={createdVisit}
           accessLevels={accessLevels}
+          systemTimezone={effectiveTimezone}
           credentialSyncStatus={credentialSyncStatus}
           isRetryingSync={isRetryingSync}
           retrySyncMessage={retrySyncMessage}

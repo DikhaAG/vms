@@ -99,12 +99,37 @@ describe("ActiveMonitoringService", () => {
       expect(bob?.isOverstay).toBe(false);
       expect(bob?.overstayMinutes).toBe(0);
       expect(bob?.tapQuotaMode).toBe("unlimited");
+
     });
 
-    it("filters active visits by facilityId", async () => {
-      const activeBali = await service.getActiveVisits("fac-bali");
-      expect(activeBali).toHaveLength(1);
-      expect(activeBali[0].visitId).toBe("vis-active-2");
+    it("returns all active visits across the single site and enforces global systemSettings.overstayGraceMinutes", async () => {
+      await repo.updateSettings({
+        timezone: "Asia/Makassar",
+        overstayGraceMinutes: 30,
+      });
+
+      // 10:25 UTC -> 25 mins past Alice's scheduledEndTimeUtc (10:00).
+      // Within 30-min global grace period -> NOT overstay yet!
+      const withinGrace = await service.getActiveVisits(
+        new Date("2026-11-13T10:25:00.000Z").toISOString(),
+      );
+      expect(withinGrace).toHaveLength(2);
+      const aliceWithin = withinGrace.find((v) => v.visitId === "vis-active-1");
+      expect(aliceWithin?.isOverstay).toBe(false);
+      expect(aliceWithin?.status).toBe("CHECKED_IN");
+      expect(aliceWithin?.facility.timezone).toBe("Asia/Makassar");
+
+      // 10:35 UTC -> 35 mins past 10:00 (> 30-min global grace period) -> OVERSTAY!
+      const pastGrace = await service.getActiveVisits(
+        new Date("2026-11-13T10:35:00.000Z").toISOString(),
+      );
+      const aliceOverstay = pastGrace.find((v) => v.visitId === "vis-active-1");
+      expect(aliceOverstay?.isOverstay).toBe(true);
+      expect(aliceOverstay?.overstayMinutes).toBe(35);
+      expect(aliceOverstay?.status).toBe("OVERSTAY");
+
+      const storedAlice = await repo.getVisit("vis-active-1");
+      expect(storedAlice?.status).toBe("OVERSTAY");
     });
   });
 
@@ -931,6 +956,25 @@ describe("ActiveMonitoringService", () => {
       expect(result.isQuotaExceeded).toBe(true);
       expect(result.autoCheckedOut).toBe(true);
       expect(result.visit.status).toBe("CHECKED_OUT");
+    });
+    it("honors global systemSettings.autoCheckInEarlyBufferMinutes for perimeter fast-track entry", async () => {
+      await repo.updateSettings({ autoCheckInEarlyBufferMinutes: 30 });
+
+      // 25 mins before 09:00 UTC -> permitted when global buffer is 30 mins
+      const tapTime = "2026-11-13T08:35:00.000Z";
+      const result = await service.recordTapAndEnforceQuota(
+        approvedVisitId,
+        {
+          visitId: approvedVisitId,
+          doorIndexCode: "door-turnstile-1",
+          direction: "in",
+          tappedAtUtc: tapTime,
+        },
+        { mode: "stub" },
+      );
+
+      expect(result.autoCheckedIn).toBe(true);
+      expect(result.visit.status).toBe("CHECKED_IN");
     });
   });
 });
