@@ -80,14 +80,14 @@ export function PreRegistrationForm({
   } = useForm<PreRegistrationInput>({
     resolver: zodResolver(preRegistrationInputSchema),
     defaultValues: {
-      hostId: "emp-host-01",
-      hostName: "Budi Santoso",
-      visitorGivenName: "Rian",
-      visitorFamilyName: "Pratama",
-      visitorPhone: "+628123456789",
-      visitorEmail: "rian.pratama@example.com",
+      hostId: "",
+      hostName: "",
+      visitorGivenName: "",
+      visitorFamilyName: "",
+      visitorPhone: "",
+      visitorEmail: "",
       certificateType: 111,
-      certificateNo: "3171012345670001",
+      certificateNo: "",
       visitReasonType: 0,
       visitReasonDetail: "",
       scheduledStartTime: `${tomorrowDateStr}T10:00`,
@@ -585,7 +585,7 @@ export function PreRegistrationForm({
               error={errors.hostId?.message}
             >
               <UiTextInput
-                placeholder="emp-host-01"
+                placeholder="ID personel HikCentral"
                 autoCorrect="off"
                 autoCapitalize="none"
                 spellCheck={false}

@@ -49,8 +49,8 @@ export function GroupRegistrationClient({
 }: GroupRegistrationClientProps) {
   // Group Header States
   const [visitorGroupName, setVisitorGroupName] = useState("");
-  const [hostId, setHostId] = useState("emp-101");
-  const [hostName, setHostName] = useState("Budi Santoso");
+  const [hostId, setHostId] = useState("");
+  const [hostName, setHostName] = useState("");
   const [visitReasonType, setVisitReasonType] = useState<number>(3); // Meeting
   const [visitReasonDetail, setVisitReasonDetail] = useState("");
 
@@ -539,7 +539,7 @@ export function GroupRegistrationClient({
                 spellCheck={false}
                 value={hostId}
                 onChange={(e) => setHostId(e.target.value)}
-                placeholder="cth. emp-101"
+                placeholder="ID personel HikCentral"
                 className="mt-1.5 w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
               />
             </div>

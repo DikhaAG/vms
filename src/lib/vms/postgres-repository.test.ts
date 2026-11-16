@@ -174,6 +174,20 @@ describe("PostgresVmsRepository", () => {
       expect(settings.updatedAt).toBeDefined();
     });
 
+    it("falls back to APP_TIMEZONE when no record exists in database", async () => {
+      vi.stubEnv("APP_TIMEZONE", "Asia/Makassar");
+      try {
+        const mockWhere = vi.fn().mockResolvedValue([]);
+        const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
+        mockDb.select.mockReturnValue({ from: mockFrom });
+
+        const settings = await repo.getSettings();
+        expect(settings.timezone).toBe("Asia/Makassar");
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
+
     it("returns database system settings record when present", async () => {
       const mockSettings = {
         id: "default",

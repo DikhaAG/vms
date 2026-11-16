@@ -23,6 +23,7 @@ import {
   defaultVmsRepository,
   type IVmsRepository,
 } from "./repository";
+import { resolveFallbackTimezone } from "./system-settings-defaults";
 import {
   DEFAULT_SYSTEM_SETTINGS,
   VISIT_REASON_LABELS,
@@ -64,7 +65,7 @@ export class ActiveMonitoringService {
     const activeVisits = await this.repository.listActiveVisits();
     const settings = await this.repository.getSettings();
     const systemTimezone =
-      settings.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
+      settings.timezone || resolveFallbackTimezone();
 
     const summaries: ActiveVisitSummary[] = [];
 

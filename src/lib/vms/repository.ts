@@ -6,7 +6,7 @@ import type {
   Visit,
   VisitStatus,
 } from "./vms-contract";
-import { DEFAULT_SYSTEM_SETTINGS } from "./vms-contract";
+import { defaultSystemSettings } from "./system-settings-defaults";
 import type { InvitationToken } from "./invitation-contract";
 import type { ApprovalRecord } from "./approval-contract";
 import type { AccessLevel } from "./access-level-contract";
@@ -389,14 +389,7 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private doors = new Map<string, FacilityDoor>();
   private emergencyGrants = new Map<string, EmergencyAccessGrant>();
   private hostNotifications: HostArrivalNotification[] = [];
-  private systemSettings: SystemSettings = {
-    id: "default",
-    siteName: DEFAULT_SYSTEM_SETTINGS.siteName,
-    timezone: DEFAULT_SYSTEM_SETTINGS.timezone,
-    overstayGraceMinutes: DEFAULT_SYSTEM_SETTINGS.overstayGraceMinutes,
-    autoCheckInEarlyBufferMinutes: DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes,
-    updatedAt: new Date().toISOString(),
-  };
+  private systemSettings: SystemSettings = defaultSystemSettings();
 
   constructor(
     initialAccessLevels: AccessLevel[] = DEFAULT_ACCESS_LEVELS,

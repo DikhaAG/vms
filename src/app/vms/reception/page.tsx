@@ -13,6 +13,7 @@ export const metadata = {
 export default async function ReceptionPage() {
   const settings = await defaultVmsRepository.getSettings();
   const allAccessLevels = await defaultVmsRepository.listAccessLevels();
+  const hosts = await defaultVmsRepository.listHosts();
   const initialVisits = await defaultCheckInService.searchArrivingVisitors("");
   const pageInfo = idDict.pages.reception;
 
@@ -27,6 +28,7 @@ export default async function ReceptionPage() {
       <ReceptionClient
         systemTimezone={settings.timezone}
         allAccessLevels={allAccessLevels}
+        hosts={hosts}
         initialVisits={initialVisits}
       />
     </div>

@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import {
-  DEFAULT_SYSTEM_SETTINGS,
   validatePreRegistrationInput,
   type PreRegistrationErrorKind,
   type PreRegistrationMode,
@@ -19,6 +18,7 @@ import {
   type HikCentralDeleteAppointmentSuccess,
 } from "./hikcentral-appointment-adapter";
 import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import { resolveFallbackTimezone } from "./system-settings-defaults";
 import { resolveVisitAccessLevels } from "./access-level-service";
 import { HikCentralError } from "../hikcentral/client";
 import { normalizeFaceImage, toPngDataUri } from "./face-normalizer";
@@ -78,7 +78,7 @@ export async function createPreRegistration(
 
   // 2. Fetch global system settings to obtain canonical IANA timezone
   const settings = await repository.getSettings();
-  const timezone = settings?.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
+  const timezone = settings?.timezone || resolveFallbackTimezone();
 
   // 3. Timezone conversion and normalization against global system timezone
   let startUtc: Date;

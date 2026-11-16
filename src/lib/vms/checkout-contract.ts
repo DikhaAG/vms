@@ -7,7 +7,8 @@
 import { z } from "zod";
 import { siteSchema } from "./site-contract";
 import { formatZodErrors, isRecord } from "./validation-helpers";
-import type { PreRegistrationMode, StubScenario, VisitStatus } from "./vms-contract";
+import { preRegistrationModeSchema } from "./pre-registration-mode-contract";
+import type { StubScenario, VisitStatus } from "./vms-contract";
 import type { TapQuotaConfig } from "./access-level-contract";
 
 export const DOOR_DIRECTIONS = ["in", "out"] as const;
@@ -138,7 +139,7 @@ export const checkOutInputSchema = z
     checkOutTimeUtc: z.string().trim().optional(),
     reason: z.string().trim().optional(),
     isForced: z.boolean().default(false),
-    mode: z.enum(["live", "stub"] as const).optional(),
+    mode: preRegistrationModeSchema.optional(),
     stubScenario: z.custom<StubScenario>().optional(),
   })
   .superRefine((data, ctx) => {
@@ -217,7 +218,7 @@ export const grantEmergencyAccessInputSchema = z
     grantedAtUtc: z.string().optional(),
     expiresAtUtc: z.string().optional(),
     durationHours: z.number().optional(),
-    mode: z.enum(["live", "stub"] as const).optional(),
+    mode: preRegistrationModeSchema.optional(),
     stubScenario: z.custom<StubScenario>().optional(),
   })
   .superRefine((data, ctx) => {
@@ -499,7 +500,7 @@ export function validateCheckOutInput(
           result.data.checkOutTimeUtc || new Date().toISOString(),
         reason: result.data.reason || undefined,
         isForced: result.data.isForced,
-        mode: result.data.mode as PreRegistrationMode,
+        mode: result.data.mode,
         stubScenario: result.data.stubScenario as StubScenario | undefined,
       },
     };

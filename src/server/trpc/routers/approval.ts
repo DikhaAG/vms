@@ -1,7 +1,11 @@
 import { z } from "zod";
 import { router, publicProcedure, TRPCError } from "../trpc";
 import type { Context } from "../context";
-import { approverUserSchema, type ApproverUser } from "@/lib/vms/approval-contract";
+import {
+  approverUserSchema,
+  type ApprovalAction,
+  type ApproverUser,
+} from "@/lib/vms/approval-contract";
 import {
   listPendingApprovals,
   decideApproval,
@@ -21,7 +25,7 @@ async function executeApprovalDecision(
   ctx: Context,
   params: {
     visitId: string;
-    action: "approve" | "reject";
+    action: ApprovalAction;
     comment?: string;
     approver?: ApproverUser;
   },

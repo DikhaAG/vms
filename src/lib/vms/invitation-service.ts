@@ -8,13 +8,13 @@ import {
   validateCreateInvitationInput,
 } from "./invitation-contract";
 import {
-  DEFAULT_SYSTEM_SETTINGS,
   type Visit,
   VISIT_REASON_LABELS,
 } from "./vms-contract";
 import { siteFromSettings, type Site } from "./site-contract";
 import { formatFacilityIso, parseLocalDateTimeToUtc } from "./timezone";
 import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import { resolveFallbackTimezone } from "./system-settings-defaults";
 
 export interface InvitationServiceDeps {
   repository?: IVmsRepository;
@@ -78,7 +78,7 @@ export async function createInvitation(
 
   // 2. Resolve single-site context (timezone) from global system settings
   const settings = await repository.getSettings();
-  const timezone = settings.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
+  const timezone = settings.timezone || resolveFallbackTimezone();
 
   // 3. Normalize times to UTC and site-local ISO
   let startUtc: Date;

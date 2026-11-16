@@ -2,13 +2,13 @@ import {
   type IVmsRepository,
   defaultVmsRepository,
 } from "./repository";
+import { resolveFallbackTimezone } from "./system-settings-defaults";
 import {
   validateCheckInInput,
   validateWalkInRegistrationInput,
   type CheckInPass,
 } from "./checkin-contract";
 import {
-  DEFAULT_SYSTEM_SETTINGS,
   type CredentialSyncStatus,
   type Visit,
   type VisitStatus,
@@ -107,7 +107,7 @@ export class CheckInService {
     // 3. Load global system settings for canonical timezone
     const settings = await this.repository.getSettings();
     const systemTimezone =
-      settings.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
+      settings.timezone || resolveFallbackTimezone();
 
     // 4. Resolve building-wide access levels without facility boundaries
     let accessLevels: Array<{ id: string | number; name?: string }> | undefined;
@@ -253,7 +253,7 @@ export class CheckInService {
     // 1. Load global system settings
     const settings = await this.repository.getSettings();
     const systemTimezone =
-      settings.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
+      settings.timezone || resolveFallbackTimezone();
 
     // 2. Normalization of face photo if supplied
     let normalizedFacePhoto: string | undefined;

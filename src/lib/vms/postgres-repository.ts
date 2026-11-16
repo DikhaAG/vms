@@ -17,6 +17,7 @@ import type {
   VisitStatus,
 } from "./vms-contract";
 import { DEFAULT_SYSTEM_SETTINGS } from "./vms-contract";
+import { defaultSystemSettings } from "./system-settings-defaults";
 import type { AccessLevel } from "./access-level-contract";
 import type { ApprovalRecord } from "./approval-contract";
 import type { CheckInAuditEvent, VerificationMethod } from "./checkin-contract";
@@ -46,14 +47,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       .where(eq(s.systemSettings.id, "default"));
 
     if (rows.length === 0) {
-      return {
-        id: "default",
-        siteName: DEFAULT_SYSTEM_SETTINGS.siteName,
-        timezone: DEFAULT_SYSTEM_SETTINGS.timezone,
-        overstayGraceMinutes: DEFAULT_SYSTEM_SETTINGS.overstayGraceMinutes,
-        autoCheckInEarlyBufferMinutes: DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes,
-        updatedAt: new Date().toISOString(),
-      };
+      return defaultSystemSettings();
     }
 
     // Backfill siteName for rows written before the single-site contract migration.

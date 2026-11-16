@@ -8,6 +8,11 @@ import type { MonitoringListFlag, ApprovalRecord } from "./approval-contract";
 import { tapQuotaSchema } from "./access-level-contract";
 import { isValidIanaTimezone } from "./timezone";
 import {
+  PRE_REGISTRATION_MODES,
+  preRegistrationModeSchema,
+  type PreRegistrationMode,
+} from "./pre-registration-mode-contract";
+import {
   DOOR_ACCESS_TYPES,
   EMERGENCY_GRANT_STATUSES,
   isDoorAccessType,
@@ -102,11 +107,7 @@ export const CERTIFICATE_TYPE_LABELS: Record<CertificateType, string> = {
   222: "Exit-Entry Permit",
 };
 
-export const PRE_REGISTRATION_MODES = ["live", "stub"] as const;
-export const preRegistrationModeSchema = z.enum(PRE_REGISTRATION_MODES, {
-  error: `Mode must be one of: ${PRE_REGISTRATION_MODES.join(", ")}.`,
-});
-export type PreRegistrationMode = z.infer<typeof preRegistrationModeSchema>;
+export { PRE_REGISTRATION_MODES, preRegistrationModeSchema, type PreRegistrationMode };
 
 export const STUB_SCENARIOS = [
   "success",

@@ -81,6 +81,15 @@ describe("PostgreSQL Drizzle Schema & DDL Generator", () => {
     );
   });
 
+  it("strips the legacy facilityId key from JSONB payloads of rows written before the purge", () => {
+    const sql = getInitSchemaSql();
+    for (const table of ["visits", "access_levels", "facility_doors"]) {
+      expect(sql).toContain(
+        `UPDATE ${table} SET data = data - 'facilityId' WHERE data ? 'facilityId'`,
+      );
+    }
+  });
+
   it("carries the legacy facility's settings into system_settings before dropping facilities", () => {
     const sql = getInitSchemaSql();
     const backfill = sql.indexOf("INSERT INTO system_settings");

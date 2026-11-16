@@ -264,6 +264,12 @@ export function getInitSchemaSql(): string {
       END IF;
     END $$;
 
+    -- Rows written before the purge still carry facilityId inside their JSONB
+    -- payload; strip it so the API never returns the retired field.
+    UPDATE visits SET data = data - 'facilityId' WHERE data ? 'facilityId';
+    UPDATE access_levels SET data = data - 'facilityId' WHERE data ? 'facilityId';
+    UPDATE facility_doors SET data = data - 'facilityId' WHERE data ? 'facilityId';
+
     ALTER TABLE visits DROP COLUMN IF EXISTS facility_id;
     ALTER TABLE access_levels DROP COLUMN IF EXISTS facility_id;
     ALTER TABLE facility_doors DROP COLUMN IF EXISTS facility_id;

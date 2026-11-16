@@ -37,6 +37,11 @@ describe("Production Code Integrity & Guardrails", () => {
       "Muat Contoh Foto",
       "Muat Contoh Standar",
       "Gunakan Contoh",
+      // Sample host directory: hosts must come from the HikCentral host sync.
+      "emp-host-0",
+      "emp-101",
+      "emp-general",
+      "Budi Santoso",
     ];
 
     const violations: { file: string; token: string }[] = [];
