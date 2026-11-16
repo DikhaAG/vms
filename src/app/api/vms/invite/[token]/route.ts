@@ -36,7 +36,7 @@ function statusForSelfRegResult(result: SelfRegistrationResult): number {
 
 /**
  * GET /api/vms/invite/[token]
- * Public endpoint to fetch invitation details and facility metadata.
+ * Public endpoint to fetch invitation details and site metadata.
  * Returns 200 for valid active tokens, 404 for invalid/not-found, 410 for expired/consumed.
  */
 async function handleGET(

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { Facility } from "@/lib/vms/vms-contract";
 import type { FacilityDoor } from "@/lib/vms/checkout-contract";
 import {
   TIME_SCHEDULE_LABELS,
@@ -20,13 +19,11 @@ import {
 } from "./access-level-form-modal";
 
 interface AccessLevelsClientProps {
-  facilities?: Facility[];
   initialAccessLevels: AccessLevel[];
   initialDoors?: FacilityDoor[];
 }
 
 export function AccessLevelsClient({
-  facilities = [],
   initialAccessLevels,
   initialDoors = [],
 }: AccessLevelsClientProps) {
@@ -451,7 +448,6 @@ export function AccessLevelsClient({
         key={`${editingLevel?.id ?? "new"}-${isFormOpen}`}
         isOpen={isFormOpen}
         editingLevel={editingLevel}
-        facilities={facilities}
         availableDoors={availableDoors}
         isSyncingDoors={isSyncingDoors}
         isSubmitting={isSubmitting}

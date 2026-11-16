@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { siteSchema } from "./site-contract";
 import {
   FORBIDDEN_HIKCENTRAL_CHARS,
   certificateTypeSchema,
@@ -40,10 +41,6 @@ export type InvitationToken = z.infer<typeof invitationTokenSchema>;
 
 export const createInvitationSchema = z
   .object({
-    facilityId: z
-      .string({ error: "Facility is required." })
-      .trim()
-      .min(1, "Facility is required."),
     hostId: z.string().trim().optional(),
     hostName: z.string().trim().optional(),
     visitReasonType: visitReasonTypeSchema,
@@ -163,12 +160,7 @@ export const publicInvitationMetadataSchema = z.object({
   token: z.string(),
   visitId: z.string(),
   status: invitationStatusSchema,
-  facility: z.object({
-    id: z.string(),
-    name: z.string(),
-    address: z.string().optional(),
-    timezone: z.string(),
-  }),
+  site: siteSchema,
   host: z
     .object({
       id: z.string().optional(),

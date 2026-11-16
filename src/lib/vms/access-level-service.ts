@@ -48,14 +48,13 @@ export interface DeleteAccessLevelResult {
 }
 
 /**
- * Lists access levels, optionally filtered by facility.
+ * Lists all access levels (single-site: no facility scoping).
  */
 export async function listAccessLevelsService(
-  filter: { facilityId?: string } = {},
   deps: AccessLevelServiceDeps = {},
 ): Promise<AccessLevel[]> {
   const repository = deps.repository ?? defaultVmsRepository;
-  return repository.listAccessLevels(filter.facilityId);
+  return repository.listAccessLevels();
 }
 
 /**
@@ -95,21 +94,7 @@ export async function createAccessLevelService(
 
   const input: CreateAccessLevelInput = validation.input;
 
-  // 2. Validate facility existence only if facilityId is provided
-  if (input.facilityId) {
-    const facility = await repository.getFacility(input.facilityId);
-    if (!facility) {
-      return {
-        ok: false,
-        error: {
-          kind: "not_found",
-          message: `Facility '${input.facilityId}' not found.`,
-        },
-      };
-    }
-  }
-
-  // 3. Generate ID and prepare access level
+  // 2. Generate ID and prepare access level
   const id = `acc-${generateId().slice(0, 8)}`;
   const now = new Date().toISOString();
 
@@ -147,7 +132,6 @@ export async function createAccessLevelService(
   // 5. Persist into local repository
   const accessLevel: AccessLevel = {
     id,
-    ...(input.facilityId ? { facilityId: input.facilityId } : {}),
     name: input.name,
     description: input.description ?? "",
     doors: input.doors,
@@ -201,20 +185,6 @@ export async function updateAccessLevelService(
   }
 
   const updates: UpdateAccessLevelInput = validation.input;
-
-  // If facility changed, verify new facility exists
-  if (updates.facilityId && updates.facilityId !== existing.facilityId) {
-    const facility = await repository.getFacility(updates.facilityId);
-    if (!facility) {
-      return {
-        ok: false,
-        error: {
-          kind: "not_found",
-          message: `Facility '${updates.facilityId}' not found.`,
-        },
-      };
-    }
-  }
 
   // Sync to HikCentral
   try {

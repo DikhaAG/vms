@@ -10,7 +10,6 @@ export interface SessionInfo {
 export interface CreateContextOptions {
   req?: Request;
   repository?: IVmsRepository;
-  facilityTimezone?: string;
   session?: SessionInfo;
   enableHikCentralSync?: boolean;
 }
@@ -18,7 +17,6 @@ export interface CreateContextOptions {
 export async function createContext(opts?: CreateContextOptions) {
   return {
     repository: opts?.repository ?? defaultVmsRepository,
-    facilityTimezone: opts?.facilityTimezone ?? "Asia/Jakarta",
     session: opts?.session,
     enableHikCentralSync:
       opts?.enableHikCentralSync ?? Boolean(process.env.HIKCENTRAL_APP_KEY),

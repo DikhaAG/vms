@@ -94,7 +94,7 @@ export function ForceCheckoutModal({
               {visit.visitor.fullName}
             </p>
             <p className="text-[var(--ks-muted)]">
-              Gedung: {visit.facility.name} • Tuan Rumah:{" "}
+              Gedung: {visit.site.name} • Tuan Rumah:{" "}
               {visit.host?.name || "N/A"}
             </p>
             {visit.isOverstay && (

@@ -11,14 +11,13 @@ describe("POST /api/vms/sync/doors", () => {
     vi.clearAllMocks();
   });
 
-  it("handles valid sync request and returns 200 with synced doors", async () => {
+  it("handles valid sync request and ignores a legacy facilityId in the body", async () => {
     const mockSync = vi.mocked(adapter.syncHikCentralDoors).mockResolvedValue({
       ok: true,
       totalSynced: 2,
       doors: [
         {
           id: "door-101",
-          facilityId: "fac-main-01",
           doorIndexCode: "101",
           doorName: "Main Entrance",
           accessType: "DUAL_DIRECTION",
@@ -26,7 +25,6 @@ describe("POST /api/vms/sync/doors", () => {
         },
         {
           id: "door-102",
-          facilityId: "fac-main-01",
           doorIndexCode: "102",
           doorName: "Meeting Room 1",
           accessType: "DUAL_DIRECTION",
@@ -48,11 +46,8 @@ describe("POST /api/vms/sync/doors", () => {
     expect(data.ok).toBe(true);
     expect(data.totalSynced).toBe(2);
     expect(data.doors).toHaveLength(2);
-    expect(mockSync).toHaveBeenCalledWith(
-      expect.objectContaining({
-        facilityId: "fac-main-01",
-      }),
-    );
+    expect(mockSync).toHaveBeenCalledTimes(1);
+    expect(mockSync.mock.calls[0][0]).not.toHaveProperty("facilityId");
   });
 
   it("returns 400 when body contains invalid JSON", async () => {

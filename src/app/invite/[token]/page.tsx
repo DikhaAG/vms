@@ -106,15 +106,10 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <span className="text-xs text-neutral-500 dark:text-slate-400">Gedung / Lokasi</span>
+            <span className="text-xs text-neutral-500 dark:text-slate-400">Gedung</span>
             <p className="font-semibold text-neutral-900 dark:text-white">
-              {data.facility.name}
+              {data.site.name}
             </p>
-            {data.facility.address && (
-              <p className="mt-0.5 text-xs text-neutral-600 dark:text-slate-400">
-                {data.facility.address}
-              </p>
-            )}
           </div>
 
           <div>
@@ -134,7 +129,7 @@ export default async function InvitePage({ params }: InvitePageProps) {
 
           <div>
             <span className="text-xs text-neutral-500 dark:text-slate-400">
-              Waktu Kunjungan ({data.facility.timezone})
+              Waktu Kunjungan ({data.site.timezone})
             </span>
             <p className="font-mono text-xs font-semibold text-neutral-900 dark:text-white">
               {data.scheduledStartTimeFacility.replace("T", " ")} —{" "}

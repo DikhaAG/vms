@@ -157,7 +157,7 @@ export function ApprovalsClient({
 
       {/* Control Bar: Filters & Persona */}
       <UiFilterToolbar
-        facilitySlot={
+        filterSlot={
           <div className="flex flex-wrap items-center gap-3">
             <div>
               <label

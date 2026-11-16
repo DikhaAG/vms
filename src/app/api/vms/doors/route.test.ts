@@ -20,7 +20,6 @@ describe("GET /api/vms/doors", () => {
       },
       {
         id: "door-turnstile-02",
-        facilityId: "fac-jakarta",
         doorIndexCode: "door-turnstile-02",
         doorName: "Visitor Turnstile 02",
         regionIndexCode: "reg-lobby",

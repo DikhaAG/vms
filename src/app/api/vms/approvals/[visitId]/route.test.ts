@@ -6,8 +6,6 @@ import type { Visit } from "@/lib/vms/vms-contract";
 describe("POST /api/vms/approvals/[visitId]", () => {
   const visitToApprove: Visit = {
     id: "route-vis-to-approve",
-    facilityId: "fac-jakarta",
-    facilityName: "Jakarta Corporate HQ",
     visitorFamilyName: "Gunawan",
     visitorGivenName: "Indra",
     certificateType: 111,

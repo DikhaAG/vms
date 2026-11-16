@@ -104,7 +104,6 @@ describe("access-level-contract", () => {
       expect(result.valid).toBe(true);
       if (result.valid) {
         expect(result.input.name).toBe("Lobby Turnstiles");
-        expect(result.input.facilityId).toBeUndefined();
       }
     });
 

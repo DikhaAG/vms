@@ -88,7 +88,6 @@ describe("hikcentral-door-adapter", () => {
       const result = await syncHikCentralDoors({
         client: mockClient,
         repository: repo,
-        facilityId: "fac-hq",
         userId: "operator-01",
       });
 
@@ -107,7 +106,7 @@ describe("hikcentral-door-adapter", () => {
         },
       );
 
-      const savedDoors = await repo.listDoors("fac-hq");
+      const savedDoors = await repo.listDoors();
       expect(savedDoors).toHaveLength(2);
 
       const turnstile = savedDoors.find((d) => d.doorIndexCode === "door-turnstile-01");
@@ -119,7 +118,7 @@ describe("hikcentral-door-adapter", () => {
       expect(turnstile?.channelNo).toBe("1");
       expect(turnstile?.doorState).toBe(1);
       expect(turnstile?.isOnline).toBe(true);
-      expect(turnstile?.facilityId).toBe("fac-hq");
+      expect(turnstile).not.toHaveProperty("facilityId");
 
       const serverRoom = savedDoors.find((d) => d.doorIndexCode === "door-server-02");
       expect(serverRoom).toBeDefined();
@@ -166,7 +165,6 @@ describe("hikcentral-door-adapter", () => {
       const result = await syncHikCentralDoors({
         client: mockClient,
         repository: repo,
-        // no facilityId passed
       });
 
       expect(result.ok).toBe(true);
@@ -177,7 +175,7 @@ describe("hikcentral-door-adapter", () => {
 
       const gate = savedDoors.find((d) => d.doorIndexCode === "door-flat-01");
       expect(gate).toBeDefined();
-      expect(gate?.facilityId).toBeUndefined(); // no synthetic facility ID
+      expect(gate).not.toHaveProperty("facilityId"); // no synthetic facility ID
       expect(gate?.regionIndexCode).toBe("region-north");
       expect(gate?.channelNo).toBe("10");
       expect(gate?.doorState).toBe(1);
@@ -185,7 +183,7 @@ describe("hikcentral-door-adapter", () => {
 
       const offlineDoor = savedDoors.find((d) => d.doorIndexCode === "door-offline-02");
       expect(offlineDoor).toBeDefined();
-      expect(offlineDoor?.facilityId).toBeUndefined();
+      expect(offlineDoor).not.toHaveProperty("facilityId");
       expect(offlineDoor?.regionIndexCode).toBe("region-south");
       expect(offlineDoor?.doorState).toBe(4);
       expect(offlineDoor?.isOnline).toBe(false); // correctly deduced as offline

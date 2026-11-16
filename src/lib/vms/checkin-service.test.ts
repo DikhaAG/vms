@@ -178,7 +178,6 @@ describe("CheckInService (Single-Site Lean Architecture - Ticket 05)", () => {
 
       expect(result.ok).toBe(true);
       expect(result.visit).toBeDefined();
-      expect(result.visit?.facilityId).toBeUndefined();
       expect(result.visit?.status).toBe("CHECKED_IN");
       expect(result.visit?.scheduledStartTimeFacility).toMatch(/\+08:00$/);
       expect(result.visit?.accessLevelIds).toEqual(["acc-building-lobby"]);

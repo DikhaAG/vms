@@ -23,7 +23,6 @@ describe("invitation-contract", () => {
 
   describe("validateCreateInvitationInput", () => {
     const validBase = {
-      facilityId: "fac-jakarta",
       hostName: "Budi Santoso",
       visitReasonType: 3,
       visitReasonDetail: "Vendor Review",
@@ -35,7 +34,6 @@ describe("invitation-contract", () => {
       const outcome = validateCreateInvitationInput(validBase);
       expect(outcome.valid).toBe(true);
       if (outcome.valid) {
-        expect(outcome.input.facilityId).toBe("fac-jakarta");
         expect(outcome.input.visitReasonType).toBe(3);
       }
     });
@@ -50,7 +48,6 @@ describe("invitation-contract", () => {
       const outcome = validateCreateInvitationInput({});
       expect(outcome.valid).toBe(false);
       if (!outcome.valid) {
-        expect(outcome.errors.facilityId).toBeDefined();
         expect(outcome.errors.scheduledStartTime).toBeDefined();
         expect(outcome.errors.scheduledEndTime).toBeDefined();
         expect(outcome.errors.visitReasonType).toBeDefined();
@@ -170,7 +167,6 @@ describe("invitation-contract", () => {
 
     it("validates createInvitationSchema directly", () => {
       const valid = createInvitationSchema.safeParse({
-        facilityId: "fac-jkt",
         visitReasonType: 0,
         scheduledStartTime: "2026-11-20T09:00",
         scheduledEndTime: "2026-11-20T11:00",
@@ -191,8 +187,7 @@ describe("invitation-contract", () => {
         token: "tok-abc-123456",
         visitId: "vis-1",
         status: "valid",
-        facility: {
-          id: "fac-jkt",
+        site: {
           name: "Jakarta HQ",
           timezone: "Asia/Jakarta",
         },

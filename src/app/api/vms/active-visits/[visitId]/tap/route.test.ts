@@ -10,7 +10,6 @@ describe("POST /api/vms/active-visits/[visitId]/tap", () => {
     await defaultVmsRepository.saveDoors(TEST_FIXTURE_DOORS);
     const activeVisit: Visit = {
       id: visitId,
-      facilityId: "fac-jakarta",
       visitorGivenName: "Barry",
       visitorFamilyName: "Allen",
       visitReasonType: 2,
@@ -153,7 +152,6 @@ describe("POST /api/vms/active-visits/[visitId]/tap", () => {
     beforeEach(async () => {
       const approvedVisit: Visit = {
         id: approvedVisitId,
-        facilityId: "fac-jakarta",
         visitorGivenName: "Clark",
         visitorFamilyName: "Kent",
         visitorPhone: "+6281311223344",

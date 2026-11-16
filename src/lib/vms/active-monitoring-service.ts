@@ -128,11 +128,7 @@ export class ActiveMonitoringService {
             name: visit.hostName,
           }
           : undefined,
-        facility: {
-          id: visit.facilityId ?? "default",
-          name: visit.facilityName ?? "Gedung Utama",
-          timezone: systemTimezone,
-        },
+        site: { name: settings.siteName, timezone: systemTimezone },
         visitReason: VISIT_REASON_LABELS[visit.visitReasonType] ?? "Visit",
         checkInTimeUtc:
           visit.actualCheckInTimeUtc ?? visit.scheduledStartTimeUtc,

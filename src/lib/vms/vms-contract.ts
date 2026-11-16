@@ -131,16 +131,6 @@ export const CREDENTIAL_SYNC_STATUSES = [
 export const credentialSyncStatusSchema = z.enum(CREDENTIAL_SYNC_STATUSES);
 export type CredentialSyncStatus = z.infer<typeof credentialSyncStatusSchema>;
 
-export const facilitySchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  timezone: z.string(),
-  address: z.string().optional(),
-  overstayGraceMinutes: z.number().optional(),
-  autoCheckInEarlyBufferMinutes: z.number().optional(),
-});
-export type Facility = z.infer<typeof facilitySchema>;
-
 export const hostEmployeeSchema = z.object({
   id: z.string(),
   personCode: z.string().optional(),
@@ -165,8 +155,6 @@ export type HikCentralVisitReference = z.infer<
 
 export const visitSchema = z.object({
   id: z.string(),
-  facilityId: z.string().optional(),
-  facilityName: z.string().optional(),
   groupId: z.string().optional(),
   visitorGroupName: z.string().optional(),
   hostId: z.string().optional(),
@@ -212,7 +200,6 @@ export const FORBIDDEN_HIKCENTRAL_CHARS = /['\/\\:*?"<>|]/;
 
 export const createPreRegistrationSchema = z
   .object({
-    facilityId: z.string().trim().optional(),
     hostId: z.string().trim().optional(),
     hostName: z.string().trim().optional(),
     visitorFamilyName: z
@@ -419,7 +406,6 @@ export function validatePreRegistrationInput(raw: unknown): ValidationOutcome {
   return {
     valid: true,
     input: {
-      facilityId: result.data.facilityId,
       hostId: result.data.hostId,
       hostName: result.data.hostName,
       visitorFamilyName: result.data.visitorFamilyName,
@@ -449,70 +435,12 @@ export function validatePreRegistrationInput(raw: unknown): ValidationOutcome {
   };
 }
 
-export const updateFacilitySchema = z.object({
-  name: z.string().trim().min(1, "Facility name must not be empty.").optional(),
-  timezone: z
-    .string()
-    .trim()
-    .superRefine((tz, ctx) => {
-      if (tz && !isValidIanaTimezone(tz)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Invalid IANA timezone identifier: "${tz}".`,
-        });
-      }
-    })
-    .optional(),
-  overstayGraceMinutes: z
-    .number()
-    .min(0, "overstayGraceMinutes must be a non-negative number.")
-    .optional(),
-  address: z
-    .string({ error: "address must be a string." })
-    .trim()
-    .optional(),
-});
-export type UpdateFacilityInput = z.infer<typeof updateFacilitySchema>;
-
-export type FacilityValidationOutcome =
-  | { valid: true; input: UpdateFacilityInput }
-  | { valid: false; errors: Record<string, string> };
-
-/**
- * Pure validator for facility update configuration payloads. Backward-compatible wrapper delegating to updateFacilitySchema.
- */
-export function validateUpdateFacilityInput(
-  raw: unknown,
-): FacilityValidationOutcome {
-  if (!isRecord(raw)) {
-    return {
-      valid: false,
-      errors: { _global: "Request payload must be a JSON object." },
-    };
-  }
-
-  const result = updateFacilitySchema.safeParse(raw);
-  if (!result.success) {
-    return { valid: false, errors: formatZodErrors(result.error) };
-  }
-
-  return {
-    valid: true,
-    input: {
-      ...result.data,
-      overstayGraceMinutes:
-        typeof result.data.overstayGraceMinutes === "number"
-          ? Math.floor(result.data.overstayGraceMinutes)
-          : undefined,
-    },
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Global System Settings (Single-Site Architecture)
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_SYSTEM_SETTINGS = {
+  siteName: "Gedung Utama",
   timezone: "Asia/Jakarta",
   overstayGraceMinutes: 15,
   autoCheckInEarlyBufferMinutes: 15,
@@ -520,6 +448,11 @@ export const DEFAULT_SYSTEM_SETTINGS = {
 
 export const systemSettingsSchema = z.object({
   id: z.string().default("default"),
+  siteName: z
+    .string({ error: "Site name is required." })
+    .trim()
+    .min(1, "Site name is required.")
+    .default(DEFAULT_SYSTEM_SETTINGS.siteName),
   timezone: z
     .string({ error: "Timezone is required." })
     .trim()
@@ -544,6 +477,11 @@ export const systemSettingsSchema = z.object({
 export type SystemSettings = z.infer<typeof systemSettingsSchema>;
 
 export const updateSystemSettingsSchema = z.object({
+  siteName: z
+    .string()
+    .trim()
+    .min(1, "Site name cannot be empty.")
+    .optional(),
   timezone: z
     .string()
     .trim()

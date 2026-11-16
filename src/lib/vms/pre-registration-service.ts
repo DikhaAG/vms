@@ -80,11 +80,6 @@ export async function createPreRegistration(
   const settings = await repository.getSettings();
   const timezone = settings?.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
 
-  // Optional: If facilityId provided, resolve facility for non-breaking backward compatibility
-  const facility = input.facilityId
-    ? await repository.getFacility(input.facilityId)
-    : undefined;
-
   // 3. Timezone conversion and normalization against global system timezone
   let startUtc: Date;
   let endUtc: Date;
@@ -217,8 +212,6 @@ export async function createPreRegistration(
 
   const visit: Visit = {
     id: generateId(),
-    facilityId: facility?.id ?? input.facilityId,
-    facilityName: facility?.name,
     hostId: input.hostId,
     hostName: input.hostName,
     visitorFamilyName: input.visitorFamilyName,

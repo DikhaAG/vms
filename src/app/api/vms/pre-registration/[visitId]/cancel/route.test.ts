@@ -7,8 +7,6 @@ describe("POST /api/vms/pre-registration/[visitId]/cancel", () => {
   it("cancels an existing pending visit and returns 200", async () => {
     const testVisit: Visit = {
       id: "vis-cancel-route-1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorGivenName: "Andi",
       visitorFamilyName: "Wijaya",
       visitReasonType: 0,

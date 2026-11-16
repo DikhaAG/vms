@@ -6,46 +6,13 @@ import {
   DEFAULT_ACCESS_LEVELS,
   TEST_FIXTURE_ACCESS_LEVELS,
 } from "./repository";
-import type { Facility, Visit, EmergencyAccessGrant } from "./vms-contract";
+import type { Visit, EmergencyAccessGrant } from "./vms-contract";
 
 describe("InMemoryVmsRepository", () => {
   let repo: InMemoryVmsRepository;
 
   beforeEach(() => {
     repo = new InMemoryVmsRepository();
-  });
-
-  describe("facilities", () => {
-    it("has pre-seeded initial facilities across different Indonesian timezones", async () => {
-      const facilities = await repo.listFacilities();
-      expect(facilities.length).toBeGreaterThanOrEqual(3);
-
-      const jakarta = await repo.getFacility("fac-jakarta");
-      expect(jakarta).toBeDefined();
-      expect(jakarta?.timezone).toBe("Asia/Jakarta");
-
-      const bali = await repo.getFacility("fac-bali");
-      expect(bali).toBeDefined();
-      expect(bali?.timezone).toBe("Asia/Makassar");
-
-      const jayapura = await repo.getFacility("fac-jayapura");
-      expect(jayapura).toBeDefined();
-      expect(jayapura?.timezone).toBe("Asia/Jayapura");
-    });
-
-    it("can save and retrieve a new facility", async () => {
-      const newFacility: Facility = {
-        id: "fac-surabaya",
-        name: "Surabaya Hub",
-        timezone: "Asia/Jakarta",
-        address: "Jl. Pemuda No. 1, Surabaya",
-        overstayGraceMinutes: 15,
-      };
-      await repo.saveFacility(newFacility);
-
-      const retrieved = await repo.getFacility("fac-surabaya");
-      expect(retrieved).toEqual(newFacility);
-    });
   });
 
   describe("systemSettings", () => {
@@ -81,9 +48,9 @@ describe("InMemoryVmsRepository", () => {
         undefined,
         undefined,
         undefined,
-        undefined,
         {
           id: "default",
+          siteName: "Gedung Utama",
           timezone: "Asia/Jayapura",
           overstayGraceMinutes: 45,
           autoCheckInEarlyBufferMinutes: 20,
@@ -101,8 +68,6 @@ describe("InMemoryVmsRepository", () => {
   describe("visits", () => {
     const sampleVisit: Visit = {
       id: "visit-123",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorFamilyName: "Tanaka",
       visitorGivenName: "Kenji",
       visitorPhone: "+628111222333",
@@ -122,17 +87,12 @@ describe("InMemoryVmsRepository", () => {
       expect(retrieved).toEqual(sampleVisit);
     });
 
-    it("lists visits filtered by facilityId", async () => {
+    it("lists all saved visits", async () => {
       await repo.saveVisit(sampleVisit);
       await repo.saveVisit({
         ...sampleVisit,
         id: "visit-456",
-        facilityId: "fac-bali",
       });
-
-      const jakartaVisits = await repo.listVisits({ facilityId: "fac-jakarta" });
-      expect(jakartaVisits).toHaveLength(1);
-      expect(jakartaVisits[0].id).toBe("visit-123");
 
       const allVisits = await repo.listVisits();
       expect(allVisits).toHaveLength(2);
@@ -172,8 +132,6 @@ describe("InMemoryVmsRepository", () => {
   describe("invitations", () => {
     const sampleVisit: Visit = {
       id: "visit-inv-1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorFamilyName: "",
       visitorGivenName: "",
       visitReasonType: 3,
@@ -247,8 +205,6 @@ describe("InMemoryVmsRepository", () => {
   describe("approvals and status queries", () => {
     const pendingVisit1: Visit = {
       id: "vis-p1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorFamilyName: "Aditya",
       visitorGivenName: "Budi",
       visitReasonType: 0,
@@ -263,8 +219,6 @@ describe("InMemoryVmsRepository", () => {
 
     const escalatedVisit: Visit = {
       id: "vis-esc",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorFamilyName: "Blacklisted",
       visitorGivenName: "John",
       certificateType: 111,
@@ -288,7 +242,6 @@ describe("InMemoryVmsRepository", () => {
       ...pendingVisit1,
       id: "vis-app1",
       status: "APPROVED",
-      facilityId: "fac-bali",
     };
 
     it("retrieves visits filtered by a single status or multiple statuses", async () => {
@@ -307,14 +260,6 @@ describe("InMemoryVmsRepository", () => {
       expect(reviewQueue).toHaveLength(2);
       expect(reviewQueue.map((v) => v.id)).toContain("vis-p1");
       expect(reviewQueue.map((v) => v.id)).toContain("vis-esc");
-
-      // Filter by facility as well
-      const baliQueue = await repo.getVisitsByStatus(
-        ["PENDING_APPROVAL", "APPROVED"],
-        "fac-bali",
-      );
-      expect(baliQueue).toHaveLength(1);
-      expect(baliQueue[0].id).toBe("vis-app1");
     });
 
     it("saves and lists approval audit records for visits", async () => {
@@ -390,11 +335,8 @@ describe("InMemoryVmsRepository", () => {
       await repo.saveAccessLevels(TEST_FIXTURE_ACCESS_LEVELS);
       const allLevels = await repo.listAccessLevels();
       expect(allLevels.length).toBeGreaterThanOrEqual(3);
-
-      const jakartaLevels = await repo.listAccessLevels("fac-jakarta");
-      expect(jakartaLevels.length).toBeGreaterThanOrEqual(2);
-      expect(jakartaLevels.some((l) => l.name.includes("Lobby"))).toBe(true);
-      expect(jakartaLevels.some((l) => l.isDefault)).toBe(true);
+      expect(allLevels.some((l) => l.name.includes("Lobby"))).toBe(true);
+      expect(allLevels.some((l) => l.isDefault)).toBe(true);
     });
 
     it("can save, retrieve, update, and delete flat access levels without facilityId", async () => {
@@ -411,7 +353,6 @@ describe("InMemoryVmsRepository", () => {
       await repo.saveAccessLevel(flatLevel);
       const retrieved = await repo.getAccessLevel("acc-flat-1");
       expect(retrieved).toBeDefined();
-      expect(retrieved?.facilityId).toBeUndefined();
       expect(retrieved?.name).toBe("Building Perimeter All Gates");
       expect(retrieved?.doors).toEqual(["Lobby Main SpeedGate A", "Visitor Turnstile 01"]);
 
@@ -433,8 +374,6 @@ describe("InMemoryVmsRepository", () => {
   describe("searchVisits and checkInVisit", () => {
     const visit1: Visit = {
       id: "vis-search-01",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorFamilyName: "Santoso",
       visitorGivenName: "Budi",
       visitorPhone: "+62812345678",
@@ -458,8 +397,6 @@ describe("InMemoryVmsRepository", () => {
 
     const visit2: Visit = {
       id: "vis-search-02",
-      facilityId: "fac-bali",
-      facilityName: "Bali Innovation Center",
       visitorFamilyName: "Wulandari",
       visitorGivenName: "Siti",
       visitorPhone: "+62819876543",
@@ -518,20 +455,15 @@ describe("InMemoryVmsRepository", () => {
       expect(matchId[0].id).toBe("vis-search-01");
     });
 
-    it("filters search results by facilityId and status", async () => {
-      const matchesJakarta = await repo.searchVisits("", "fac-jakarta");
-      expect(matchesJakarta).toHaveLength(1);
-      expect(matchesJakarta[0].id).toBe("vis-search-01");
-
-      const matchesApproved = await repo.searchVisits("", undefined, "APPROVED");
+    it("filters search results by status", async () => {
+      const matchesApproved = await repo.searchVisits("", "APPROVED");
       expect(matchesApproved).toHaveLength(1);
       expect(matchesApproved[0].id).toBe("vis-search-01");
 
-      const matchesStatusArray = await repo.searchVisits(
-        "",
-        undefined,
-        ["APPROVED", "CHECKED_IN"],
-      );
+      const matchesStatusArray = await repo.searchVisits("", [
+        "APPROVED",
+        "CHECKED_IN",
+      ]);
       expect(matchesStatusArray).toHaveLength(2);
     });
 
@@ -582,7 +514,6 @@ describe("InMemoryVmsRepository", () => {
       // Seed visits in different statuses
       await repo.saveVisit({
         id: "vis-act-1",
-        facilityId: "fac-jakarta",
         visitorGivenName: "Alice",
         visitorFamilyName: "Smith",
         visitReasonType: 0,
@@ -603,7 +534,6 @@ describe("InMemoryVmsRepository", () => {
 
       await repo.saveVisit({
         id: "vis-act-2",
-        facilityId: "fac-bali",
         visitorGivenName: "Bob",
         visitorFamilyName: "Jones",
         visitReasonType: 2,
@@ -619,7 +549,6 @@ describe("InMemoryVmsRepository", () => {
 
       await repo.saveVisit({
         id: "vis-act-3",
-        facilityId: "fac-jakarta",
         visitorGivenName: "Charlie",
         visitorFamilyName: "Brown",
         visitReasonType: 1,
@@ -639,10 +568,6 @@ describe("InMemoryVmsRepository", () => {
       const active = await repo.listActiveVisits();
       expect(active).toHaveLength(2);
       expect(active.map((v) => v.id).sort()).toEqual(["vis-act-1", "vis-act-2"]);
-
-      const activeJakarta = await repo.listActiveVisits("fac-jakarta");
-      expect(activeJakarta).toHaveLength(1);
-      expect(activeJakarta[0].id).toBe("vis-act-1");
     });
 
     it("recordDoorTap persists tap event and increments visit's tapCount", async () => {
@@ -683,8 +608,8 @@ describe("InMemoryVmsRepository", () => {
       expect(updated.checkedOutByUserId).toBe("usr-sec-99");
 
       // Verify no longer in listActiveVisits
-      const active = await repo.listActiveVisits("fac-jakarta");
-      expect(active).toHaveLength(0);
+      const active = await repo.listActiveVisits();
+      expect(active.find((v) => v.id === "vis-act-1")).toBeUndefined();
 
       // Verify check-out audit event
       const logs = await repo.listCheckOutEvents("vis-act-1");
@@ -781,7 +706,6 @@ describe("InMemoryVmsRepository", () => {
       // Save a visit matching sampleProfile
       await repo.saveVisit({
         id: "vis-grp-mem-1",
-        facilityId: "fac-jakarta",
         visitorFamilyName: "Tanaka",
         visitorGivenName: "Kenji",
         certificateNo: "3171012345670001",
@@ -823,7 +747,6 @@ describe("InMemoryVmsRepository", () => {
         id: "vis-g1",
         groupId: "grp-abc",
         visitorGroupName: "Vendor Team",
-        facilityId: "fac-jakarta",
         visitorFamilyName: "A",
         visitorGivenName: "Alpha",
         visitReasonType: 1,
@@ -840,7 +763,6 @@ describe("InMemoryVmsRepository", () => {
         id: "vis-g2",
         groupId: "grp-abc",
         visitorGroupName: "Vendor Team",
-        facilityId: "fac-jakarta",
         visitorFamilyName: "B",
         visitorGivenName: "Beta",
         visitReasonType: 1,
@@ -860,28 +782,7 @@ describe("InMemoryVmsRepository", () => {
     });
   });
 
-  describe("facility management & host directory", () => {
-    it("updateFacility updates facility configuration", async () => {
-      const updated = await repo.updateFacility("fac-jakarta", {
-        name: "Jakarta HQ Tower A",
-        overstayGraceMinutes: 30,
-      });
-
-      expect(updated.id).toBe("fac-jakarta");
-      expect(updated.name).toBe("Jakarta HQ Tower A");
-      expect(updated.overstayGraceMinutes).toBe(30);
-
-      const retrieved = await repo.getFacility("fac-jakarta");
-      expect(retrieved?.name).toBe("Jakarta HQ Tower A");
-      expect(retrieved?.overstayGraceMinutes).toBe(30);
-    });
-
-    it("updateFacility throws if facility does not exist", async () => {
-      await expect(
-        repo.updateFacility("nonexistent", { name: "Test" }),
-      ).rejects.toThrow(/not found/i);
-    });
-
+  describe("host directory", () => {
     it("manages host directory with saveHost, listHosts, and getHost", async () => {
       await repo.saveHost({
         id: "emp-999",
@@ -906,21 +807,18 @@ describe("InMemoryVmsRepository", () => {
       expect(doors).toEqual([]);
     });
 
-    it("populates doors and allows filtering across facilities", async () => {
+    it("lists every door flatly across the single site with no facility scoping", async () => {
       await repo.saveDoors(TEST_FIXTURE_DOORS);
       const doors = await repo.listDoors();
-      expect(doors.length).toBeGreaterThan(0);
+      expect(doors).toHaveLength(TEST_FIXTURE_DOORS.length);
+      expect(doors.every((d) => !("facilityId" in d))).toBe(true);
 
-      const jakartaDoors = await repo.listDoors("fac-jakarta");
-      expect(jakartaDoors.length).toBeGreaterThan(0);
-      expect(jakartaDoors.every((d) => d.facilityId === "fac-jakarta")).toBe(true);
-
-      const dcRoom = jakartaDoors.find((d) => d.doorIndexCode === "door-jkt-dc-01");
+      const dcRoom = doors.find((d) => d.doorIndexCode === "door-jkt-dc-01");
       expect(dcRoom).toBeDefined();
       expect(dcRoom?.accessType).toBe("SINGLE_DIRECTION_IN");
       expect(dcRoom?.isPerimeter).toBe(false);
 
-      const turnstile = jakartaDoors.find((d) => d.doorIndexCode === "door-turnstile-1");
+      const turnstile = doors.find((d) => d.doorIndexCode === "door-turnstile-1");
       expect(turnstile).toBeDefined();
       expect(turnstile?.accessType).toBe("DUAL_DIRECTION");
       expect(turnstile?.isPerimeter).toBe(true);
@@ -938,15 +836,15 @@ describe("InMemoryVmsRepository", () => {
       expect(unknown).toBeUndefined();
     });
 
-    it("getDoorByName retrieves door case-insensitively and filters by facility", async () => {
+    it("getDoorByName retrieves door case-insensitively across the site", async () => {
       await repo.saveDoors(TEST_FIXTURE_DOORS);
-      const door = await repo.getDoorByName("dc server room 01", "fac-jakarta");
+      const door = await repo.getDoorByName("dc server room 01");
       expect(door).toBeDefined();
       expect(door?.doorIndexCode).toBe("door-jkt-dc-01");
       expect(door?.accessType).toBe("SINGLE_DIRECTION_IN");
 
-      const wrongFac = await repo.getDoorByName("DC Server Room 01", "fac-bali");
-      expect(wrongFac).toBeUndefined();
+      const unknown = await repo.getDoorByName("No Such Door");
+      expect(unknown).toBeUndefined();
     });
 
     it("findDoor resolves by either doorIndexCode or doorName", async () => {
@@ -963,7 +861,6 @@ describe("InMemoryVmsRepository", () => {
     it("saveDoor and saveDoors persist new doors and updates", async () => {
       await repo.saveDoor({
         id: "door-custom-1",
-        facilityId: "fac-jakarta",
         doorIndexCode: "door-lab-99",
         doorName: "Secret AI Lab",
         accessType: "SINGLE_DIRECTION_IN",
@@ -979,7 +876,6 @@ describe("InMemoryVmsRepository", () => {
       await repo.saveDoors([
         {
           id: "door-custom-2",
-          facilityId: "fac-bali",
           doorIndexCode: "door-pool-1",
           doorName: "Pool Access",
           accessType: "DUAL_DIRECTION",
@@ -996,7 +892,6 @@ describe("InMemoryVmsRepository", () => {
       await repo.saveDoors(TEST_FIXTURE_DOORS);
       await repo.saveVisit({
         id: "vis-topo-1",
-        facilityId: "fac-jakarta",
         visitorGivenName: "Alice",
         visitorFamilyName: "Smith",
         visitReasonType: 0,
@@ -1052,7 +947,6 @@ describe("InMemoryVmsRepository", () => {
   describe("emergency access grants", () => {
     const activeVisit: Visit = {
       id: "vis-emg-1",
-      facilityId: "fac-jakarta",
       visitorGivenName: "Diana",
       visitorFamilyName: "Prince",
       visitReasonType: 3,
@@ -1117,7 +1011,7 @@ describe("InMemoryVmsRepository", () => {
       expect(visit?.emergencyGrants).toHaveLength(1);
       expect(visit?.emergencyGrants?.[0].id).toBe("grant-test-2");
 
-      const activeVisits = await repo.listActiveVisits("fac-jakarta");
+      const activeVisits = await repo.listActiveVisits();
       const diana = activeVisits.find((v) => v.id === "vis-emg-1");
       expect(diana?.emergencyGrants).toBeDefined();
       expect(diana?.emergencyGrants).toHaveLength(1);
@@ -1174,8 +1068,6 @@ describe("InMemoryVmsRepository", () => {
       await repo.saveDoors(TEST_FIXTURE_DOORS);
       const approvedVisit: Visit = {
         id: "vis-auto-chk-1",
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Diana",
         visitorFamilyName: "Prince",
         visitorPhone: "+6281299998888",

@@ -471,8 +471,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const newVisitId = `vis-resilience-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: newVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Devi",
         visitorFamilyName: "Sari",
         visitorPhone: "+6281987654321",
@@ -693,8 +691,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const earlyVisitId = `vis-early-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: earlyVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Tari",
         visitorFamilyName: "Hapsari",
         visitorPhone: "+6281777888999",
@@ -745,8 +741,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const internalVisitId = `vis-internal-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: internalVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Fajar",
         visitorFamilyName: "Nugroho",
         visitorPhone: "+6281777888111",
@@ -798,8 +792,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const expiredVisitId = `vis-exp-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: expiredVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Reza",
         visitorFamilyName: "Rahadian",
         visitorPhone: "+6281777888222",
@@ -874,8 +866,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const quotaVisitId = `vis-quota-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: quotaVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Maya",
         visitorFamilyName: "Indah",
         visitorPhone: "+6281777888333",

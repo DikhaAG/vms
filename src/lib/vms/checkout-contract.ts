@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { siteSchema } from "./site-contract";
 import { formatZodErrors, isRecord } from "./validation-helpers";
 import type { PreRegistrationMode, StubScenario, VisitStatus } from "./vms-contract";
 import type { TapQuotaConfig } from "./access-level-contract";
@@ -34,7 +35,6 @@ export function isDoorAccessType(value: unknown): value is DoorAccessType {
 
 export const facilityDoorSchema = z.object({
   id: z.string().optional(),
-  facilityId: z.string().trim().min(1, "Facility ID is required.").optional(),
   regionIndexCode: z.string().trim().optional(),
   doorIndexCode: z.string().trim().min(1, "Door index code is required."),
   doorName: z.string().trim().min(1, "Door name is required."),
@@ -277,11 +277,7 @@ export const activeVisitSummarySchema = z.object({
       name: z.string().optional(),
     })
     .optional(),
-  facility: z.object({
-    id: z.string(),
-    name: z.string(),
-    timezone: z.string(),
-  }),
+  site: siteSchema,
   visitReason: z.string(),
   checkInTimeUtc: z.string(),
   scheduledStartTimeUtc: z.string(),
@@ -312,15 +308,15 @@ export interface OverstayEvaluation {
 
 export function evaluateOverstayStatus(
   visit: { scheduledEndTimeUtc: string; status?: VisitStatus },
-  facility?: { overstayGraceMinutes?: number } | null,
+  settings?: { overstayGraceMinutes?: number } | null,
   nowUtc?: string | Date,
 ): OverstayEvaluation {
   const now =
     nowUtc instanceof Date ? nowUtc : nowUtc ? new Date(nowUtc) : new Date();
   const scheduledEnd = new Date(visit.scheduledEndTimeUtc);
   const graceMinutes =
-    typeof facility?.overstayGraceMinutes === "number"
-      ? facility.overstayGraceMinutes
+    typeof settings?.overstayGraceMinutes === "number"
+      ? settings.overstayGraceMinutes
       : 15;
 
   const cutoffMs = scheduledEnd.getTime() + graceMinutes * 60 * 1000;
@@ -535,7 +531,6 @@ export function validateFacilityDoorInput(
       valid: true,
       input: {
         id,
-        facilityId: result.data.facilityId,
         regionIndexCode: result.data.regionIndexCode,
         doorIndexCode: result.data.doorIndexCode,
         doorName: result.data.doorName,

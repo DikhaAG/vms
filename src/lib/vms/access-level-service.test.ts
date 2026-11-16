@@ -19,21 +19,12 @@ describe("access-level-service", () => {
   describe("listAccessLevelsService", () => {
     it("starts with empty access levels on a fresh repository without fixtures", async () => {
       const emptyRepo = new InMemoryVmsRepository();
-      const levels = await listAccessLevelsService({}, { repository: emptyRepo });
+      const levels = await listAccessLevelsService({ repository: emptyRepo });
       expect(levels).toEqual([]);
     });
 
-    it("returns pre-seeded access levels filtered by facility", async () => {
-      const jakartaLevels = await listAccessLevelsService(
-        { facilityId: "fac-jakarta" },
-        { repository },
-      );
-      expect(jakartaLevels.length).toBeGreaterThanOrEqual(2);
-      expect(jakartaLevels.every((l) => l.facilityId === "fac-jakarta")).toBe(true);
-    });
-
-    it("returns all access levels when no facility filter is provided", async () => {
-      const allLevels = await listAccessLevelsService({}, { repository });
+    it("returns all access levels (single-site: no facility scoping)", async () => {
+      const allLevels = await listAccessLevelsService({ repository });
       expect(allLevels.length).toBeGreaterThanOrEqual(3);
     });
   });
@@ -68,7 +59,6 @@ describe("access-level-service", () => {
       expect(result.ok).toBe(true);
       expect(result.accessLevel).toBeDefined();
       expect(result.accessLevel?.id).toMatch(/^acc-/);
-      expect(result.accessLevel?.facilityId).toBeUndefined();
       expect(result.accessLevel?.name).toBe("Perimeter Gates Flat");
 
       const saved = await repository.getAccessLevel(result.accessLevel!.id);
@@ -79,7 +69,6 @@ describe("access-level-service", () => {
     it("validates and creates a new dynamic access level", async () => {
       const result = await createAccessLevelService(
         {
-          facilityId: "fac-jakarta",
           name: "Server Room B",
           description: "Server hardware room",
           doors: ["Door SR-01"],
@@ -103,7 +92,6 @@ describe("access-level-service", () => {
     it("returns validation error for invalid payload", async () => {
       const result = await createAccessLevelService(
         {
-          facilityId: "fac-jakarta",
           name: "", // Invalid empty name
           doors: [], // Invalid empty doors
           timeScheduleId: 99, // Invalid schedule
@@ -118,20 +106,6 @@ describe("access-level-service", () => {
       expect(result.error?.fieldErrors?.doors).toBeDefined();
     });
 
-    it("returns not_found if facility does not exist", async () => {
-      const result = await createAccessLevelService(
-        {
-          facilityId: "fac-non-existent",
-          name: "Test Room",
-          doors: ["Door 1"],
-          timeScheduleId: 1,
-        },
-        { repository, mode: "stub" },
-      );
-
-      expect(result.ok).toBe(false);
-      expect(result.error?.kind).toBe("not_found");
-    });
   });
 
   describe("updateAccessLevelService", () => {

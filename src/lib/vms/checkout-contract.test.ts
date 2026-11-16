@@ -58,7 +58,6 @@ describe("checkout-contract", () => {
     it("accepts valid facility door configuration", () => {
       const valid: FacilityDoor = {
         id: "door-jkt-1",
-        facilityId: "fac-jakarta",
         doorIndexCode: "door-turnstile-1",
         doorName: "Main Entrance Turnstile",
         accessType: "DUAL_DIRECTION",
@@ -69,7 +68,7 @@ describe("checkout-contract", () => {
       const res = validateFacilityDoorInput(valid);
       expect(res.valid).toBe(true);
       if (res.valid) {
-        expect(res.input.facilityId).toBe("fac-jakarta");
+        expect(res.input).not.toHaveProperty("facilityId");
         expect(res.input.doorIndexCode).toBe("door-turnstile-1");
         expect(res.input.accessType).toBe("DUAL_DIRECTION");
         expect(res.input.isPerimeter).toBe(true);
@@ -99,7 +98,7 @@ describe("checkout-contract", () => {
       });
       expect(res.valid).toBe(false);
       if (!res.valid) {
-        expect(res.errors.facilityId).toBeDefined();
+        expect(res.errors).not.toHaveProperty("facilityId");
         expect(res.errors.doorIndexCode).toBeDefined();
         expect(res.errors.doorName).toBeDefined();
         expect(res.errors.accessType).toMatch(/must be 'DUAL_DIRECTION' or 'SINGLE_DIRECTION_IN'/i);
@@ -110,7 +109,6 @@ describe("checkout-contract", () => {
   describe("evaluateOverstayStatus", () => {
     const baseVisit: Visit = {
       id: "vis-101",
-      facilityId: "fac-jakarta",
       visitorGivenName: "Alice",
       visitorFamilyName: "Smith",
       visitReasonType: 3,
@@ -124,16 +122,11 @@ describe("checkout-contract", () => {
       updatedAtUtc: "2026-11-13T08:05:00.000Z",
     };
 
-    const facility = {
-      id: "fac-jakarta",
-      name: "Jakarta Corporate HQ",
-      timezone: "Asia/Jakarta",
-      overstayGraceMinutes: 15,
-    };
+    const settings = { overstayGraceMinutes: 15 };
 
     it("evaluates as NOT overstay when now is before scheduledEndTime", () => {
       const now = new Date("2026-11-13T09:30:00.000Z");
-      const result = evaluateOverstayStatus(baseVisit, facility, now);
+      const result = evaluateOverstayStatus(baseVisit, settings, now);
 
       expect(result.isOverstay).toBe(false);
       expect(result.overstayMinutes).toBe(0);
@@ -144,7 +137,7 @@ describe("checkout-contract", () => {
     it("evaluates as NOT overstay when now is within grace period", () => {
       // Scheduled end is 10:00, grace is 15 min -> cutoff is 10:15
       const now = new Date("2026-11-13T10:10:00.000Z");
-      const result = evaluateOverstayStatus(baseVisit, facility, now);
+      const result = evaluateOverstayStatus(baseVisit, settings, now);
 
       expect(result.isOverstay).toBe(false);
       expect(result.overstayMinutes).toBe(0);
@@ -153,14 +146,14 @@ describe("checkout-contract", () => {
     it("evaluates as overstay when now is past cutoff time (scheduled end + grace period)", () => {
       // 10:35 is 35 minutes past scheduled end (10:00), past cutoff (10:15)
       const now = new Date("2026-11-13T10:35:00.000Z");
-      const result = evaluateOverstayStatus(baseVisit, facility, now);
+      const result = evaluateOverstayStatus(baseVisit, settings, now);
 
       expect(result.isOverstay).toBe(true);
       expect(result.overstayMinutes).toBe(35);
       expect(result.cutoffTimeUtc).toBe("2026-11-13T10:15:00.000Z");
     });
 
-    it("uses default 15 minutes grace period if facility has none defined", () => {
+    it("uses default 15 minutes grace period if settings define none", () => {
       const now = new Date("2026-11-13T10:16:00.000Z");
       const result = evaluateOverstayStatus(baseVisit, null, now);
 
@@ -689,8 +682,9 @@ describe("checkout-contract", () => {
       }
     });
 
-    it("validates flat doorSchema without facilityId and with regionIndexCode", () => {
+    it("validates flat doorSchema with regionIndexCode and strips a legacy facilityId", () => {
       const res = doorSchema.safeParse({
+        facilityId: "fac-legacy",
         doorIndexCode: "d-turnstile-2",
         doorName: "Turnstile Gate 2",
         regionIndexCode: "reg-lobby",
@@ -701,7 +695,7 @@ describe("checkout-contract", () => {
       if (res.success) {
         expect(res.data.doorIndexCode).toBe("d-turnstile-2");
         expect(res.data.regionIndexCode).toBe("reg-lobby");
-        expect(res.data.facilityId).toBeUndefined();
+        expect(res.data).not.toHaveProperty("facilityId");
         expect(res.data.isPerimeter).toBe(true);
       }
     });

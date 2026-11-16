@@ -93,7 +93,7 @@ export function ReceptionClient({
     .filter((al) => al.isDefault)
     .map((al) => al.id);
 
-  // State: Walk-in Modal (No facilityId selection)
+  // State: Walk-in Modal
   const [isWalkInModalOpen, setIsWalkInModalOpen] = useState(false);
   const [walkInHostId, setWalkInHostId] = useState("emp-host-01");
   const [walkInHostName, setWalkInHostName] = useState("Budi Santoso");
@@ -350,7 +350,7 @@ export function ReceptionClient({
     }
   };
 
-  // Walk-in submit execution without facilityId
+  // Walk-in submit execution
   const handleSubmitWalkIn = async (e: FormEvent) => {
     e.preventDefault();
     setIsSubmittingWalkIn(true);
@@ -552,7 +552,7 @@ export function ReceptionClient({
         />
       </UiKpiGrid>
 
-      {/* Unified Site-Wide Search Filter Toolbar (No facilitySlot) */}
+      {/* Unified Site-Wide Search Filter Toolbar */}
       <UiFilterToolbar
         searchSlot={
           <div className="relative flex-1 min-w-[240px]">

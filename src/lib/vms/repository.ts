@@ -1,6 +1,5 @@
 import type {
   CredentialSyncStatus,
-  Facility,
   HikCentralVisitReference,
   HostEmployee,
   SystemSettings,
@@ -26,7 +25,6 @@ import type {
 import type { VisitorProfile } from "./group-contract";
 
 export interface ListVisitsFilter {
-  facilityId?: string;
   status?: string;
 }
 
@@ -66,13 +64,6 @@ export interface IVmsRepository {
   getSettings(): Promise<SystemSettings>;
   updateSettings(updates: Partial<SystemSettings>): Promise<SystemSettings>;
 
-  getFacility(id?: string): Promise<Facility | undefined>;
-  listFacilities(): Promise<Facility[]>;
-  saveFacility(facility: Facility): Promise<void>;
-  updateFacility(
-    id: string,
-    updates: Partial<Omit<Facility, "id">>,
-  ): Promise<Facility>;
   getVisit(id: string): Promise<Visit | undefined>;
   listVisits(filter?: ListVisitsFilter): Promise<Visit[]>;
   saveVisit(visit: Visit): Promise<void>;
@@ -81,7 +72,6 @@ export interface IVmsRepository {
   // Check-in and search operations
   searchVisits(
     query: string,
-    facilityId?: string,
     status?: VisitStatus | VisitStatus[],
   ): Promise<Visit[]>;
   checkInVisit(visitId: string, checkInData: CheckInVisitParams): Promise<Visit>;
@@ -91,7 +81,6 @@ export interface IVmsRepository {
   // Approval and review queue operations
   getVisitsByStatus(
     statuses: VisitStatus | VisitStatus[],
-    facilityId?: string,
   ): Promise<Visit[]>;
   saveApprovalRecord(record: ApprovalRecord): Promise<void>;
   listApprovalRecords(visitId?: string): Promise<ApprovalRecord[]>;
@@ -112,14 +101,14 @@ export interface IVmsRepository {
   ): Promise<InvitationToken>;
 
   // Access level management
-  listAccessLevels(facilityId?: string): Promise<AccessLevel[]>;
+  listAccessLevels(): Promise<AccessLevel[]>;
   getAccessLevel(id: string): Promise<AccessLevel | undefined>;
   saveAccessLevel(accessLevel: AccessLevel): Promise<void>;
   saveAccessLevels(accessLevels: AccessLevel[]): Promise<void>;
   deleteAccessLevel(id: string): Promise<void>;
 
   // Active monitoring, door taps, and check-out
-  listActiveVisits(facilityId?: string): Promise<Visit[]>;
+  listActiveVisits(): Promise<Visit[]>;
   recordDoorTap(tapEvent: DoorTapEvent): Promise<RecordDoorTapResult>;
   listDoorTapEvents(visitId?: string): Promise<DoorTapEvent[]>;
   checkOutVisit(visitId: string, checkOutData: CheckOutVisitParams): Promise<Visit>;
@@ -137,9 +126,9 @@ export interface IVmsRepository {
 
   // Facility door topology operations
   getDoor(doorIndexCode: string): Promise<FacilityDoor | undefined>;
-  getDoorByName(doorName: string, facilityId?: string): Promise<FacilityDoor | undefined>;
-  findDoor(codeOrName: string, facilityId?: string): Promise<FacilityDoor | undefined>;
-  listDoors(facilityId?: string): Promise<FacilityDoor[]>;
+  getDoorByName(doorName: string): Promise<FacilityDoor | undefined>;
+  findDoor(codeOrName: string): Promise<FacilityDoor | undefined>;
+  listDoors(): Promise<FacilityDoor[]>;
   saveDoor(door: FacilityDoor): Promise<void>;
   saveDoors(doors: FacilityDoor[]): Promise<void>;
 
@@ -177,36 +166,11 @@ export interface IVmsRepository {
   }): Promise<{ visit: Visit; event: DoorTapEvent; notification?: HostArrivalNotification }>;
 }
 
-export const DEFAULT_FACILITIES: Facility[] = [
-  {
-    id: "fac-jakarta",
-    name: "Jakarta Corporate HQ",
-    timezone: "Asia/Jakarta",
-    address: "Jl. Jend. Sudirman Kav. 52-53, Senayan, Jakarta Selatan",
-    overstayGraceMinutes: 15,
-  },
-  {
-    id: "fac-bali",
-    name: "Bali Innovation Center",
-    timezone: "Asia/Makassar",
-    address: "Jl. Sunset Road No. 88, Kuta, Badung, Bali",
-    overstayGraceMinutes: 20,
-  },
-  {
-    id: "fac-jayapura",
-    name: "Jayapura Logistics Hub",
-    timezone: "Asia/Jayapura",
-    address: "Jl. Ahmad Yani No. 10, Gurabesi, Jayapura, Papua",
-    overstayGraceMinutes: 30,
-  },
-];
-
 export const DEFAULT_ACCESS_LEVELS: AccessLevel[] = [];
 
 export const TEST_FIXTURE_ACCESS_LEVELS: AccessLevel[] = [
   {
     id: "acc-jkt-lobby",
-    facilityId: "fac-jakarta",
     name: "Lobby & 1st Floor Turnstiles",
     description: "Standard ground floor turnstile and visitor reception access",
     doors: ["Lobby Main SpeedGate A", "Lobby Main SpeedGate B", "Visitor Turnstile 01"],
@@ -216,7 +180,6 @@ export const TEST_FIXTURE_ACCESS_LEVELS: AccessLevel[] = [
   },
   {
     id: "acc-jkt-exec",
-    facilityId: "fac-jakarta",
     name: "Executive Floor 3",
     description: "C-suite suites, boardroom, and VIP meeting lounge",
     doors: ["3F Elevator Lobby Door", "Boardroom East Access"],
@@ -226,7 +189,6 @@ export const TEST_FIXTURE_ACCESS_LEVELS: AccessLevel[] = [
   },
   {
     id: "acc-jkt-dc",
-    facilityId: "fac-jakarta",
     name: "Technical Datacenter",
     description: "Secured server hall and mission-critical network ops room",
     doors: ["Basement AirLock", "DC Server Room 01"],
@@ -236,7 +198,6 @@ export const TEST_FIXTURE_ACCESS_LEVELS: AccessLevel[] = [
   },
   {
     id: "acc-bali-main",
-    facilityId: "fac-bali",
     name: "Innovation Hub General Access",
     description: "Co-working space, open lab, and auditorium",
     doors: ["Main Entrance Turnstile", "Lab Wing Sliding Door"],
@@ -246,7 +207,6 @@ export const TEST_FIXTURE_ACCESS_LEVELS: AccessLevel[] = [
   },
   {
     id: "acc-jay-warehouse",
-    facilityId: "fac-jayapura",
     name: "Logistics Hub & Warehouse",
     description: "Loading dock, logistics office, and dispatch floor",
     doors: ["Loading Gate 01", "Dispatch Office Door"],
@@ -323,7 +283,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   // Jakarta Corporate HQ
   {
     id: "door-jkt-turnstile-1",
-    facilityId: "fac-jakarta",
     doorIndexCode: "door-turnstile-1",
     doorName: "Lobby Main SpeedGate A",
     accessType: "DUAL_DIRECTION",
@@ -331,7 +290,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   },
   {
     id: "door-jkt-turnstile-lobby",
-    facilityId: "fac-jakarta",
     doorIndexCode: "door-turnstile-lobby",
     doorName: "Lobby Main SpeedGate B",
     accessType: "DUAL_DIRECTION",
@@ -339,7 +297,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   },
   {
     id: "door-jkt-turnstile-main",
-    facilityId: "fac-jakarta",
     doorIndexCode: "door-turnstile-main",
     doorName: "Visitor Turnstile 01",
     accessType: "DUAL_DIRECTION",
@@ -347,7 +304,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   },
   {
     id: "door-jkt-3f-lobby",
-    facilityId: "fac-jakarta",
     doorIndexCode: "door-jkt-3f-el",
     doorName: "3F Elevator Lobby Door",
     accessType: "DUAL_DIRECTION",
@@ -355,7 +311,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   },
   {
     id: "door-jkt-boardroom",
-    facilityId: "fac-jakarta",
     doorIndexCode: "door-jkt-br-east",
     doorName: "Boardroom East Access",
     accessType: "SINGLE_DIRECTION_IN",
@@ -364,7 +319,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   },
   {
     id: "door-jkt-basement-airlock",
-    facilityId: "fac-jakarta",
     doorIndexCode: "door-jkt-b1-al",
     doorName: "Basement AirLock",
     accessType: "DUAL_DIRECTION",
@@ -372,7 +326,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   },
   {
     id: "door-jkt-dc-server-01",
-    facilityId: "fac-jakarta",
     doorIndexCode: "door-jkt-dc-01",
     doorName: "DC Server Room 01",
     accessType: "SINGLE_DIRECTION_IN",
@@ -382,7 +335,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   // Bali Innovation Center
   {
     id: "door-bali-main-entrance",
-    facilityId: "fac-bali",
     doorIndexCode: "door-bali-main",
     doorName: "Main Entrance Turnstile",
     accessType: "DUAL_DIRECTION",
@@ -390,7 +342,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   },
   {
     id: "door-bali-lab-sliding",
-    facilityId: "fac-bali",
     doorIndexCode: "door-bali-lab",
     doorName: "Lab Wing Sliding Door",
     accessType: "SINGLE_DIRECTION_IN",
@@ -400,7 +351,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   // Jayapura Logistics Hub
   {
     id: "door-jay-gate-1",
-    facilityId: "fac-jayapura",
     doorIndexCode: "door-gate-1",
     doorName: "Loading Gate 01",
     accessType: "DUAL_DIRECTION",
@@ -408,7 +358,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   },
   {
     id: "door-jay-dispatch-door",
-    facilityId: "fac-jayapura",
     doorIndexCode: "door-jay-dispatch",
     doorName: "Dispatch Office Door",
     accessType: "SINGLE_DIRECTION_IN",
@@ -418,7 +367,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
   // Generic test door
   {
     id: "door-generic-1",
-    facilityId: "fac-jakarta",
     doorIndexCode: "door-1",
     doorName: "Door 1",
     accessType: "DUAL_DIRECTION",
@@ -429,7 +377,6 @@ export const TEST_FIXTURE_DOORS: FacilityDoor[] = [
 export const DEFAULT_DOORS: FacilityDoor[] = [];
 
 export class InMemoryVmsRepository implements IVmsRepository {
-  private facilities = new Map<string, Facility>();
   private visits = new Map<string, Visit>();
   private invitationTokens = new Map<string, InvitationToken>();
   private approvalRecords: ApprovalRecord[] = [];
@@ -444,6 +391,7 @@ export class InMemoryVmsRepository implements IVmsRepository {
   private hostNotifications: HostArrivalNotification[] = [];
   private systemSettings: SystemSettings = {
     id: "default",
+    siteName: DEFAULT_SYSTEM_SETTINGS.siteName,
     timezone: DEFAULT_SYSTEM_SETTINGS.timezone,
     overstayGraceMinutes: DEFAULT_SYSTEM_SETTINGS.overstayGraceMinutes,
     autoCheckInEarlyBufferMinutes: DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes,
@@ -451,7 +399,6 @@ export class InMemoryVmsRepository implements IVmsRepository {
   };
 
   constructor(
-    initialFacilities: Facility[] = DEFAULT_FACILITIES,
     initialAccessLevels: AccessLevel[] = DEFAULT_ACCESS_LEVELS,
     initialVisitorProfiles: VisitorProfile[] = DEFAULT_VISITOR_PROFILES,
     initialHosts: HostEmployee[] = DEFAULT_HOSTS,
@@ -460,9 +407,6 @@ export class InMemoryVmsRepository implements IVmsRepository {
   ) {
     if (initialSettings) {
       this.systemSettings = structuredClone(initialSettings);
-    }
-    for (const f of initialFacilities) {
-      this.facilities.set(f.id, structuredClone(f));
     }
     for (const al of initialAccessLevels) {
       this.accessLevels.set(al.id, structuredClone(al));
@@ -496,37 +440,6 @@ export class InMemoryVmsRepository implements IVmsRepository {
     return structuredClone(this.systemSettings);
   }
 
-  async getFacility(id?: string): Promise<Facility | undefined> {
-    if (!id) return undefined;
-    const facility = this.facilities.get(id);
-    return facility ? structuredClone(facility) : undefined;
-  }
-
-  async listFacilities(): Promise<Facility[]> {
-    return Array.from(this.facilities.values()).map((f) => structuredClone(f));
-  }
-
-  async saveFacility(facility: Facility): Promise<void> {
-    this.facilities.set(facility.id, structuredClone(facility));
-  }
-
-  async updateFacility(
-    id: string,
-    updates: Partial<Omit<Facility, "id">>,
-  ): Promise<Facility> {
-    const existing = this.facilities.get(id);
-    if (!existing) {
-      throw new Error(`Facility '${id}' not found.`);
-    }
-    const updated: Facility = {
-      ...existing,
-      ...updates,
-      id,
-    };
-    this.facilities.set(id, updated);
-    return structuredClone(updated);
-  }
-
   private enrichVisitEmergencyGrants(visit: Visit): void {
     const now = Date.now();
     const activeGrants = Array.from(this.emergencyGrants.values()).filter((g) => {
@@ -557,9 +470,6 @@ export class InMemoryVmsRepository implements IVmsRepository {
 
   async listVisits(filter?: ListVisitsFilter): Promise<Visit[]> {
     let list = Array.from(this.visits.values());
-    if (filter?.facilityId) {
-      list = list.filter((v) => v.facilityId === filter.facilityId);
-    }
     if (filter?.status) {
       list = list.filter((v) => v.status === filter.status);
     }
@@ -586,15 +496,11 @@ export class InMemoryVmsRepository implements IVmsRepository {
 
   async getVisitsByStatus(
     statuses: VisitStatus | VisitStatus[],
-    facilityId?: string,
   ): Promise<Visit[]> {
     const targetStatuses = Array.isArray(statuses) ? statuses : [statuses];
-    let list = Array.from(this.visits.values()).filter((v) =>
+    const list = Array.from(this.visits.values()).filter((v) =>
       targetStatuses.includes(v.status),
     );
-    if (facilityId) {
-      list = list.filter((v) => v.facilityId === facilityId);
-    }
     return list.map((v) => structuredClone(v));
   }
 
@@ -686,11 +592,8 @@ export class InMemoryVmsRepository implements IVmsRepository {
     return structuredClone(updated);
   }
 
-  async listAccessLevels(facilityId?: string): Promise<AccessLevel[]> {
-    let list = Array.from(this.accessLevels.values());
-    if (facilityId) {
-      list = list.filter((al) => !al.facilityId || al.facilityId === facilityId);
-    }
+  async listAccessLevels(): Promise<AccessLevel[]> {
+    const list = Array.from(this.accessLevels.values());
     return list.map((al) => structuredClone(al));
   }
 
@@ -715,14 +618,9 @@ export class InMemoryVmsRepository implements IVmsRepository {
 
   async searchVisits(
     query: string,
-    facilityId?: string,
     status?: VisitStatus | VisitStatus[],
   ): Promise<Visit[]> {
     let list = Array.from(this.visits.values());
-
-    if (facilityId) {
-      list = list.filter((v) => v.facilityId === facilityId);
-    }
 
     if (status) {
       const allowed = Array.isArray(status) ? status : [status];
@@ -817,13 +715,10 @@ export class InMemoryVmsRepository implements IVmsRepository {
       );
   }
 
-  async listActiveVisits(facilityId?: string): Promise<Visit[]> {
-    let list = Array.from(this.visits.values()).filter(
+  async listActiveVisits(): Promise<Visit[]> {
+    const list = Array.from(this.visits.values()).filter(
       (v) => v.status === "CHECKED_IN" || v.status === "OVERSTAY",
     );
-    if (facilityId) {
-      list = list.filter((v) => v.facilityId === facilityId);
-    }
     return list.map((v) => {
       const cloned = structuredClone(v);
       this.enrichVisitEmergencyGrants(cloned);
@@ -1155,38 +1050,26 @@ export class InMemoryVmsRepository implements IVmsRepository {
     return door ? structuredClone(door) : undefined;
   }
 
-  async getDoorByName(
-    doorName: string,
-    facilityId?: string,
-  ): Promise<FacilityDoor | undefined> {
+  async getDoorByName(doorName: string): Promise<FacilityDoor | undefined> {
     const lower = doorName.trim().toLowerCase();
     for (const door of this.doors.values()) {
       if (door.doorName.toLowerCase() === lower) {
-        if (!facilityId || door.facilityId === facilityId) {
-          return structuredClone(door);
-        }
+        return structuredClone(door);
       }
     }
     return undefined;
   }
 
-  async findDoor(
-    codeOrName: string,
-    facilityId?: string,
-  ): Promise<FacilityDoor | undefined> {
+  async findDoor(codeOrName: string): Promise<FacilityDoor | undefined> {
     const byCode = this.doors.get(codeOrName);
-    if (byCode && (!facilityId || byCode.facilityId === facilityId)) {
+    if (byCode) {
       return structuredClone(byCode);
     }
-    return this.getDoorByName(codeOrName, facilityId);
+    return this.getDoorByName(codeOrName);
   }
 
-  async listDoors(facilityId?: string): Promise<FacilityDoor[]> {
-    let list = Array.from(this.doors.values());
-    if (facilityId) {
-      list = list.filter((d) => d.facilityId === facilityId);
-    }
-    return list.map((d) => structuredClone(d));
+  async listDoors(): Promise<FacilityDoor[]> {
+    return Array.from(this.doors.values()).map((d) => structuredClone(d));
   }
 
   async saveDoor(door: FacilityDoor): Promise<void> {

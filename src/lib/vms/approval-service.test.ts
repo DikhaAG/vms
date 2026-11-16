@@ -20,8 +20,6 @@ describe("Approval Service", () => {
 
   const samplePendingVisit: Visit = {
     id: "vis-pending-1",
-    facilityId: "fac-jakarta",
-    facilityName: "Jakarta Corporate HQ",
     hostId: "emp-host-01",
     hostName: "Budi Santoso",
     visitorFamilyName: "Pratama",
@@ -42,8 +40,6 @@ describe("Approval Service", () => {
 
   const sampleEscalatedVisit: Visit = {
     id: "vis-escalated-1",
-    facilityId: "fac-jakarta",
-    facilityName: "Jakarta Corporate HQ",
     visitorFamilyName: "Blacklisted",
     visitorGivenName: "Mark",
     certificateType: 111,
@@ -91,7 +87,6 @@ describe("Approval Service", () => {
       await repository.saveVisit({
         ...samplePendingVisit,
         id: "vis-bali-1",
-        facilityId: "fac-bali",
       });
 
       const result = await listPendingApprovals({ repository });

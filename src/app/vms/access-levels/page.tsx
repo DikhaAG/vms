@@ -9,7 +9,6 @@ export const metadata = {
 };
 
 export default async function AccessLevelsPage() {
-  const facilities = await defaultVmsRepository.listFacilities();
   const accessLevels = await defaultVmsRepository.listAccessLevels();
   const doors = await defaultVmsRepository.listDoors();
 
@@ -21,7 +20,6 @@ export default async function AccessLevelsPage() {
       />
 
       <AccessLevelsClient
-        facilities={facilities}
         initialAccessLevels={accessLevels}
         initialDoors={doors}
       />

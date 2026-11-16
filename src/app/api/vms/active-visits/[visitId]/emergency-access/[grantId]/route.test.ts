@@ -11,7 +11,6 @@ describe("DELETE /api/vms/active-visits/[visitId]/emergency-access/[grantId]", (
   beforeEach(async () => {
     const activeVisit: Visit = {
       id: visitId,
-      facilityId: "fac-jakarta",
       visitorGivenName: "Tony",
       visitorFamilyName: "Stark",
       visitReasonType: 3,

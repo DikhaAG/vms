@@ -20,8 +20,6 @@ describe("ActiveMonitoringService", () => {
     // Seed test visits
     const visit1: Visit = {
       id: "vis-active-1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorGivenName: "Alice",
       visitorFamilyName: "Smith",
       visitorPhone: "+62812345678",
@@ -50,7 +48,6 @@ describe("ActiveMonitoringService", () => {
 
     const visit2: Visit = {
       id: "vis-active-2",
-      facilityId: "fac-bali",
       visitorGivenName: "Bob",
       visitorFamilyName: "Jones",
       visitReasonType: 0, // Business
@@ -117,7 +114,7 @@ describe("ActiveMonitoringService", () => {
       const aliceWithin = withinGrace.find((v) => v.visitId === "vis-active-1");
       expect(aliceWithin?.isOverstay).toBe(false);
       expect(aliceWithin?.status).toBe("CHECKED_IN");
-      expect(aliceWithin?.facility.timezone).toBe("Asia/Makassar");
+      expect(aliceWithin?.site.timezone).toBe("Asia/Makassar");
 
       // 10:35 UTC -> 35 mins past 10:00 (> 30-min global grace period) -> OVERSTAY!
       const pastGrace = await service.getActiveVisits(
@@ -481,7 +478,6 @@ describe("ActiveMonitoringService", () => {
   describe("Emergency Access Escalation (Ticket 03)", () => {
     const restrictedVisit: Visit = {
       id: "vis-restricted-1",
-      facilityId: "fac-jakarta",
       visitorGivenName: "Bruce",
       visitorFamilyName: "Wayne",
       visitReasonType: 3,
@@ -777,8 +773,6 @@ describe("ActiveMonitoringService", () => {
     const approvedVisitId = "vis-approved-auto-1";
     const approvedVisit: Visit = {
       id: approvedVisitId,
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorGivenName: "Bruce",
       visitorFamilyName: "Wayne",
       visitorPhone: "+6281122334455",

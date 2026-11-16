@@ -17,7 +17,7 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
 
   beforeEach(async () => {
     repository = new InMemoryVmsRepository();
-    const ctx = await createContext({ repository, facilityTimezone: "Asia/Jakarta" });
+    const ctx = await createContext({ repository });
     caller = createCaller(ctx);
   });
 
@@ -44,7 +44,6 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
 
     it("pre-registers a visitor successfully", async () => {
       const res = await caller.visitor.preRegister({
-        facilityId: "fac-jakarta",
         visitorGivenName: "Alice",
         visitorFamilyName: "Smith",
         certificateType: 111,
@@ -80,8 +79,6 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
     it("cancels an existing pre-registration", async () => {
       const visit: Visit = {
         id: "vis-cancel-target",
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Cancel",
         visitorFamilyName: "Candidate",
         certificateType: 111,
@@ -121,8 +118,6 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
     beforeEach(async () => {
       const pendingVisit: Visit = {
         id: "vis-trpc-pending",
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Dewi",
         visitorFamilyName: "Santoso",
         certificateType: 111,
@@ -199,22 +194,20 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
       expect(res).toBeDefined();
       expect(res.name).toBe("Lantai 3 Executive Lounge");
       expect(res.doors).toEqual(["Door 301", "Door 302"]);
-      expect(res.facilityId).toBeUndefined();
 
       const list = await caller.accessLevel.list();
       expect(list.length).toBe(1);
       expect(list[0].name).toBe("Lantai 3 Executive Lounge");
     });
 
-    it("supports optional facilityId for backward-compatibility", async () => {
+    it("lists all created access levels (single-site: no facility scoping)", async () => {
       await caller.accessLevel.create({
-        facilityId: "fac-jakarta",
         name: "Jakarta Legacy Level",
         doors: ["Door JKT 01"],
         timeScheduleId: 2,
       });
 
-      const res = await caller.accessLevel.list({ facilityId: "fac-jakarta" });
+      const res = await caller.accessLevel.list();
       expect(res.some((l) => l.name === "Jakarta Legacy Level")).toBe(true);
     });
 
@@ -232,15 +225,12 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
     const door1: FacilityDoor = {
       doorIndexCode: "door-south-01",
       doorName: "South Lobby Turnstile",
-      facilityId: "fac-jakarta",
       accessType: "DUAL_DIRECTION",
       isPerimeter: true,
     };
 
     const activeVisit: Visit = {
       id: "vis-active-trpc-1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorGivenName: "Diana",
       visitorFamilyName: "Prince",
       visitReasonType: 3,
@@ -289,8 +279,6 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
       await repository.saveVisit({
         ...activeVisit,
         id: "vis-active-trpc-2",
-        facilityId: "fac-bali",
-        facilityName: "Bali Resort Office",
         visitorGivenName: "Bruce",
         visitorFamilyName: "Wayne",
       });
@@ -325,7 +313,6 @@ describe("tRPC End-to-End Type-Safe Routers", () => {
       await repository.saveDoor({
         doorIndexCode: "door-bali-01",
         doorName: "Bali Side Gate",
-        facilityId: "fac-bali",
         accessType: "DUAL_DIRECTION",
         isPerimeter: true,
       });

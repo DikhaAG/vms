@@ -37,21 +37,6 @@ function escapeHtml(str: string): string {
 }
 
 describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
-  const dummyFacilities = [
-    {
-      id: "fac-jakarta",
-      name: "Kantor Pusat Jakarta",
-      timezone: "Asia/Jakarta",
-      address: "Jl. Jenderal Sudirman No. 1, Jakarta",
-    },
-    {
-      id: "fac-bali",
-      name: "Bali Innovation Center",
-      timezone: "Asia/Makassar",
-      address: "Jl. Sunset Road No. 88, Kuta, Bali",
-    },
-  ];
-
   describe("1. Responsive App Shell & Navigation Layout", () => {
     it("renders desktop sidebar with all 3 localized operational groups", () => {
       const html = renderToStaticMarkup(
@@ -104,9 +89,8 @@ describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
     it("renders global header with facility selector, timezone clocks, hardware status, and operator chip", () => {
       const html = renderToStaticMarkup(
         <Header
-          facilities={dummyFacilities}
-          selectedFacilityId="fac-jakarta"
-          onSelectFacility={vi.fn()}
+          siteName="Kantor Pusat Jakarta"
+          timezone="Asia/Jakarta"
           onOpenMobileMenu={vi.fn()}
           systemHealthy={true}
         />,

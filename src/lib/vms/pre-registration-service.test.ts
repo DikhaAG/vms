@@ -23,7 +23,6 @@ describe("createPreRegistration", () => {
   });
 
   const baseInput: CreatePreRegistrationInput = {
-    facilityId: "fac-jakarta",
     hostId: "emp-host-01",
     hostName: "Budi Santoso",
     visitorFamilyName: "Pratama",
@@ -47,8 +46,6 @@ describe("createPreRegistration", () => {
 
     const visit = result.visit!;
     expect(visit.status).toBe("PENDING_APPROVAL");
-    expect(visit.facilityId).toBe("fac-jakarta");
-    expect(visit.facilityName).toBe("Jakarta Corporate HQ");
     expect(visit.visitorFamilyName).toBe("Pratama");
     expect(visit.visitorGivenName).toBe("Rian");
 

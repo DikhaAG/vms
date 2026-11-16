@@ -14,7 +14,6 @@ describe("ActiveMonitoringClient Component", () => {
   const mockDoors: FacilityDoor[] = [
     {
       id: "door-1",
-      facilityId: "fac-jakarta",
       doorIndexCode: "door-turnstile-1",
       doorName: "Main Entrance SpeedGate",
       accessType: "DUAL_DIRECTION",
@@ -22,7 +21,6 @@ describe("ActiveMonitoringClient Component", () => {
     },
     {
       id: "door-2",
-      facilityId: "fac-jakarta",
       doorIndexCode: "door-dc-01",
       doorName: "DC Server Room 01",
       accessType: "SINGLE_DIRECTION_IN",
@@ -31,7 +29,6 @@ describe("ActiveMonitoringClient Component", () => {
     },
     {
       id: "door-3",
-      facilityId: "fac-bali",
       doorIndexCode: "door-bali-lab",
       doorName: "Bali R&D Lab",
       accessType: "DUAL_DIRECTION",
@@ -53,8 +50,7 @@ describe("ActiveMonitoringClient Component", () => {
       id: "host-01",
       name: "Alice Smith",
     },
-    facility: {
-      id: "fac-jakarta",
+    site: {
       name: "Jakarta Corporate HQ",
       timezone: "Asia/Jakarta",
     },

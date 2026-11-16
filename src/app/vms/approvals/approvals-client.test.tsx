@@ -8,8 +8,6 @@ describe("ApprovalsClient Component Localization", () => {
   const mockPendingVisits: Visit[] = [
     {
       id: "vis-app-1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorFamilyName: "Wijaya",
       visitorGivenName: "Citra",
       visitorPhone: "+628123456780",

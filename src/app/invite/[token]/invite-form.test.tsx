@@ -9,11 +9,9 @@ describe("Public Invite Self-Registration UI Localization", () => {
     visitId: "vis-12345",
     token: "valid-tok-123",
     status: "valid",
-    facility: {
-      id: "fac-jakarta",
+    site: {
       name: "Kantor Pusat Jakarta",
       timezone: "Asia/Jakarta",
-      address: "Jl. Jenderal Sudirman No. 1, Jakarta",
     },
     host: {
       id: "emp-101",

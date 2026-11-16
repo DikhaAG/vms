@@ -8,7 +8,6 @@ import PreRegistrationPage from "./page";
 import {
   preRegistrationInputSchema,
   createPreRegistrationSchema,
-  type Facility,
 } from "@/lib/vms/vms-contract";
 import type { AccessLevel } from "@/lib/vms/access-level-contract";
 import { idDict } from "@/lib/vms/i18n/id";
@@ -27,21 +26,6 @@ vi.mock("sonner", async (importOriginal) => {
 });
 
 describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
-  const dummyFacilities: Facility[] = [
-    {
-      id: "fac-jakarta",
-      name: "Kantor Pusat Jakarta",
-      timezone: "Asia/Jakarta",
-      address: "Jl. Jenderal Sudirman No. 1, Jakarta",
-    },
-    {
-      id: "fac-surabaya",
-      name: "Cabang Surabaya",
-      timezone: "Asia/Jakarta",
-      address: "Jl. Pemuda No. 45, Surabaya",
-    },
-  ];
-
   const dummyAccessLevels: AccessLevel[] = [
     {
       id: "al-lobby",
@@ -58,7 +42,6 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
     const { html } = renderWithVmsProviders(
       <PreRegistrationForm
         systemTimezone="Asia/Jakarta"
-        initialFacilities={dummyFacilities}
         initialAccessLevels={dummyAccessLevels}
       />
     );

@@ -3,42 +3,22 @@
 import React, { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
-import type { Facility } from "@/lib/vms/vms-contract";
 
 export interface AppShellProps {
   children: React.ReactNode;
   currentPath?: string;
-  initialFacilities?: Facility[];
+  siteName?: string;
+  timezone?: string;
 }
-
-const DEFAULT_FACILITIES: Facility[] = [
-  {
-    id: "fac-jakarta",
-    name: "Jakarta Corporate HQ",
-    timezone: "Asia/Jakarta",
-  },
-  {
-    id: "fac-bali",
-    name: "Bali Innovation Center",
-    timezone: "Asia/Makassar",
-  },
-  {
-    id: "fac-jayapura",
-    name: "Jayapura Logistics Hub",
-    timezone: "Asia/Jayapura",
-  },
-];
 
 export function AppShell({
   children,
   currentPath,
-  initialFacilities = DEFAULT_FACILITIES,
+  siteName,
+  timezone,
 }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [selectedFacilityId, setSelectedFacilityId] = useState(
-    initialFacilities[0]?.id || "fac-jakarta"
-  );
 
   return (
     <div className="min-h-screen bg-[var(--ks-paper)] text-[var(--ks-text)] flex antialiased">
@@ -49,17 +29,16 @@ export function AppShell({
         onToggleCollapse={() => setCollapsed((prev) => !prev)}
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
-        facilities={initialFacilities}
-        selectedFacilityId={selectedFacilityId}
+        siteName={siteName}
+        timezone={timezone}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Header */}
         <Header
-          facilities={initialFacilities}
-          selectedFacilityId={selectedFacilityId}
-          onSelectFacility={setSelectedFacilityId}
+          siteName={siteName}
+          timezone={timezone}
           currentPath={currentPath}
           onOpenMobileMenu={() => setMobileOpen(true)}
         />

@@ -97,11 +97,6 @@ export function PreRegistrationResultCard({
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[var(--ks-muted)]">
               Jadwal Kunjungan
             </h3>
-            {visit.facilityName ? (
-              <p className="mt-1 text-sm font-medium text-[var(--ks-ink)]">
-                {visit.facilityName}
-              </p>
-            ) : null}
             <div className="mt-1 space-y-1 text-xs text-[var(--ks-text)]">
               <p>
                 <span className="font-medium text-[var(--ks-muted)]">

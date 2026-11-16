@@ -8,7 +8,6 @@ describe("GroupRegistration UI Localization", () => {
   const dummyAccessLevels: AccessLevel[] = [
     {
       id: "al-lobby",
-      facilityId: "fac-jakarta",
       name: "Pintu Masuk Lobi Utama",
       description: "Akses gerbang lobi dan pintu putar lantai 1",
       doors: ["Lobby SpeedGate A"],

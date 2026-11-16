@@ -1,4 +1,3 @@
-import { z } from "zod";
 import { router, publicProcedure, TRPCError } from "../trpc";
 import { createAccessLevelSchema } from "@/lib/vms/access-level-contract";
 import {
@@ -7,20 +6,9 @@ import {
 } from "@/lib/vms/access-level-service";
 
 export const accessLevelRouter = router({
-  list: publicProcedure
-    .input(
-      z
-        .object({
-          facilityId: z.string().optional(),
-        })
-        .optional(),
-    )
-    .query(async ({ ctx, input }) => {
-      return listAccessLevelsService(
-        { facilityId: input?.facilityId },
-        { repository: ctx.repository },
-      );
-    }),
+  list: publicProcedure.query(async ({ ctx }) => {
+    return listAccessLevelsService({ repository: ctx.repository });
+  }),
 
   create: publicProcedure
     .input(createAccessLevelSchema)

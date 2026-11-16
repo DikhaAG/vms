@@ -9,8 +9,7 @@ import type {
 describe("EmergencyAccessModal Component (Single-Site Checklist)", () => {
   const mockVisit: ActiveVisitSummary = {
     visitId: "vis-modal-1",
-    facility: {
-      id: "default",
+    site: {
       name: "Gedung Utama",
       timezone: "Asia/Jakarta",
     },

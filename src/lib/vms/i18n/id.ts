@@ -172,8 +172,6 @@ export const idDict = {
   },
 
   header: {
-    selectFacility: "Pilih Gedung / Lokasi",
-    facilityTimezoneHint: "Waktu lokal fasilitas",
     systemConnected: "Sistem Pintu Terhubung",
     systemDisconnected: "Koneksi Terminal Terputus",
     systemChecking: "Memeriksa Gateway...",
@@ -208,7 +206,6 @@ export const idDict = {
     refresh: "Segarkan",
     actions: "Aksi Tindakan",
     status: "Status Saat Ini",
-    facility: "Gedung / Lokasi",
     date: "Tanggal Kunjungan",
     time: "Waktu Kunjungan",
     visitor: "Nama Tamu",
@@ -221,7 +218,6 @@ export const idDict = {
     accessLevel: "Hak Akses Pintu",
     purpose: "Keperluan Kunjungan",
     notes: "Catatan Tambahan",
-    allFacilities: "Semua Lokasi Fasilitas",
     noDataFound: "Tidak ada data yang ditemukan",
     confirmAction: "Konfirmasi Tindakan",
     guideButtonLabel: "Panduan Halaman Ini",
@@ -532,8 +528,8 @@ export const idDict = {
         steps: [
           {
             step: 1,
-            title: "Pilih Gedung Fasilitas & Waktu Kunjungan",
-            description: "Tentukan lokasi gedung tujuan, tanggal kedatangan, serta jam mulai dan jam selesai pertemuan sesuai zona waktu lokal fasilitas.",
+            title: "Tentukan Waktu Kunjungan",
+            description: "Tentukan tanggal kedatangan, serta jam mulai dan jam selesai pertemuan sesuai zona waktu sistem gedung.",
           },
           {
             step: 2,
@@ -632,8 +628,8 @@ export const idDict = {
         steps: [
           {
             step: 1,
-            title: "Pilih Gedung Fasilitas yang Dikelola",
-            description: "Pilih fasilitas gedung terkait untuk memuat daftar pintu fisik yang terdaftar pada pengontrol pintu.",
+            title: "Sinkronkan Daftar Pintu Gedung",
+            description: "Muat daftar pintu fisik gedung yang terdaftar pada pengontrol pintu HikCentral.",
           },
           {
             step: 2,

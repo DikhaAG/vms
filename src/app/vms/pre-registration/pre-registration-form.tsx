@@ -13,7 +13,6 @@ import {
   preRegistrationInputSchema,
   type CertificateType,
   type CredentialSyncStatus,
-  type Facility,
   type PreRegistrationInput,
   type PreRegistrationResult,
   type Visit,
@@ -38,7 +37,6 @@ import { PreRegistrationInviteCard } from "./pre-registration-invite-card";
 
 interface PreRegistrationFormProps {
   systemTimezone?: string;
-  initialFacilities?: Facility[];
   initialAccessLevels?: AccessLevel[];
 }
 
@@ -54,14 +52,11 @@ function getTomorrowDateInTimezone(timeZone: string): string {
 
 export function PreRegistrationForm({
   systemTimezone,
-  initialFacilities,
   initialAccessLevels = [],
 }: PreRegistrationFormProps) {
   const formId = useId();
   const effectiveTimezone =
-    systemTimezone ??
-    initialFacilities?.[0]?.timezone ??
-    DEFAULT_SYSTEM_SETTINGS.timezone;
+    systemTimezone ?? DEFAULT_SYSTEM_SETTINGS.timezone;
 
   // Tomorrow 10:00 - 12:00 default schedule in canonical system timezone
   const tomorrowDateStr = getTomorrowDateInTimezone(effectiveTimezone);

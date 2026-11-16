@@ -6,8 +6,6 @@ import type { Visit } from "@/lib/vms/vms-contract";
 describe("GET /api/vms/approvals", () => {
   const visitPending: Visit = {
     id: "route-vis-pending",
-    facilityId: "fac-jakarta",
-    facilityName: "Jakarta Corporate HQ",
     visitorFamilyName: "Santoso",
     visitorGivenName: "Dewi",
     certificateType: 111,
@@ -24,8 +22,6 @@ describe("GET /api/vms/approvals", () => {
 
   const visitEscalated: Visit = {
     id: "route-vis-escalated",
-    facilityId: "fac-jakarta",
-    facilityName: "Jakarta Corporate HQ",
     visitorFamilyName: "Prohibited",
     visitorGivenName: "Person",
     certificateType: 111,
@@ -66,7 +62,6 @@ describe("GET /api/vms/approvals", () => {
     await defaultVmsRepository.saveVisit({
       ...visitPending,
       id: "route-vis-pending-bali",
-      facilityId: "fac-bali",
     });
     const response = await GET();
 

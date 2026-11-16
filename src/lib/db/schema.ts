@@ -5,7 +5,7 @@ import {
   boolean,
   jsonb,
 } from "drizzle-orm/pg-core";
-import type { Facility, HostEmployee, Visit, SystemSettings } from "../vms/vms-contract";
+import type { HostEmployee, Visit, SystemSettings } from "../vms/vms-contract";
 import type { FacilityDoor, DoorTapEvent, CheckOutAuditEvent, EmergencyAccessGrant, HostArrivalNotification } from "../vms/checkout-contract";
 import type { AccessLevel } from "../vms/access-level-contract";
 import type { VisitorProfile } from "../vms/group-contract";
@@ -16,6 +16,7 @@ import type { CheckInAuditEvent } from "../vms/checkin-contract";
 // 0. Global System Settings (Single-Site Architecture)
 export const systemSettings = pgTable("system_settings", {
   id: text("id").primaryKey(), // constant singleton "default"
+  siteName: text("site_name").notNull().default("Gedung Utama"),
   timezone: text("timezone").notNull().default("Asia/Jakarta"),
   overstayGraceMinutes: integer("overstay_grace_minutes").notNull().default(15),
   autoCheckInEarlyBufferMinutes: integer("auto_check_in_early_buffer_minutes").notNull().default(15),
@@ -23,20 +24,9 @@ export const systemSettings = pgTable("system_settings", {
   data: jsonb("data").$type<SystemSettings>().notNull(),
 });
 
-// 1. Facilities
-export const facilities = pgTable("facilities", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  timezone: text("timezone").notNull(),
-  address: text("address"),
-  overstayGraceMinutes: integer("overstay_grace_minutes").default(15),
-  data: jsonb("data").$type<Facility>().notNull(),
-});
-
-// 2. Facility Doors / Flat Doors
+// 1. Doors (flat, site-wide; physical table keeps its legacy name)
 export const facilityDoors = pgTable("facility_doors", {
   doorIndexCode: text("door_index_code").primaryKey(),
-  facilityId: text("facility_id"),
   regionIndexCode: text("region_index_code"),
   doorName: text("door_name").notNull(),
   isPerimeter: boolean("is_perimeter").notNull().default(false),
@@ -48,7 +38,6 @@ export const doors = facilityDoors;
 // 3. Access Levels
 export const accessLevels = pgTable("access_levels", {
   id: text("id").primaryKey(),
-  facilityId: text("facility_id"),
   name: text("name").notNull(),
   data: jsonb("data").$type<AccessLevel>().notNull(),
 });
@@ -71,7 +60,6 @@ export const visitorProfiles = pgTable("visitor_profiles", {
 // 6. Visits
 export const visits = pgTable("visits", {
   id: text("id").primaryKey(),
-  facilityId: text("facility_id"),
   status: text("status").notNull(),
   createdAtUtc: text("created_at_utc").notNull(),
   data: jsonb("data").$type<Visit>().notNull(),
@@ -141,6 +129,7 @@ export function getInitSchemaSql(): string {
   return `
     CREATE TABLE IF NOT EXISTS system_settings (
       id TEXT PRIMARY KEY,
+      site_name TEXT NOT NULL DEFAULT 'Gedung Utama',
       timezone TEXT NOT NULL DEFAULT 'Asia/Jakarta',
       overstay_grace_minutes INTEGER NOT NULL DEFAULT 15,
       auto_check_in_early_buffer_minutes INTEGER NOT NULL DEFAULT 15,
@@ -148,18 +137,8 @@ export function getInitSchemaSql(): string {
       data JSONB NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS facilities (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      timezone TEXT NOT NULL,
-      address TEXT,
-      overstay_grace_minutes INTEGER DEFAULT 15,
-      data JSONB NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS facility_doors (
       door_index_code TEXT PRIMARY KEY,
-      facility_id TEXT,
       region_index_code TEXT,
       door_name TEXT NOT NULL,
       is_perimeter BOOLEAN NOT NULL DEFAULT FALSE,
@@ -168,7 +147,6 @@ export function getInitSchemaSql(): string {
 
     CREATE TABLE IF NOT EXISTS access_levels (
       id TEXT PRIMARY KEY,
-      facility_id TEXT,
       name TEXT NOT NULL,
       data JSONB NOT NULL
     );
@@ -188,7 +166,6 @@ export function getInitSchemaSql(): string {
 
     CREATE TABLE IF NOT EXISTS visits (
       id TEXT PRIMARY KEY,
-      facility_id TEXT NOT NULL,
       status TEXT NOT NULL,
       created_at_utc TEXT NOT NULL,
       data JSONB NOT NULL
@@ -243,5 +220,14 @@ export function getInitSchemaSql(): string {
       created_at_utc TEXT NOT NULL,
       data JSONB NOT NULL
     );
+
+    -- Single-site contract migration: backfill global site name and purge the
+    -- deprecated Facility entity. All statements are idempotent so they are safe
+    -- to run on both fresh and previously-initialized databases.
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS site_name TEXT NOT NULL DEFAULT 'Gedung Utama';
+    ALTER TABLE visits DROP COLUMN IF EXISTS facility_id;
+    ALTER TABLE access_levels DROP COLUMN IF EXISTS facility_id;
+    ALTER TABLE facility_doors DROP COLUMN IF EXISTS facility_id;
+    DROP TABLE IF EXISTS facilities;
   `;
 }

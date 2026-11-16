@@ -20,3 +20,5 @@ We will remove the `Facility` entity and `facilityId` scoping across the entire 
 - Initial seed data for doors (`DEFAULT_DOORS`) is empty (`[]`); operators populate doors during first-time initialization or via `/api/vms/sync/doors`.
 - HikCentral visitor appointment endpoints format ISO 8601 timestamps using the global timezone configured in `system_settings` (with fallback to `APP_TIMEZONE`).
 - UI filters for selecting facilities (`UiFilterToolbar`) are eliminated, streamlining receptionist and monitoring screens.
+- `system_settings` gains a `site_name` column (default `Gedung Utama`) as the single building label. The Site has no record or id of its own: `siteFromSettings()` in `src/lib/vms/site-contract.ts` derives `{ name, timezone }` for the public invitation metadata and active monitoring summaries, which carry it under the `site` key. The legacy facility address is not carried forward.
+- The physical `facility_doors` table, the `FacilityDoor` type, the `scheduled*TimeFacility` Visit fields, and the `formatInFacilityTimezone` / `formatFacilityIso` helpers keep their legacy names. They carry no facility scoping, and renaming them is follow-up work.

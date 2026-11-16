@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as s from "../db/schema";
 import type { VmsDatabase } from "../db/client";
 import { PostgresVmsRepository } from "./postgres-repository";
-import type { Facility, Visit } from "./vms-contract";
+import type { Visit } from "./vms-contract";
 import type { FacilityDoor } from "./checkout-contract";
 import type { AccessLevel } from "./access-level-contract";
 
@@ -25,59 +25,6 @@ describe("PostgresVmsRepository", () => {
     repo = new PostgresVmsRepository(mockDb as unknown as VmsDatabase);
   });
 
-  describe("facilities", () => {
-    it("lists facilities mapped correctly from db records", async () => {
-      const sampleFacility: Facility = {
-        id: "fac-jkt",
-        name: "Jakarta HQ",
-        timezone: "Asia/Jakarta",
-        address: "Sudirman",
-        overstayGraceMinutes: 15,
-      };
-      const mockFrom = vi.fn().mockResolvedValue([
-        {
-          id: "fac-jkt",
-          name: "Jakarta HQ",
-          timezone: "Asia/Jakarta",
-          address: "Sudirman",
-          overstayGraceMinutes: 15,
-          data: sampleFacility,
-        },
-      ]);
-      mockDb.select.mockReturnValue({ from: mockFrom });
-
-      const list = await repo.listFacilities();
-      expect(list).toHaveLength(1);
-      expect(list[0].id).toBe("fac-jkt");
-      expect(list[0].timezone).toBe("Asia/Jakarta");
-    });
-
-    it("gets single facility by ID", async () => {
-      const sampleFacility: Facility = {
-        id: "fac-jkt",
-        name: "Jakarta HQ",
-        timezone: "Asia/Jakarta",
-        address: "Sudirman",
-        overstayGraceMinutes: 15,
-      };
-      const mockWhere = vi.fn().mockResolvedValue([
-        {
-          id: "fac-jkt",
-          name: "Jakarta HQ",
-          timezone: "Asia/Jakarta",
-          address: "Sudirman",
-          overstayGraceMinutes: 15,
-          data: sampleFacility,
-        },
-      ]);
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere });
-      mockDb.select.mockReturnValue({ from: mockFrom });
-
-      const fac = await repo.getFacility("fac-jkt");
-      expect(fac).toBeDefined();
-      expect(fac?.name).toBe("Jakarta HQ");
-    });
-  });
 
   describe("doors", () => {
     it("saves doors using upsert query", async () => {
@@ -89,7 +36,6 @@ describe("PostgresVmsRepository", () => {
 
       const door: FacilityDoor = {
         id: "door-01",
-        facilityId: "fac-jkt",
         doorIndexCode: "door-turnstile-1",
         doorName: "Main SpeedGate",
         accessType: "DUAL_DIRECTION",
@@ -108,7 +54,7 @@ describe("PostgresVmsRepository", () => {
   });
 
   describe("accessLevels (Ticket 03)", () => {
-    it("saves and upserts flat access level with nullable facilityId", async () => {
+    it("saves and upserts flat access level", async () => {
       const mockOnConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
       const mockValues = vi.fn().mockReturnValue({
         onConflictDoUpdate: mockOnConflictDoUpdate,
@@ -129,7 +75,6 @@ describe("PostgresVmsRepository", () => {
       expect(mockValues).toHaveBeenCalledWith(
         expect.objectContaining({
           id: "acc-flat-01",
-          facilityId: null,
           name: "Flat Building Access",
         }),
       );
@@ -139,7 +84,6 @@ describe("PostgresVmsRepository", () => {
       const mockFrom = vi.fn().mockResolvedValue([
         {
           id: "acc-flat-01",
-          facilityId: null,
           name: "Flat Building Access",
           data: {
             id: "acc-flat-01",
@@ -157,7 +101,6 @@ describe("PostgresVmsRepository", () => {
       expect(mockDb.select).toHaveBeenCalledTimes(1);
       expect(results).toHaveLength(1);
       expect(results[0].name).toBe("Flat Building Access");
-      expect(results[0].facilityId).toBeUndefined();
     });
   });
 
@@ -165,8 +108,6 @@ describe("PostgresVmsRepository", () => {
     it("retrieves a visit and returns full typed Visit object", async () => {
       const sampleVisit: Visit = {
         id: "vis-123",
-        facilityId: "fac-jkt",
-        facilityName: "Jakarta HQ",
         hostId: "host-1",
         hostName: "Budi Host",
         visitorFamilyName: "Pratama",
@@ -188,7 +129,6 @@ describe("PostgresVmsRepository", () => {
       const mockWhereVisit = vi.fn().mockResolvedValue([
         {
           id: "vis-123",
-          facilityId: "fac-jkt",
           status: "PENDING_APPROVAL",
           createdAtUtc: "2026-11-14T10:00:00.000Z",
           data: sampleVisit,
@@ -237,6 +177,7 @@ describe("PostgresVmsRepository", () => {
     it("returns database system settings record when present", async () => {
       const mockSettings = {
         id: "default",
+        siteName: "Gedung Utama",
         timezone: "Asia/Makassar",
         overstayGraceMinutes: 30,
         autoCheckInEarlyBufferMinutes: 20,

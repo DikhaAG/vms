@@ -9,7 +9,6 @@ describe("POST /api/vms/active-visits/[visitId]/emergency-access", () => {
   beforeEach(async () => {
     const activeVisit: Visit = {
       id: visitId,
-      facilityId: "fac-jakarta",
       visitorGivenName: "Peter",
       visitorFamilyName: "Parker",
       visitReasonType: 2,

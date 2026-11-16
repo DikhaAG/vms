@@ -6,7 +6,6 @@ import {
   isVisitReasonType,
   isVisitStatus,
   validatePreRegistrationInput,
-  validateUpdateFacilityInput,
   visitStatusSchema,
   visitReasonTypeSchema,
   certificateTypeSchema,
@@ -14,7 +13,6 @@ import {
   stubScenarioSchema,
   credentialSyncStatusSchema,
   createPreRegistrationSchema,
-  updateFacilitySchema,
   systemSettingsSchema,
   updateSystemSettingsSchema,
   DEFAULT_SYSTEM_SETTINGS,
@@ -61,7 +59,6 @@ describe("vms-contract", () => {
 
   describe("validatePreRegistrationInput", () => {
     const validInput: CreatePreRegistrationInput = {
-      facilityId: "fac-jakarta",
       visitorFamilyName: "Smith",
       visitorGivenName: "Alice",
       visitorPhone: "+628123456789",
@@ -181,49 +178,6 @@ describe("vms-contract", () => {
     });
   });
 
-  describe("validateUpdateFacilityInput", () => {
-    it("accepts valid facility updates", () => {
-      const res = validateUpdateFacilityInput({
-        name: "Jakarta HQ Updated",
-        timezone: "Asia/Jakarta",
-        overstayGraceMinutes: 20,
-        address: "Jl. Sudirman",
-      });
-      expect(res.valid).toBe(true);
-      if (res.valid) {
-        expect(res.input.name).toBe("Jakarta HQ Updated");
-        expect(res.input.timezone).toBe("Asia/Jakarta");
-        expect(res.input.overstayGraceMinutes).toBe(20);
-        expect(res.input.address).toBe("Jl. Sudirman");
-      }
-    });
-
-    it("rejects non-object or null payload", () => {
-      expect(validateUpdateFacilityInput(null).valid).toBe(false);
-      expect(validateUpdateFacilityInput("string").valid).toBe(false);
-    });
-
-    it("rejects invalid IANA timezone", () => {
-      const res = validateUpdateFacilityInput({
-        timezone: "Invalid/Zone",
-      });
-      expect(res.valid).toBe(false);
-      if (!res.valid) {
-        expect(res.errors.timezone).toBeDefined();
-      }
-    });
-
-    it("rejects negative overstayGraceMinutes", () => {
-      const res = validateUpdateFacilityInput({
-        overstayGraceMinutes: -1,
-      });
-      expect(res.valid).toBe(false);
-      if (!res.valid) {
-        expect(res.errors.overstayGraceMinutes).toBeDefined();
-      }
-    });
-  });
-
   describe("Zod canonical schemas directly", () => {
     it("validates visitStatusSchema and credentialSyncStatusSchema", () => {
       expect(visitStatusSchema.safeParse("APPROVED").success).toBe(true);
@@ -264,15 +218,6 @@ describe("vms-contract", () => {
         scheduledEndTime: "2026-11-20T11:00:00Z",
       });
       expect(valid.success).toBe(true);
-    });
-
-    it("validates updateFacilitySchema directly", () => {
-      const res = updateFacilitySchema.safeParse({
-        name: "Jakarta HQ",
-        timezone: "Asia/Jakarta",
-        overstayGraceMinutes: 15,
-      });
-      expect(res.success).toBe(true);
     });
 
     it("validates DEFAULT_SYSTEM_SETTINGS and systemSettingsSchema defaults", () => {
@@ -336,7 +281,7 @@ describe("vms-contract", () => {
       }
     });
 
-    it("validates doorSchema preserves regionIndexCode and allows optional facilityId", () => {
+    it("validates doorSchema preserves regionIndexCode and carries no facilityId", () => {
       const flatDoor = {
         doorIndexCode: "door-turnstile-1",
         doorName: "Main Entrance SpeedGate",
@@ -349,7 +294,7 @@ describe("vms-contract", () => {
       if (res.success) {
         expect(res.data.doorIndexCode).toBe("door-turnstile-1");
         expect(res.data.regionIndexCode).toBe("region-hq-fl1");
-        expect(res.data.facilityId).toBeUndefined();
+        expect(res.data).not.toHaveProperty("facilityId");
       }
     });
   });

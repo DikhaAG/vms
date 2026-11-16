@@ -431,7 +431,7 @@ function ActiveMonitoringClientInner({
         />
       </UiKpiGrid>
 
-      {/* Single-Site Tab Filter Toolbar (No facilitySlot) */}
+      {/* Single-Site Tab Filter Toolbar */}
       <UiFilterToolbar
         actionsSlot={
           <div className="flex items-center gap-1">

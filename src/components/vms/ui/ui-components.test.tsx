@@ -208,15 +208,15 @@ describe("UiKpiCard & UiKpiGrid Primitives", () => {
 });
 
 describe("UiFilterToolbar Primitive", () => {
-  it("renders standard container with slots for search, facility, and actions", () => {
+  it("renders standard container with slots for filters, search, and actions", () => {
     const html = renderToStaticMarkup(
       <UiFilterToolbar
-        facilitySlot={<select><option>Gedung Utama</option></select>}
+        filterSlot={<select><option>Peran Penyetuju</option></select>}
         searchSlot={<input placeholder="Cari nama..." />}
         actionsSlot={<button>Reset</button>}
       />
     );
-    expect(html).toContain("Gedung Utama");
+    expect(html).toContain("Peran Penyetuju");
     expect(html).toContain("Cari nama...");
     expect(html).toContain("Reset");
     expect(html).toContain("bg-[var(--ks-paper-raised)]");

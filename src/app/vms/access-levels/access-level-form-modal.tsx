@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useId } from "react";
-import type { Facility } from "@/lib/vms/vms-contract";
 import type { FacilityDoor } from "@/lib/vms/checkout-contract";
 import {
   TIME_SCHEDULE_LABELS,
@@ -15,7 +14,6 @@ import { UiModal, UiButton } from "@/components/vms/ui";
 const COMMON_FLOOR_PRESETS = ["B1", "1F", "2F", "3F", "4F", "5F"];
 
 export interface AccessLevelFormData {
-  facilityId?: string;
   name: string;
   description: string;
   timeScheduleId: TimeScheduleTemplateId;
@@ -27,9 +25,7 @@ export interface AccessLevelFormData {
 export interface AccessLevelFormModalProps {
   isOpen: boolean;
   editingLevel: AccessLevel | null;
-  facilities?: Facility[];
   availableDoors: FacilityDoor[];
-  defaultFacilityId?: string;
   isSyncingDoors: boolean;
   isSubmitting: boolean;
   formErrors: Record<string, string>;
@@ -132,7 +128,6 @@ export function AccessLevelFormModal({
 
     setLocalErrors({});
     await onSave({
-      ...(editingLevel?.facilityId ? { facilityId: editingLevel.facilityId } : {}),
       name: name.trim(),
       description: description.trim(),
       timeScheduleId,

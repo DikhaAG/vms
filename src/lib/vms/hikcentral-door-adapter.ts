@@ -10,7 +10,6 @@ import type { FacilityDoor, DoorAccessType } from "./checkout-contract";
 export interface SyncHikCentralDoorsOptions {
   client?: HikCentralClient;
   repository?: IVmsRepository;
-  facilityId?: string;
   userId?: string;
   pageNo?: number;
   pageSize?: number;
@@ -204,7 +203,6 @@ export async function syncHikCentralDoors(
 
         return {
           id: `door-${doorIndexCode}`,
-          ...(options.facilityId ? { facilityId: options.facilityId } : {}),
           regionIndexCode: item.regionIndexCode ? String(item.regionIndexCode).trim() : undefined,
           doorIndexCode,
           doorName,

@@ -11,7 +11,6 @@ describe("Route: /api/vms/invite/[token]", () => {
     // Generate fresh test invite
     const invite = await createInvitation(
       {
-        facilityId: "fac-jakarta",
         hostName: "Budi Santoso",
         hostId: "emp-001",
         visitReasonType: 3,
@@ -37,8 +36,9 @@ describe("Route: /api/vms/invite/[token]", () => {
       const json = await response.json();
       expect(json.ok).toBe(true);
       expect(json.data).toBeDefined();
-      expect(json.data.facility.name).toBe("Jakarta Corporate HQ");
-      expect(json.data.facility.timezone).toBe("Asia/Jakarta");
+      expect(json.data.site.name).toBe("Gedung Utama");
+      expect(json.data.site.timezone).toBe("Asia/Jakarta");
+      expect(json.data).not.toHaveProperty("facility");
       expect(json.data.host.name).toBe("Budi Santoso");
       expect(json.data.visitReasonLabel).toBe("Meeting");
       expect(json.data.scheduledStartTimeFacility).toBe(

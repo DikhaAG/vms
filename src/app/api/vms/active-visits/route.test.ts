@@ -10,8 +10,6 @@ describe("GET /api/vms/active-visits", () => {
     // Reset/seed visits in defaultVmsRepository
     const activeVisit: Visit = {
       id: "vis-api-act-1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorGivenName: "Diana",
       visitorFamilyName: "Prince",
       visitReasonType: 3,
@@ -32,7 +30,6 @@ describe("GET /api/vms/active-visits", () => {
 
     const checkedOutVisit: Visit = {
       id: "vis-api-out-1",
-      facilityId: "fac-jakarta",
       visitorGivenName: "Clark",
       visitorFamilyName: "Kent",
       visitReasonType: 0,

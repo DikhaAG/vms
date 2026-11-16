@@ -54,7 +54,7 @@ export class CheckInService {
     query: string,
     status?: VisitStatus | VisitStatus[],
   ): Promise<Visit[]> {
-    return this.repository.searchVisits(query, undefined, status);
+    return this.repository.searchVisits(query, status);
   }
 
   /**

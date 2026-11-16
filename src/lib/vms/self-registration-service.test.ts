@@ -26,7 +26,6 @@ describe("self-registration-service", () => {
   async function createTestInvite() {
     const res = await createInvitation(
       {
-        facilityId: "fac-jakarta",
         hostName: "Hendra Wijaya",
         hostId: "emp-hendra",
         visitReasonType: 0,

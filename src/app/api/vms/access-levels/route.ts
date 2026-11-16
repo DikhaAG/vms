@@ -5,12 +5,9 @@ import {
 } from "@/lib/vms/access-level-service";
 import { withServerErrors } from "@/lib/vms/route-errors";
 
-async function handleGET(request: Request) {
+async function handleGET() {
   try {
-    const url = new URL(request.url);
-    const facilityId = url.searchParams.get("facilityId") || undefined;
-
-    const accessLevels = await listAccessLevelsService({ facilityId });
+    const accessLevels = await listAccessLevelsService();
 
     return NextResponse.json({
       ok: true,

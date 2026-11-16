@@ -76,7 +76,7 @@ export interface UiDataTableProps<TData extends RowData, TValue = unknown> {
 
   // Filter toolbar & action slots
   filterToolbar?: React.ReactNode;
-  facilitySlot?: React.ReactNode;
+  filterSlot?: React.ReactNode;
   actionsSlot?: React.ReactNode;
 
   // Empty state customization
@@ -109,7 +109,7 @@ export function UiDataTable<TData extends RowData, TValue = unknown>({
   searchPlaceholder,
   showSearch = false,
   filterToolbar,
-  facilitySlot,
+  filterSlot,
   actionsSlot,
   emptyState,
   emptyTitle,
@@ -194,7 +194,7 @@ export function UiDataTable<TData extends RowData, TValue = unknown>({
   });
 
   const pageCount = table.getPageCount();
-  const showBuiltinToolbar = showSearch || Boolean(facilitySlot || actionsSlot);
+  const showBuiltinToolbar = showSearch || Boolean(filterSlot || actionsSlot);
 
   return (
     <div className={`space-y-4 ${className}`.trim()}>
@@ -202,7 +202,7 @@ export function UiDataTable<TData extends RowData, TValue = unknown>({
         filterToolbar
       ) : showBuiltinToolbar ? (
         <UiFilterToolbar
-          facilitySlot={facilitySlot}
+          filterSlot={filterSlot}
           searchSlot={
             showSearch ? (
               <div className="relative flex-1 min-w-[200px] max-w-sm">

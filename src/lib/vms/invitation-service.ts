@@ -8,10 +8,11 @@ import {
   validateCreateInvitationInput,
 } from "./invitation-contract";
 import {
-  type Facility,
+  DEFAULT_SYSTEM_SETTINGS,
   type Visit,
   VISIT_REASON_LABELS,
 } from "./vms-contract";
+import { siteFromSettings, type Site } from "./site-contract";
 import { formatFacilityIso, parseLocalDateTimeToUtc } from "./timezone";
 import { defaultVmsRepository, type IVmsRepository } from "./repository";
 
@@ -31,7 +32,7 @@ export interface ValidationOutcomeSuccess {
   status: "valid";
   token: InvitationToken;
   visit: Visit;
-  facility: Facility;
+  site: Site;
 }
 
 export interface ValidationOutcomeFailure {
@@ -40,7 +41,7 @@ export interface ValidationOutcomeFailure {
   error: string;
   token?: InvitationToken;
   visit?: Visit;
-  facility?: Facility;
+  site?: Site;
 }
 
 export type TokenValidationResult =
@@ -75,30 +76,16 @@ export async function createInvitation(
 
   const input = validation.input;
 
-  // 2. Fetch facility
-  const facility = await repository.getFacility(input.facilityId);
-  if (!facility) {
-    return {
-      ok: false,
-      error: {
-        kind: "not_found",
-        message: `Facility '${input.facilityId}' not found.`,
-      },
-    };
-  }
+  // 2. Resolve single-site context (timezone) from global system settings
+  const settings = await repository.getSettings();
+  const timezone = settings.timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
 
-  // 3. Normalize times to UTC and facility-specific ISO
+  // 3. Normalize times to UTC and site-local ISO
   let startUtc: Date;
   let endUtc: Date;
   try {
-    startUtc = parseLocalDateTimeToUtc(
-      input.scheduledStartTime,
-      facility.timezone,
-    );
-    endUtc = parseLocalDateTimeToUtc(
-      input.scheduledEndTime,
-      facility.timezone,
-    );
+    startUtc = parseLocalDateTimeToUtc(input.scheduledStartTime, timezone);
+    endUtc = parseLocalDateTimeToUtc(input.scheduledEndTime, timezone);
   } catch (err) {
     return {
       ok: false,
@@ -107,7 +94,7 @@ export async function createInvitation(
         message:
           err instanceof Error
             ? err.message
-            : "Invalid scheduled time format for facility timezone.",
+            : "Invalid scheduled time format for site timezone.",
       },
     };
   }
@@ -125,14 +112,8 @@ export async function createInvitation(
     };
   }
 
-  const scheduledStartTimeFacility = formatFacilityIso(
-    startUtc,
-    facility.timezone,
-  );
-  const scheduledEndTimeFacility = formatFacilityIso(
-    endUtc,
-    facility.timezone,
-  );
+  const scheduledStartTimeFacility = formatFacilityIso(startUtc, timezone);
+  const scheduledEndTimeFacility = formatFacilityIso(endUtc, timezone);
 
   // 4. Calculate token expiration
   // Default expiry: 7 days from now, but capped if visit ends earlier, or configured days
@@ -160,8 +141,6 @@ export async function createInvitation(
   // 5. Create Draft Visit
   const visit: Visit = {
     id: visitId,
-    facilityId: facility.id,
-    facilityName: facility.name,
     hostId: input.hostId,
     hostName: input.hostName,
     visitorFamilyName: input.visitorFamilyName ?? "",
@@ -228,9 +207,8 @@ export async function validateInvitationToken(
     };
   }
 
-  const facility = visit.facilityId
-    ? await repository.getFacility(visit.facilityId)
-    : undefined;
+  const settings = await repository.getSettings();
+  const site = siteFromSettings(settings);
 
   // Check single-use
   if (tokenRecord.isConsumed) {
@@ -240,7 +218,7 @@ export async function validateInvitationToken(
       error: "This invitation link has already been used.",
       token: tokenRecord,
       visit,
-      facility,
+      site,
     };
   }
 
@@ -256,17 +234,7 @@ export async function validateInvitationToken(
       error: "This invitation link has expired.",
       token: tokenRecord,
       visit,
-      facility,
-    };
-  }
-
-  if (!facility) {
-    return {
-      valid: false,
-      status: "invalid",
-      error: `Facility '${visit.facilityId}' not found.`,
-      token: tokenRecord,
-      visit,
+      site,
     };
   }
 
@@ -275,7 +243,7 @@ export async function validateInvitationToken(
     status: "valid",
     token: tokenRecord,
     visit,
-    facility,
+    site,
   };
 }
 
@@ -309,18 +277,13 @@ export async function getPublicInvitationMetadata(
     };
   }
 
-  const { token: tokenRecord, visit, facility } = validation;
+  const { token: tokenRecord, visit, site } = validation;
 
   const data: PublicInvitationMetadata = {
     token: tokenRecord.token,
     visitId: visit.id,
     status: "valid",
-    facility: {
-      id: facility.id,
-      name: facility.name,
-      address: facility.address,
-      timezone: facility.timezone,
-    },
+    site,
     host: {
       id: visit.hostId,
       name: visit.hostName,

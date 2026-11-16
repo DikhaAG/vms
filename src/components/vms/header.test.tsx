@@ -3,75 +3,45 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Header } from "./header";
 import { idDict } from "@/lib/vms/i18n/id";
-import type { Facility } from "@/lib/vms/vms-contract";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/vms/reception",
 }));
 
 describe("Header Component", () => {
-  const mockFacilities: Facility[] = [
-    {
-      id: "fac-jakarta",
-      name: "Jakarta Corporate HQ",
-      timezone: "Asia/Jakarta",
-    },
-    {
-      id: "fac-bali",
-      name: "Bali Innovation Center",
-      timezone: "Asia/Makassar",
-    },
-    {
-      id: "fac-jayapura",
-      name: "Jayapura Logistics Hub",
-      timezone: "Asia/Jayapura",
-    },
-  ];
+  const siteName = "Jakarta Corporate HQ";
+  const timezone = "Asia/Jakarta";
 
   it("renders hamburger toggle button for mobile navigation", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/reception"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
     );
 
     expect(html).toContain('aria-label="Buka menu navigasi"');
   });
 
-  it("renders facility selector with provided facilities", () => {
+  it("renders the single-site name label", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/reception"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
     );
 
     expect(html).toContain("Jakarta Corporate HQ");
-    expect(html).toContain("Bali Innovation Center");
-    expect(html).toContain("Jayapura Logistics Hub");
   });
 
-  it("renders timezone indicator for selected facility", () => {
+  it("renders timezone indicator for the site timezone", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/reception"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
     );
 
-    // Jakarta is Asia/Jakarta (WIB)
+    // Asia/Jakarta renders as WIB
     expect(html).toContain("WIB");
   });
 
   it("renders hardware system health status indicator", () => {
     const html = renderToStaticMarkup(
       <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
+        siteName={siteName}
+        timezone={timezone}
         currentPath="/vms/reception"
         systemHealthy={true}
       />
@@ -83,8 +53,8 @@ describe("Header Component", () => {
   it("renders offline hardware status indicator when systemHealthy is false", () => {
     const html = renderToStaticMarkup(
       <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
+        siteName={siteName}
+        timezone={timezone}
         currentPath="/vms/reception"
         systemHealthy={false}
       />
@@ -95,11 +65,7 @@ describe("Header Component", () => {
 
   it("renders checking gateway indicator when systemHealthy is undefined", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/reception"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
     );
 
     expect(html).toContain("Memeriksa Gateway...");
@@ -109,11 +75,7 @@ describe("Header Component", () => {
 
   it("renders active operator role chip and avatar", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/reception"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
     );
 
     expect(html).toContain(idDict.header.operatorRole);
@@ -121,11 +83,7 @@ describe("Header Component", () => {
 
   it("renders localized breadcrumb based on current path", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/active-monitoring"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/active-monitoring" />
     );
 
     expect(html).toContain("Monitoring Tamu &amp; Pintu");
@@ -138,21 +96,13 @@ describe("Header Component", () => {
       // Step 1: Server renders at T1 (12:19:17)
       vi.setSystemTime(new Date("2026-11-14T05:19:17.000Z"));
       const serverHtml = renderToStaticMarkup(
-        <Header
-          facilities={mockFacilities}
-          selectedFacilityId="fac-jakarta"
-          currentPath="/vms/reception"
-        />
+        <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
       );
 
       // Step 2: Client hydrates at T2 (12:19:18)
       vi.setSystemTime(new Date("2026-11-14T05:19:18.000Z"));
       const clientInitialHtml = renderToStaticMarkup(
-        <Header
-          facilities={mockFacilities}
-          selectedFacilityId="fac-jakarta"
-          currentPath="/vms/reception"
-        />
+        <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
       );
 
       // The initial markup generated on server and client before effects run must be identical
@@ -166,11 +116,7 @@ describe("Header Component", () => {
 
   it("enforces strict overflow constraints on header container", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/reception"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
     );
 
     expect(html).toContain("max-w-full overflow-hidden");
@@ -178,11 +124,7 @@ describe("Header Component", () => {
 
   it("hides live second clock and timezone badge on screens < 640px via responsive utility classes", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/reception"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
     );
 
     expect(html).toContain("hidden sm:flex items-center gap-1.5");
@@ -190,26 +132,17 @@ describe("Header Component", () => {
 
   it("truncates breadcrumb active page title on mobile viewports", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/active-monitoring"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/active-monitoring" />
     );
 
     expect(html).toContain("truncate max-w-[120px] sm:max-w-none");
   });
 
-  it("applies responsive max-width truncation to facility selector to prevent horizontal overflow", () => {
+  it("applies responsive max-width truncation to site name label to prevent horizontal overflow", () => {
     const html = renderToStaticMarkup(
-      <Header
-        facilities={mockFacilities}
-        selectedFacilityId="fac-jakarta"
-        currentPath="/vms/reception"
-      />
+      <Header siteName={siteName} timezone={timezone} currentPath="/vms/reception" />
     );
 
     expect(html).toContain("max-w-[120px] sm:max-w-none truncate");
   });
 });
-

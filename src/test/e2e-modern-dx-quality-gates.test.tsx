@@ -275,13 +275,13 @@ describe("Modern DX Quality Gates & Verification (Ticket 09)", () => {
 
     it("verifies tRPC caller execution against in-memory repository", async () => {
       const repository = new InMemoryVmsRepository();
-      const ctx = await createContext({ repository, facilityTimezone: "Asia/Jakarta" });
+      const ctx = await createContext({ repository });
       const caller = appRouter.createCaller(ctx);
 
       const visits = await caller.monitoring.listActive();
       expect(Array.isArray(visits.activeVisits)).toBe(true);
 
-      const accessLevels = await caller.accessLevel.list({ facilityId: "fac-jakarta" });
+      const accessLevels = await caller.accessLevel.list();
       expect(Array.isArray(accessLevels)).toBe(true);
     });
   });
