@@ -66,7 +66,6 @@ export type CheckInInput = z.infer<typeof checkInInputSchema>;
 
 export const walkInRegistrationSchema = z
   .object({
-    facilityId: z.string().trim().optional(),
     hostId: z.string().trim().optional(),
     hostName: z.string().trim().optional(),
     visitorFamilyName: z
@@ -131,7 +130,6 @@ export type WalkInRegistrationInput = z.infer<typeof walkInRegistrationSchema>;
 
 export const visitorSearchQuerySchema = z.object({
   query: z.string().default(""),
-  facilityId: z.string().optional(),
   status: z.union([visitStatusSchema, z.array(visitStatusSchema)]).optional(),
 });
 export type VisitorSearchQuery = z.infer<typeof visitorSearchQuerySchema>;
@@ -157,8 +155,6 @@ export const checkInPassSchema = z.object({
   certificateNo: z.string().optional(),
   hostId: z.string().optional(),
   hostName: z.string().optional(),
-  facilityId: z.string().optional(),
-  facilityName: z.string().optional(),
   scheduledStartTime: z.string(),
   scheduledEndTime: z.string(),
   actualCheckInTimeUtc: z.string(),
@@ -249,7 +245,6 @@ export function validateWalkInRegistrationInput(
   return {
     valid: true,
     input: {
-      facilityId: result.data.facilityId,
       hostId: result.data.hostId,
       hostName: result.data.hostName,
       visitorFamilyName: result.data.visitorFamilyName,
@@ -316,7 +311,6 @@ export function validateVisitorSearchQuery(
     valid: true,
     input: {
       query: result.data.query.trim(),
-      facilityId: result.data.facilityId?.trim() || undefined,
       status: result.data.status,
     },
   };

@@ -160,14 +160,29 @@ describe("checkin-contract", () => {
 
       expect(outcome.valid).toBe(true);
       if (outcome.valid) {
-        expect(outcome.input.facilityId).toBeUndefined();
+        expect(outcome.input).not.toHaveProperty("facilityId");
         expect(outcome.input.visitorFamilyName).toBe("Pratama");
+      }
+    });
+
+    it("accepts a legacy client payload carrying facilityId but drops it from the validated input", () => {
+      const outcome = validateWalkInRegistrationInput({
+        facilityId: "fac-jakarta",
+        visitorFamilyName: "Pratama",
+        visitorGivenName: "Rian",
+        visitReasonType: 0,
+        receptionistUserId: "rec-01",
+      });
+
+      expect(outcome.valid).toBe(true);
+      if (outcome.valid) {
+        expect(outcome.input).not.toHaveProperty("facilityId");
       }
     });
   });
 
   describe("validateVisitorSearchQuery", () => {
-    it("passes with search query and facilityId", () => {
+    it("searches the whole site and drops a legacy facilityId filter", () => {
       const outcome = validateVisitorSearchQuery({
         query: "Pratama",
         facilityId: "fac-jakarta",
@@ -176,7 +191,7 @@ describe("checkin-contract", () => {
       expect(outcome.valid).toBe(true);
       if (outcome.valid) {
         expect(outcome.input.query).toBe("Pratama");
-        expect(outcome.input.facilityId).toBe("fac-jakarta");
+        expect(outcome.input).not.toHaveProperty("facilityId");
       }
     });
 
@@ -229,7 +244,6 @@ describe("checkin-contract", () => {
 
     it("validates walkInRegistrationSchema directly", () => {
       const valid = walkInRegistrationSchema.safeParse({
-        facilityId: "fac-jkt",
         visitorFamilyName: "Pratama",
         visitorGivenName: "Rian",
         visitReasonType: 0,

@@ -4,10 +4,10 @@
 
 **Blocked by:** 04: Pre-Registration & HikCentral Artemis Timezone Alignment
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] Reception desk dashboard (`/vms/reception`) searches and manages visitors across the entire site without requiring a facility filter in `UiFilterToolbar`.
-- [ ] Receptionist check-in search API (`GET /api/vms/check-in/search`) searches active and pre-registered visits globally.
-- [ ] Walk-in registration modal and API (`POST /api/vms/check-in/walk-in`) process arriving unscheduled visitors directly to the single site without requiring facility selection.
-- [ ] Check-in processing issues visitor passes and activates credentials across building doors without facility boundaries.
-- [ ] Tests verify search, badge printing, and walk-in check-in workflows end-to-end on the single-site reception desk.
+- [x] Reception desk dashboard (`/vms/reception`) searches and manages visitors across the entire site without requiring a facility filter in `UiFilterToolbar`.
+- [x] Receptionist check-in search API (`GET /api/vms/check-in/search`) searches active and pre-registered visits globally.
+- [x] Walk-in registration modal and API (`POST /api/vms/check-in/walk-in`) process arriving unscheduled visitors directly to the single site without requiring facility selection.
+- [x] Check-in processing issues visitor passes and activates credentials across building doors without facility boundaries.
+- [x] Tests verify search, badge printing, and walk-in check-in workflows end-to-end on the single-site reception desk.
