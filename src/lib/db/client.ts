@@ -1,8 +1,19 @@
 import { Pool, type PoolConfig } from "pg";
-import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import {
+  drizzle,
+  type NodePgDatabase,
+  type NodePgQueryResultHKT,
+} from "drizzle-orm/node-postgres";
+import type { PgDatabase } from "drizzle-orm/pg-core";
 import * as schema from "./schema";
 
 export type VmsDatabase = NodePgDatabase<typeof schema>;
+
+/**
+ * Anything that can run a query: the pooled database or an open transaction.
+ * Write helpers take this so the same code runs standalone or inside `db.transaction`.
+ */
+export type VmsExecutor = PgDatabase<NodePgQueryResultHKT, typeof schema>;
 
 export interface PostgresClientOptions {
   connectionString?: string;

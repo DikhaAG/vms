@@ -1,5 +1,5 @@
 import { eq, and, desc } from "drizzle-orm";
-import type { VmsDatabase } from "../db/client";
+import type { VmsDatabase, VmsExecutor } from "../db/client";
 import { createPostgresClient } from "../db/client";
 import * as s from "../db/schema";
 import type {
@@ -145,8 +145,12 @@ export class PostgresVmsRepository implements IVmsRepository {
   }
 
   async saveVisit(visit: Visit): Promise<void> {
+    await this.writeVisit(this.db, visit);
+  }
+
+  private async writeVisit(executor: VmsExecutor, visit: Visit): Promise<void> {
     const cloned = structuredClone(visit);
-    await this.db
+    await executor
       .insert(s.visits)
       .values({
         id: cloned.id,
@@ -236,7 +240,6 @@ export class PostgresVmsRepository implements IVmsRepository {
         (checkInData.verificationMethod as VerificationMethod) || "manual",
       notes: checkInData.notes,
     };
-    await this.saveCheckInEvent(auditEvent);
 
     const updated: Visit = {
       ...existing,
@@ -253,13 +256,23 @@ export class PostgresVmsRepository implements IVmsRepository {
       updatedAtUtc: new Date().toISOString(),
     };
 
-    await this.saveVisit(updated);
+    await this.db.transaction(async (tx) => {
+      await this.writeCheckInEvent(tx, auditEvent);
+      await this.writeVisit(tx, updated);
+    });
     return structuredClone(updated);
   }
 
   async saveCheckInEvent(event: CheckInAuditEvent): Promise<void> {
+    await this.writeCheckInEvent(this.db, event);
+  }
+
+  private async writeCheckInEvent(
+    executor: VmsExecutor,
+    event: CheckInAuditEvent,
+  ): Promise<void> {
     const cloned = structuredClone(event);
-    await this.db
+    await executor
       .insert(s.checkInAuditEvents)
       .values({
         id: cloned.id,
@@ -298,8 +311,15 @@ export class PostgresVmsRepository implements IVmsRepository {
   }
 
   async saveApprovalRecord(record: ApprovalRecord): Promise<void> {
+    await this.writeApprovalRecord(this.db, record);
+  }
+
+  private async writeApprovalRecord(
+    executor: VmsExecutor,
+    record: ApprovalRecord,
+  ): Promise<void> {
     const cloned = structuredClone(record);
-    await this.db
+    await executor
       .insert(s.approvalRecords)
       .values({
         id: cloned.id,
@@ -340,8 +360,6 @@ export class PostgresVmsRepository implements IVmsRepository {
       throw new Error(`Visit not found: ${visitId}`);
     }
 
-    await this.saveApprovalRecord(decision.approvalRecord);
-
     const updated: Visit = {
       ...existing,
       status: decision.newStatus,
@@ -350,7 +368,10 @@ export class PostgresVmsRepository implements IVmsRepository {
         decision.credentialSyncStatus ?? existing.credentialSyncStatus,
       updatedAtUtc: new Date().toISOString(),
     };
-    await this.saveVisit(updated);
+    await this.db.transaction(async (tx) => {
+      await this.writeApprovalRecord(tx, decision.approvalRecord);
+      await this.writeVisit(tx, updated);
+    });
     return structuredClone(updated);
   }
 
@@ -564,7 +585,6 @@ export class PostgresVmsRepository implements IVmsRepository {
       isForced: checkOutData.isForced,
       appointRecordIdRevoked: checkOutData.appointRecordIdRevoked,
     };
-    await this.saveCheckOutEvent(auditEvent);
 
     const updated: Visit = {
       ...existing,
@@ -575,13 +595,23 @@ export class PostgresVmsRepository implements IVmsRepository {
       checkedOutByUserId: checkOutData.operatorUserId,
       updatedAtUtc: new Date().toISOString(),
     };
-    await this.saveVisit(updated);
+    await this.db.transaction(async (tx) => {
+      await this.writeCheckOutEvent(tx, auditEvent);
+      await this.writeVisit(tx, updated);
+    });
     return structuredClone(updated);
   }
 
   async saveCheckOutEvent(event: CheckOutAuditEvent): Promise<void> {
+    await this.writeCheckOutEvent(this.db, event);
+  }
+
+  private async writeCheckOutEvent(
+    executor: VmsExecutor,
+    event: CheckOutAuditEvent,
+  ): Promise<void> {
     const cloned = structuredClone(event);
-    await this.db
+    await executor
       .insert(s.checkOutAuditEvents)
       .values({
         id: cloned.id,
