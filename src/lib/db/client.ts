@@ -27,10 +27,13 @@ export function getOrCreatePool(options?: PostgresClientOptions): Pool {
     return globalForDb.pgPool;
   }
 
-  const connectionString =
-    options?.connectionString ||
-    process.env.DATABASE_URL ||
-    "postgresql://postgres:postgres@localhost:5432/vms_db";
+  const connectionString = options?.connectionString || process.env.DATABASE_URL;
+
+  if (!connectionString) {
+    throw new Error(
+      "DATABASE_URL is not set. The VMS requires PostgreSQL; copy .env.example to .env.local and set DATABASE_URL.",
+    );
+  }
 
   const pool = new Pool({
     connectionString,

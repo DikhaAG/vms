@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Pool } from "pg";
-import { createPostgresClient, initPostgresDb } from "./client";
+import { createPostgresClient, getOrCreatePool, initPostgresDb } from "./client";
 
 describe("PostgreSQL Database Client & Initialization", () => {
   it("creates a drizzle client instance over a mock pg Pool", () => {
@@ -40,5 +40,14 @@ describe("PostgreSQL Database Client & Initialization", () => {
     const result = await initPostgresDb(mockPool);
     expect(result.ok).toBe(false);
     expect(result.error).toContain("Connection refused");
+  });
+
+  it("refuses to create a pool without DATABASE_URL instead of guessing a default", () => {
+    vi.stubEnv("DATABASE_URL", "");
+    try {
+      expect(() => getOrCreatePool()).toThrow(/DATABASE_URL is not set/);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

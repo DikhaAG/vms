@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  createVmsRepository,
   InMemoryVmsRepository,
+  PostgresVmsRepository,
   DEFAULT_DOORS,
   TEST_FIXTURE_DOORS,
   DEFAULT_ACCESS_LEVELS,
@@ -1158,5 +1160,11 @@ describe("InMemoryVmsRepository", () => {
         }),
       ).rejects.toThrow(/Visit not found/i);
     });
+  });
+});
+
+describe("createVmsRepository", () => {
+  it("always returns the PostgreSQL repository, with no in-memory fallback", () => {
+    expect(createVmsRepository()).toBeInstanceOf(PostgresVmsRepository);
   });
 });

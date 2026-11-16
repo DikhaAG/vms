@@ -33,10 +33,17 @@ import type { VisitorProfile } from "./group-contract";
 import type { InvitationToken } from "./invitation-contract";
 
 export class PostgresVmsRepository implements IVmsRepository {
-  private db: VmsDatabase;
+  private injectedDb?: VmsDatabase;
 
   constructor(db?: VmsDatabase) {
-    this.db = db ?? createPostgresClient();
+    this.injectedDb = db;
+  }
+
+  // Resolved lazily so importing this module (e.g. during `next build`) never
+  // requires DATABASE_URL; the connection is only demanded on the first query.
+  private get db(): VmsDatabase {
+    this.injectedDb ??= createPostgresClient();
+    return this.injectedDb;
   }
 
   // 0. Global System Settings (Single-Site Architecture)
