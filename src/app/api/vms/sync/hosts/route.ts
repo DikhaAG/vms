@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { syncHikCentralHosts } from "@/lib/vms/hikcentral-host-adapter";
 import type { PreRegistrationMode, StubScenario } from "@/lib/vms/vms-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request): Promise<NextResponse> {
+async function handlePOST(request: Request): Promise<NextResponse> {
   let body: Record<string, unknown> = {};
 
   if (request.headers.get("content-type")?.includes("application/json")) {
@@ -60,3 +61,5 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   return NextResponse.json(result, { status: 200 });
 }
+
+export const POST = withServerErrors(handlePOST);

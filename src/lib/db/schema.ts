@@ -5,7 +5,7 @@ import {
   boolean,
   jsonb,
 } from "drizzle-orm/pg-core";
-import type { Facility, HostEmployee, Visit } from "../vms/vms-contract";
+import type { HostEmployee, Visit, SystemSettings } from "../vms/vms-contract";
 import type { FacilityDoor, DoorTapEvent, CheckOutAuditEvent, EmergencyAccessGrant, HostArrivalNotification } from "../vms/checkout-contract";
 import type { AccessLevel } from "../vms/access-level-contract";
 import type { VisitorProfile } from "../vms/group-contract";
@@ -13,29 +13,31 @@ import type { InvitationToken } from "../vms/invitation-contract";
 import type { ApprovalRecord } from "../vms/approval-contract";
 import type { CheckInAuditEvent } from "../vms/checkin-contract";
 
-// 1. Facilities
-export const facilities = pgTable("facilities", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  timezone: text("timezone").notNull(),
-  address: text("address"),
-  overstayGraceMinutes: integer("overstay_grace_minutes").default(15),
-  data: jsonb("data").$type<Facility>().notNull(),
+// 0. Global System Settings (Single-Site Architecture)
+export const systemSettings = pgTable("system_settings", {
+  id: text("id").primaryKey(), // constant singleton "default"
+  siteName: text("site_name").notNull().default("Gedung Utama"),
+  timezone: text("timezone").notNull().default("Asia/Jakarta"),
+  overstayGraceMinutes: integer("overstay_grace_minutes").notNull().default(15),
+  autoCheckInEarlyBufferMinutes: integer("auto_check_in_early_buffer_minutes").notNull().default(15),
+  updatedAt: text("updated_at").notNull(),
+  data: jsonb("data").$type<SystemSettings>().notNull(),
 });
 
-// 2. Facility Doors
+// 1. Doors (flat, site-wide; physical table keeps its legacy name)
 export const facilityDoors = pgTable("facility_doors", {
   doorIndexCode: text("door_index_code").primaryKey(),
-  facilityId: text("facility_id").notNull(),
+  regionIndexCode: text("region_index_code"),
   doorName: text("door_name").notNull(),
   isPerimeter: boolean("is_perimeter").notNull().default(false),
   data: jsonb("data").$type<FacilityDoor>().notNull(),
 });
 
+export const doors = facilityDoors;
+
 // 3. Access Levels
 export const accessLevels = pgTable("access_levels", {
   id: text("id").primaryKey(),
-  facilityId: text("facility_id").notNull(),
   name: text("name").notNull(),
   data: jsonb("data").$type<AccessLevel>().notNull(),
 });
@@ -58,7 +60,6 @@ export const visitorProfiles = pgTable("visitor_profiles", {
 // 6. Visits
 export const visits = pgTable("visits", {
   id: text("id").primaryKey(),
-  facilityId: text("facility_id").notNull(),
   status: text("status").notNull(),
   createdAtUtc: text("created_at_utc").notNull(),
   data: jsonb("data").$type<Visit>().notNull(),
@@ -126,18 +127,19 @@ export const hostArrivalNotifications = pgTable("host_arrival_notifications", {
  */
 export function getInitSchemaSql(): string {
   return `
-    CREATE TABLE IF NOT EXISTS facilities (
+    CREATE TABLE IF NOT EXISTS system_settings (
       id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      timezone TEXT NOT NULL,
-      address TEXT,
-      overstay_grace_minutes INTEGER DEFAULT 15,
+      site_name TEXT NOT NULL DEFAULT 'Gedung Utama',
+      timezone TEXT NOT NULL DEFAULT 'Asia/Jakarta',
+      overstay_grace_minutes INTEGER NOT NULL DEFAULT 15,
+      auto_check_in_early_buffer_minutes INTEGER NOT NULL DEFAULT 15,
+      updated_at TEXT NOT NULL,
       data JSONB NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS facility_doors (
       door_index_code TEXT PRIMARY KEY,
-      facility_id TEXT NOT NULL,
+      region_index_code TEXT,
       door_name TEXT NOT NULL,
       is_perimeter BOOLEAN NOT NULL DEFAULT FALSE,
       data JSONB NOT NULL
@@ -145,7 +147,6 @@ export function getInitSchemaSql(): string {
 
     CREATE TABLE IF NOT EXISTS access_levels (
       id TEXT PRIMARY KEY,
-      facility_id TEXT NOT NULL,
       name TEXT NOT NULL,
       data JSONB NOT NULL
     );
@@ -165,7 +166,6 @@ export function getInitSchemaSql(): string {
 
     CREATE TABLE IF NOT EXISTS visits (
       id TEXT PRIMARY KEY,
-      facility_id TEXT NOT NULL,
       status TEXT NOT NULL,
       created_at_utc TEXT NOT NULL,
       data JSONB NOT NULL
@@ -220,5 +220,59 @@ export function getInitSchemaSql(): string {
       created_at_utc TEXT NOT NULL,
       data JSONB NOT NULL
     );
+
+    -- Upgrade path for databases created before these columns existed.
+    -- CREATE TABLE IF NOT EXISTS above is a no-op on such databases, so every
+    -- column added after the first release needs its own idempotent ALTER.
+    ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS site_name TEXT NOT NULL DEFAULT 'Gedung Utama';
+    ALTER TABLE facility_doors ADD COLUMN IF NOT EXISTS region_index_code TEXT;
+
+    -- Single-site contract migration: carry the legacy facility's operator
+    -- settings into the global singleton, then purge the Facility entity.
+    -- The backfill only runs while the legacy table still exists and never
+    -- overwrites settings an operator has already saved. With several legacy
+    -- facilities the lowest id wins, so the result is deterministic.
+    DO $$
+    BEGIN
+      IF to_regclass('public.facilities') IS NOT NULL THEN
+        INSERT INTO system_settings (
+          id, site_name, timezone, overstay_grace_minutes,
+          auto_check_in_early_buffer_minutes, updated_at, data
+        )
+        SELECT
+          'default', legacy.site_name, legacy.timezone, legacy.overstay_grace_minutes,
+          15, legacy.updated_at,
+          jsonb_build_object(
+            'id', 'default',
+            'siteName', legacy.site_name,
+            'timezone', legacy.timezone,
+            'overstayGraceMinutes', legacy.overstay_grace_minutes,
+            'autoCheckInEarlyBufferMinutes', 15,
+            'updatedAt', legacy.updated_at
+          )
+        FROM (
+          SELECT
+            COALESCE(NULLIF(btrim(f.name), ''), 'Gedung Utama') AS site_name,
+            f.timezone AS timezone,
+            COALESCE(f.overstay_grace_minutes, 15) AS overstay_grace_minutes,
+            to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS updated_at
+          FROM facilities f
+          ORDER BY f.id
+          LIMIT 1
+        ) AS legacy
+        ON CONFLICT (id) DO NOTHING;
+      END IF;
+    END $$;
+
+    -- Rows written before the purge still carry facilityId inside their JSONB
+    -- payload; strip it so the API never returns the retired field.
+    UPDATE visits SET data = data - 'facilityId' WHERE data ? 'facilityId';
+    UPDATE access_levels SET data = data - 'facilityId' WHERE data ? 'facilityId';
+    UPDATE facility_doors SET data = data - 'facilityId' WHERE data ? 'facilityId';
+
+    ALTER TABLE visits DROP COLUMN IF EXISTS facility_id;
+    ALTER TABLE access_levels DROP COLUMN IF EXISTS facility_id;
+    ALTER TABLE facility_doors DROP COLUMN IF EXISTS facility_id;
+    DROP TABLE IF EXISTS facilities;
   `;
 }

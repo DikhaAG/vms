@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import { VisitorsClient } from "./visitors-client";
-import { PageHeader } from "@/components/vms/ui";
+import { PageHeader, UiLoadingFallback } from "@/components/vms/ui";
+import { idDict } from "@/lib/vms/i18n/id";
 
 export const metadata = {
   title: "Buku Tamu & Basis Data Biometrik | VMS",
@@ -17,7 +19,9 @@ export default async function VisitorsPage() {
     <div className="space-y-6">
       <PageHeader pageKey="visitors" badge="Privasi & Biometrik" />
 
-      <VisitorsClient initialProfiles={initialProfiles} />
+      <Suspense fallback={<UiLoadingFallback message={idDict.common.loading} />}>
+        <VisitorsClient initialProfiles={initialProfiles} />
+      </Suspense>
     </div>
   );
 }

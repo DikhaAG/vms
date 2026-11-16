@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useId } from "react";
-import type { Facility } from "@/lib/vms/vms-contract";
 import type { FacilityDoor } from "@/lib/vms/checkout-contract";
 import {
   TIME_SCHEDULE_LABELS,
@@ -15,7 +14,6 @@ import { UiModal, UiButton } from "@/components/vms/ui";
 const COMMON_FLOOR_PRESETS = ["B1", "1F", "2F", "3F", "4F", "5F"];
 
 export interface AccessLevelFormData {
-  facilityId: string;
   name: string;
   description: string;
   timeScheduleId: TimeScheduleTemplateId;
@@ -27,9 +25,7 @@ export interface AccessLevelFormData {
 export interface AccessLevelFormModalProps {
   isOpen: boolean;
   editingLevel: AccessLevel | null;
-  facilities: Facility[];
   availableDoors: FacilityDoor[];
-  defaultFacilityId?: string;
   isSyncingDoors: boolean;
   isSubmitting: boolean;
   formErrors: Record<string, string>;
@@ -41,9 +37,7 @@ export interface AccessLevelFormModalProps {
 export function AccessLevelFormModal({
   isOpen,
   editingLevel,
-  facilities,
   availableDoors,
-  defaultFacilityId,
   isSyncingDoors,
   isSubmitting,
   formErrors: externalFormErrors,
@@ -54,12 +48,6 @@ export function AccessLevelFormModal({
   const formId = useId();
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  const [targetFacilityId, setTargetFacilityId] = useState(() => {
-    if (editingLevel) return editingLevel.facilityId;
-    return defaultFacilityId && defaultFacilityId !== "all"
-      ? defaultFacilityId
-      : facilities[0]?.id || "fac-jakarta";
-  });
   const [name, setName] = useState(() => editingLevel?.name ?? "");
   const [description, setDescription] = useState(
     () => editingLevel?.description ?? "",
@@ -86,22 +74,14 @@ export function AccessLevelFormModal({
 
   const mergedErrors = { ...localErrors, ...externalFormErrors };
 
-  const displayedAvailableDoors = availableDoors
-    .filter(
-      (d) =>
-        !targetFacilityId ||
-        !d.facilityId ||
-        d.facilityId === targetFacilityId ||
-        d.facilityId === "fac-main-01",
-    )
-    .filter((d) => {
-      if (!doorSearchQuery.trim()) return true;
-      const q = doorSearchQuery.toLowerCase();
-      return (
-        d.doorName.toLowerCase().includes(q) ||
-        d.doorIndexCode.toLowerCase().includes(q)
-      );
-    });
+  const displayedAvailableDoors = availableDoors.filter((d) => {
+    if (!doorSearchQuery.trim()) return true;
+    const q = doorSearchQuery.toLowerCase();
+    return (
+      d.doorName.toLowerCase().includes(q) ||
+      d.doorIndexCode.toLowerCase().includes(q)
+    );
+  });
 
   const handleToggleDoor = (doorIndexCode: string) => {
     setDoors((prev) =>
@@ -148,7 +128,6 @@ export function AccessLevelFormModal({
 
     setLocalErrors({});
     await onSave({
-      facilityId: targetFacilityId,
       name: name.trim(),
       description: description.trim(),
       timeScheduleId,
@@ -173,27 +152,6 @@ export function AccessLevelFormModal({
       className="max-h-[90vh] overflow-y-auto"
     >
       <form onSubmit={handleSubmit} className="mt-4 space-y-4" id={formId}>
-        <div>
-          <label
-            htmlFor={`${formId}-target-facility`}
-            className="block text-xs font-medium text-[var(--ks-muted)]"
-          >
-            Gedung / Lokasi Fasilitas *
-          </label>
-          <select
-            id={`${formId}-target-facility`}
-            value={targetFacilityId}
-            onChange={(e) => setTargetFacilityId(e.target.value)}
-            className="mt-1 block w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] shadow-xs focus:border-[var(--ks-kinpaku)] focus:outline-hidden"
-          >
-            {facilities.map((fac) => (
-              <option key={fac.id} value={fac.id}>
-                {fac.name} ({fac.timezone})
-              </option>
-            ))}
-          </select>
-        </div>
-
         <div>
           <label
             htmlFor={`${formId}-name`}

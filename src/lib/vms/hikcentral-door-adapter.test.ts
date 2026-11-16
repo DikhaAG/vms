@@ -88,7 +88,6 @@ describe("hikcentral-door-adapter", () => {
       const result = await syncHikCentralDoors({
         client: mockClient,
         repository: repo,
-        facilityId: "fac-hq",
         userId: "operator-01",
       });
 
@@ -107,7 +106,7 @@ describe("hikcentral-door-adapter", () => {
         },
       );
 
-      const savedDoors = await repo.listDoors("fac-hq");
+      const savedDoors = await repo.listDoors();
       expect(savedDoors).toHaveLength(2);
 
       const turnstile = savedDoors.find((d) => d.doorIndexCode === "door-turnstile-01");
@@ -115,12 +114,143 @@ describe("hikcentral-door-adapter", () => {
       expect(turnstile?.doorName).toBe("Turnstile Lobby Ground Floor");
       expect(turnstile?.isPerimeter).toBe(true);
       expect(turnstile?.accessType).toBe("DUAL_DIRECTION");
+      expect(turnstile?.regionIndexCode).toBe("reg-lobby");
+      expect(turnstile?.channelNo).toBe("1");
+      expect(turnstile?.doorState).toBe(1);
+      expect(turnstile?.isOnline).toBe(true);
+      expect(turnstile).not.toHaveProperty("facilityId");
 
       const serverRoom = savedDoors.find((d) => d.doorIndexCode === "door-server-02");
       expect(serverRoom).toBeDefined();
       expect(serverRoom?.doorName).toBe("Server Room Primary");
       expect(serverRoom?.isPerimeter).toBe(false);
       expect(serverRoom?.accessType).toBe("SINGLE_DIRECTION_IN");
+      expect(serverRoom?.regionIndexCode).toBe("reg-data-center");
+      expect(serverRoom?.channelNo).toBe("2");
+      expect(serverRoom?.doorState).toBe(1);
+      expect(serverRoom?.isOnline).toBe(true);
+    });
+
+    it("synchronizes doors without synthetic facilityId and marks offline doors accurately", async () => {
+      const repo = new InMemoryVmsRepository();
+
+      const mockPost = vi.fn().mockResolvedValue({
+        code: "0",
+        msg: "Success",
+        data: {
+          total: 2,
+          list: [
+            {
+              doorIndexCode: "door-flat-01",
+              regionIndexCode: "region-north",
+              doorNo: "10",
+              doorName: "North Perimeter Gate",
+              doorState: 1,
+              doorOutState: 1,
+            },
+            {
+              doorIndexCode: "door-offline-02",
+              regionIndexCode: "region-south",
+              doorNo: "11",
+              doorName: "South Barrier Gate",
+              doorState: 4, // offline
+              doorOutState: 4,
+            },
+          ],
+        },
+      });
+
+      const mockClient = { post: mockPost } as unknown as HikCentralClient;
+
+      const result = await syncHikCentralDoors({
+        client: mockClient,
+        repository: repo,
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.totalSynced).toBe(2);
+
+      const savedDoors = await repo.listDoors();
+      expect(savedDoors).toHaveLength(2);
+
+      const gate = savedDoors.find((d) => d.doorIndexCode === "door-flat-01");
+      expect(gate).toBeDefined();
+      expect(gate).not.toHaveProperty("facilityId"); // no synthetic facility ID
+      expect(gate?.regionIndexCode).toBe("region-north");
+      expect(gate?.channelNo).toBe("10");
+      expect(gate?.doorState).toBe(1);
+      expect(gate?.isOnline).toBe(true);
+
+      const offlineDoor = savedDoors.find((d) => d.doorIndexCode === "door-offline-02");
+      expect(offlineDoor).toBeDefined();
+      expect(offlineDoor).not.toHaveProperty("facilityId");
+      expect(offlineDoor?.regionIndexCode).toBe("region-south");
+      expect(offlineDoor?.doorState).toBe(4);
+      expect(offlineDoor?.isOnline).toBe(false); // correctly deduced as offline
+    });
+
+    it("handles multi-page pagination when total exceeds pageSize", async () => {
+      const repo = new InMemoryVmsRepository();
+
+      const mockPost = vi
+        .fn()
+        .mockResolvedValueOnce({
+          code: "0",
+          msg: "Success",
+          data: {
+            total: 3,
+            pageNo: 1,
+            pageSize: 2,
+            list: [
+              { doorIndexCode: "door-page1-01", doorName: "Door Page 1 A" },
+              { doorIndexCode: "door-page1-02", doorName: "Door Page 1 B" },
+            ],
+          },
+        })
+        .mockResolvedValueOnce({
+          code: "0",
+          msg: "Success",
+          data: {
+            total: 3,
+            pageNo: 2,
+            pageSize: 2,
+            list: [
+              { doorIndexCode: "door-page2-03", doorName: "Door Page 2 C" },
+            ],
+          },
+        });
+
+      const mockClient = { post: mockPost } as unknown as HikCentralClient;
+
+      const result = await syncHikCentralDoors({
+        client: mockClient,
+        repository: repo,
+        pageSize: 2,
+      });
+
+      expect(result.ok).toBe(true);
+      expect(result.totalSynced).toBe(3);
+      expect(mockPost).toHaveBeenCalledTimes(2);
+
+      const savedDoors = await repo.listDoors();
+      expect(savedDoors).toHaveLength(3);
+    });
+
+    it("handles network failure and unreachable hardware gracefully", async () => {
+      const repo = new InMemoryVmsRepository();
+
+      const mockPost = vi.fn().mockRejectedValue(new Error("connect ETIMEDOUT 10.0.0.1:443"));
+      const mockClient = { post: mockPost } as unknown as HikCentralClient;
+
+      const result = await syncHikCentralDoors({
+        client: mockClient,
+        repository: repo,
+      });
+
+      expect(result.ok).toBe(false);
+      expect(result.totalSynced).toBe(0);
+      expect(result.error?.kind).toBe("upstream");
+      expect(result.error?.message).toContain("ETIMEDOUT");
     });
 
     it("handles non-zero error code from HikCentral", async () => {

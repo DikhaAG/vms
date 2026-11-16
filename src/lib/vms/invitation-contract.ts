@@ -4,20 +4,17 @@
  * Free of Node.js dependencies and process.env reads — safe for Client Components.
  */
 
+import { z } from "zod";
+import { siteSchema } from "./site-contract";
 import {
-  type CertificateType,
-  CERTIFICATE_TYPES,
   FORBIDDEN_HIKCENTRAL_CHARS,
-  isCertificateType,
-  isPreRegistrationMode,
-  isStubScenario,
-  isVisitReasonType,
-  type PreRegistrationMode,
-  type StubScenario,
+  certificateTypeSchema,
+  preRegistrationModeSchema,
+  stubScenarioSchema,
+  visitReasonTypeSchema,
   type Visit,
-  type VisitReasonType,
-  VISIT_REASON_TYPES,
 } from "./vms-contract";
+import { formatZodErrors, isRecord } from "./validation-helpers";
 
 export const INVITATION_STATUSES = [
   "valid",
@@ -25,40 +22,125 @@ export const INVITATION_STATUSES = [
   "expired",
   "consumed",
 ] as const;
-export type InvitationStatus = (typeof INVITATION_STATUSES)[number];
+export const invitationStatusSchema = z.enum(INVITATION_STATUSES);
+export type InvitationStatus = z.infer<typeof invitationStatusSchema>;
 
 export function isInvitationStatus(value: unknown): value is InvitationStatus {
-  return (
-    typeof value === "string" &&
-    (INVITATION_STATUSES as readonly string[]).includes(value)
-  );
+  return invitationStatusSchema.safeParse(value).success;
 }
 
-export interface InvitationToken {
-  token: string;
-  visitId: string;
-  expiresAtUtc: string;
-  isConsumed: boolean;
-  consumedAtUtc?: string;
-  createdAtUtc: string;
-}
+export const invitationTokenSchema = z.object({
+  token: z.string(),
+  visitId: z.string(),
+  expiresAtUtc: z.string(),
+  isConsumed: z.boolean(),
+  consumedAtUtc: z.string().optional(),
+  createdAtUtc: z.string(),
+});
+export type InvitationToken = z.infer<typeof invitationTokenSchema>;
 
-export interface CreateInvitationInput {
-  facilityId: string;
-  hostId?: string;
-  hostName?: string;
-  visitReasonType: VisitReasonType;
-  visitReasonDetail?: string;
-  scheduledStartTime: string;
-  scheduledEndTime: string;
-  visitorFamilyName?: string;
-  visitorGivenName?: string;
-  visitorPhone?: string;
-  visitorEmail?: string;
-  expiresInDays?: number;
-  mode?: PreRegistrationMode;
-  stubScenario?: StubScenario;
-}
+export const createInvitationSchema = z
+  .object({
+    hostId: z.string().trim().optional(),
+    hostName: z.string().trim().optional(),
+    visitReasonType: visitReasonTypeSchema,
+    visitReasonDetail: z
+      .string({ error: "Visit reason detail must be a string." })
+      .trim()
+      .max(128, "Visit reason detail must be at most 128 characters.")
+      .optional(),
+    scheduledStartTime: z
+      .string({ error: "Scheduled start time is required." })
+      .trim()
+      .min(1, "Scheduled start time is required."),
+    scheduledEndTime: z
+      .string({ error: "Scheduled end time is required." })
+      .trim()
+      .min(1, "Scheduled end time is required."),
+    visitorFamilyName: z
+      .string({ error: "Visitor family name must be a string." })
+      .trim()
+      .max(256, "Visitor family name must be at most 256 characters.")
+      .refine((val) => !FORBIDDEN_HIKCENTRAL_CHARS.test(val), {
+        message:
+          "Visitor family name cannot contain special characters like ' / \\ : * ? \" < > |",
+      })
+      .optional(),
+    visitorGivenName: z
+      .string({ error: "Visitor given name must be a string." })
+      .trim()
+      .max(256, "Visitor given name must be at most 256 characters.")
+      .refine((val) => !FORBIDDEN_HIKCENTRAL_CHARS.test(val), {
+        message:
+          "Visitor given name cannot contain special characters like ' / \\ : * ? \" < > |",
+      })
+      .optional(),
+    visitorPhone: z
+      .string({ error: "Phone number must be a string." })
+      .trim()
+      .max(20, "Phone number must be at most 20 characters.")
+      .optional(),
+    visitorEmail: z
+      .string({ error: "Email must be a string." })
+      .trim()
+      .refine((val) => !val || val.includes("@"), {
+        message: "Email must be a valid email address.",
+      })
+      .optional(),
+    expiresInDays: z
+      .number({ error: "Expiry in days must be a positive number." })
+      .positive("Expiry in days must be a positive number.")
+      .optional(),
+    mode: preRegistrationModeSchema.optional(),
+    stubScenario: stubScenarioSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.visitReasonType === 4 &&
+      (!data.visitReasonDetail || !data.visitReasonDetail.trim())
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["visitReasonDetail"],
+        message:
+          "Visit reason detail is required when reason type is 'Others' (4).",
+      });
+    }
+
+    if (data.scheduledStartTime && data.scheduledEndTime) {
+      const s = data.scheduledStartTime.trim();
+      const e = data.scheduledEndTime.trim();
+      const startMs = Date.parse(
+        s.includes("Z") || /[+-]\d{2}/.test(s) ? s : `${s}Z`,
+      );
+      const endMs = Date.parse(
+        e.includes("Z") || /[+-]\d{2}/.test(e) ? e : `${e}Z`,
+      );
+
+      if (isNaN(startMs)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["scheduledStartTime"],
+          message: "Invalid start time format.",
+        });
+      }
+      if (isNaN(endMs)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["scheduledEndTime"],
+          message: "Invalid end time format.",
+        });
+      }
+      if (!isNaN(startMs) && !isNaN(endMs) && endMs <= startMs) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["scheduledEndTime"],
+          message: "Scheduled end time must be after start time.",
+        });
+      }
+    }
+  });
+export type CreateInvitationInput = z.infer<typeof createInvitationSchema>;
 
 export interface CreateInvitationResult {
   ok: boolean;
@@ -74,48 +156,97 @@ export interface CreateInvitationResult {
   };
 }
 
-export interface PublicInvitationMetadata {
-  token: string;
-  visitId: string;
-  status: InvitationStatus;
-  facility: {
-    id: string;
-    name: string;
-    address?: string;
-    timezone: string;
-  };
-  host?: {
-    id?: string;
-    name?: string;
-  };
-  visitReasonType: VisitReasonType;
-  visitReasonLabel: string;
-  visitReasonDetail?: string;
-  scheduledStartTimeFacility: string;
-  scheduledEndTimeFacility: string;
-  scheduledStartTimeUtc: string;
-  scheduledEndTimeUtc: string;
-  expiresAtUtc: string;
-  isConsumed: boolean;
-  prefilledVisitor?: {
-    familyName?: string;
-    givenName?: string;
-    phone?: string;
-    email?: string;
-  };
-}
+export const publicInvitationMetadataSchema = z.object({
+  token: z.string(),
+  visitId: z.string(),
+  status: invitationStatusSchema,
+  site: siteSchema,
+  host: z
+    .object({
+      id: z.string().optional(),
+      name: z.string().optional(),
+    })
+    .optional(),
+  visitReasonType: visitReasonTypeSchema,
+  visitReasonLabel: z.string(),
+  visitReasonDetail: z.string().optional(),
+  scheduledStartTimeFacility: z.string(),
+  scheduledEndTimeFacility: z.string(),
+  scheduledStartTimeUtc: z.string(),
+  scheduledEndTimeUtc: z.string(),
+  expiresAtUtc: z.string(),
+  isConsumed: z.boolean(),
+  prefilledVisitor: z
+    .object({
+      familyName: z.string().optional(),
+      givenName: z.string().optional(),
+      phone: z.string().optional(),
+      email: z.string().optional(),
+    })
+    .optional(),
+});
+export type PublicInvitationMetadata = z.infer<
+  typeof publicInvitationMetadataSchema
+>;
 
-export interface SelfRegistrationSubmissionInput {
-  visitorFamilyName: string;
-  visitorGivenName: string;
-  visitorPhone?: string;
-  visitorEmail?: string;
-  certificateType?: CertificateType;
-  certificateNo?: string;
-  facePhoto?: string;
-  mode?: PreRegistrationMode;
-  stubScenario?: StubScenario;
-}
+export const selfRegistrationSubmissionSchema = z
+  .object({
+    visitorFamilyName: z
+      .string({ error: "Visitor family name is required." })
+      .trim()
+      .min(1, "Visitor family name is required.")
+      .max(256, "Visitor family name must be at most 256 characters.")
+      .refine((val) => !FORBIDDEN_HIKCENTRAL_CHARS.test(val), {
+        message:
+          "Visitor family name cannot contain special characters like ' / \\ : * ? \" < > |",
+      }),
+    visitorGivenName: z
+      .string({ error: "Visitor given name is required." })
+      .trim()
+      .min(1, "Visitor given name is required.")
+      .max(256, "Visitor given name must be at most 256 characters.")
+      .refine((val) => !FORBIDDEN_HIKCENTRAL_CHARS.test(val), {
+        message:
+          "Visitor given name cannot contain special characters like ' / \\ : * ? \" < > |",
+      }),
+    visitorPhone: z
+      .string({ error: "Phone number must be a string." })
+      .trim()
+      .max(20, "Phone number must be at most 20 characters.")
+      .optional(),
+    visitorEmail: z
+      .string({ error: "Email must be a string." })
+      .trim()
+      .refine((val) => !val || val.includes("@"), {
+        message: "Email must be a valid email address.",
+      })
+      .optional(),
+    certificateType: certificateTypeSchema.optional(),
+    certificateNo: z
+      .string({ error: "Certificate number must be a string." })
+      .trim()
+      .max(20, "Certificate number must be at most 20 characters.")
+      .optional(),
+    facePhoto: z
+      .string({ error: "Face photo must be a string." })
+      .trim()
+      .optional(),
+    mode: preRegistrationModeSchema.optional(),
+    stubScenario: stubScenarioSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.certificateNo && data.certificateNo.trim() && data.certificateType === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["certificateType"],
+        message:
+          "Certificate type is required when certificate number is provided.",
+      });
+    }
+  });
+export type SelfRegistrationSubmissionInput = z.infer<
+  typeof selfRegistrationSubmissionSchema
+>;
 
 export interface SelfRegistrationResult {
   ok: boolean;
@@ -127,7 +258,13 @@ export interface SelfRegistrationResult {
     qrCodeImage?: string;
   };
   error?: {
-    kind: "validation" | "not_found" | "expired" | "consumed" | "config" | "upstream";
+    kind:
+      | "validation"
+      | "not_found"
+      | "expired"
+      | "consumed"
+      | "config"
+      | "upstream";
     message: string;
     fieldErrors?: Record<string, string>;
     status?: number;
@@ -148,340 +285,43 @@ export interface ValidationFailure {
 export type ValidationOutcome<T> = ValidationSuccess<T> | ValidationFailure;
 
 /**
- * Pure validator for creating an invitation.
+ * Pure validator for creating an invitation. Backward-compatible wrapper.
  */
 export function validateCreateInvitationInput(
   raw: unknown,
 ): ValidationOutcome<CreateInvitationInput> {
-  const errors: Record<string, string> = {};
-
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { valid: false, errors: { _global: "Request payload must be an object." } };
+  if (!isRecord(raw)) {
+    return {
+      valid: false,
+      errors: { _global: "Request payload must be an object." },
+    };
   }
 
-  const record = raw as Record<string, unknown>;
-
-  // Facility ID
-  const facilityId =
-    typeof record.facilityId === "string" ? record.facilityId.trim() : "";
-  if (!facilityId) {
-    errors.facilityId = "Facility is required.";
+  const result = createInvitationSchema.safeParse(raw);
+  if (!result.success) {
+    return { valid: false, errors: formatZodErrors(result.error) };
   }
 
-  // Visit Reason
-  let visitReasonType: VisitReasonType = 0;
-  if (record.visitReasonType !== undefined && record.visitReasonType !== null) {
-    if (isVisitReasonType(record.visitReasonType)) {
-      visitReasonType = record.visitReasonType;
-    } else {
-      errors.visitReasonType = `Visit reason type must be one of: ${VISIT_REASON_TYPES.join(", ")}.`;
-    }
-  } else {
-    errors.visitReasonType = "Visit reason type is required.";
-  }
-
-  let visitReasonDetail: string | undefined;
-  if (record.visitReasonDetail !== undefined && record.visitReasonDetail !== null) {
-    if (typeof record.visitReasonDetail === "string") {
-      visitReasonDetail = record.visitReasonDetail.trim();
-      if (visitReasonDetail.length > 128) {
-        errors.visitReasonDetail = "Visit reason detail must be at most 128 characters.";
-      }
-    } else {
-      errors.visitReasonDetail = "Visit reason detail must be a string.";
-    }
-  }
-
-  if (visitReasonType === 4 && (!visitReasonDetail || visitReasonDetail.length === 0)) {
-    errors.visitReasonDetail = "Visit reason detail is required when reason type is 'Others' (4).";
-  }
-
-  // Scheduled Start and End Times
-  const scheduledStartTime =
-    typeof record.scheduledStartTime === "string"
-      ? record.scheduledStartTime.trim()
-      : "";
-  if (!scheduledStartTime) {
-    errors.scheduledStartTime = "Scheduled start time is required.";
-  }
-
-  const scheduledEndTime =
-    typeof record.scheduledEndTime === "string"
-      ? record.scheduledEndTime.trim()
-      : "";
-  if (!scheduledEndTime) {
-    errors.scheduledEndTime = "Scheduled end time is required.";
-  }
-
-  if (scheduledStartTime && scheduledEndTime) {
-    const startDate = new Date(
-      scheduledStartTime.includes("Z") || /[+-]\d{2}/.test(scheduledStartTime)
-        ? scheduledStartTime
-        : scheduledStartTime + "Z",
-    );
-    const endDate = new Date(
-      scheduledEndTime.includes("Z") || /[+-]\d{2}/.test(scheduledEndTime)
-        ? scheduledEndTime
-        : scheduledEndTime + "Z",
-    );
-
-    if (isNaN(startDate.getTime())) {
-      errors.scheduledStartTime = "Invalid start time format.";
-    }
-    if (isNaN(endDate.getTime())) {
-      errors.scheduledEndTime = "Invalid end time format.";
-    }
-
-    if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-      if (endDate.getTime() <= startDate.getTime()) {
-        errors.scheduledEndTime = "Scheduled end time must be after start time.";
-      }
-    }
-  }
-
-  // Optional visitor prefilled fields
-  let visitorFamilyName: string | undefined;
-  if (record.visitorFamilyName !== undefined && record.visitorFamilyName !== null) {
-    if (typeof record.visitorFamilyName === "string") {
-      visitorFamilyName = record.visitorFamilyName.trim();
-      if (visitorFamilyName.length > 256) {
-        errors.visitorFamilyName = "Visitor family name must be at most 256 characters.";
-      } else if (FORBIDDEN_HIKCENTRAL_CHARS.test(visitorFamilyName)) {
-        errors.visitorFamilyName =
-          "Visitor family name cannot contain special characters like ' / \\ : * ? \" < > |";
-      }
-    } else {
-      errors.visitorFamilyName = "Visitor family name must be a string.";
-    }
-  }
-
-  let visitorGivenName: string | undefined;
-  if (record.visitorGivenName !== undefined && record.visitorGivenName !== null) {
-    if (typeof record.visitorGivenName === "string") {
-      visitorGivenName = record.visitorGivenName.trim();
-      if (visitorGivenName.length > 256) {
-        errors.visitorGivenName = "Visitor given name must be at most 256 characters.";
-      } else if (FORBIDDEN_HIKCENTRAL_CHARS.test(visitorGivenName)) {
-        errors.visitorGivenName =
-          "Visitor given name cannot contain special characters like ' / \\ : * ? \" < > |";
-      }
-    } else {
-      errors.visitorGivenName = "Visitor given name must be a string.";
-    }
-  }
-
-  let visitorPhone: string | undefined;
-  if (record.visitorPhone !== undefined && record.visitorPhone !== null) {
-    if (typeof record.visitorPhone === "string") {
-      visitorPhone = record.visitorPhone.trim();
-      if (visitorPhone.length > 20) {
-        errors.visitorPhone = "Phone number must be at most 20 characters.";
-      }
-    } else {
-      errors.visitorPhone = "Phone number must be a string.";
-    }
-  }
-
-  let visitorEmail: string | undefined;
-  if (record.visitorEmail !== undefined && record.visitorEmail !== null) {
-    if (typeof record.visitorEmail === "string") {
-      visitorEmail = record.visitorEmail.trim();
-      if (visitorEmail && !visitorEmail.includes("@")) {
-        errors.visitorEmail = "Email must be a valid email address.";
-      }
-    } else {
-      errors.visitorEmail = "Email must be a string.";
-    }
-  }
-
-  let expiresInDays: number | undefined;
-  if (record.expiresInDays !== undefined && record.expiresInDays !== null) {
-    if (typeof record.expiresInDays === "number" && record.expiresInDays > 0) {
-      expiresInDays = record.expiresInDays;
-    } else {
-      errors.expiresInDays = "Expiry in days must be a positive number.";
-    }
-  }
-
-  let mode: PreRegistrationMode | undefined;
-  if (record.mode !== undefined && record.mode !== null) {
-    if (isPreRegistrationMode(record.mode)) {
-      mode = record.mode;
-    } else {
-      errors.mode = "Invalid mode.";
-    }
-  }
-
-  let stubScenario: StubScenario | undefined;
-  if (record.stubScenario !== undefined && record.stubScenario !== null) {
-    if (isStubScenario(record.stubScenario)) {
-      stubScenario = record.stubScenario;
-    } else {
-      errors.stubScenario = "Invalid stub scenario.";
-    }
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return { valid: false, errors };
-  }
-
-  return {
-    valid: true,
-    input: {
-      facilityId,
-      hostId: typeof record.hostId === "string" ? record.hostId.trim() : undefined,
-      hostName: typeof record.hostName === "string" ? record.hostName.trim() : undefined,
-      visitReasonType,
-      visitReasonDetail,
-      scheduledStartTime,
-      scheduledEndTime,
-      visitorFamilyName: visitorFamilyName || undefined,
-      visitorGivenName: visitorGivenName || undefined,
-      visitorPhone: visitorPhone || undefined,
-      visitorEmail: visitorEmail || undefined,
-      expiresInDays,
-      mode,
-      stubScenario,
-    },
-  };
+  return { valid: true, input: result.data };
 }
 
 /**
- * Pure validator for self-registration submission from invited visitor.
+ * Pure validator for self-registration submission from invited visitor. Backward-compatible wrapper.
  */
 export function validateSelfRegistrationSubmission(
   raw: unknown,
 ): ValidationOutcome<SelfRegistrationSubmissionInput> {
-  const errors: Record<string, string> = {};
-
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { valid: false, errors: { _global: "Request payload must be an object." } };
+  if (!isRecord(raw)) {
+    return {
+      valid: false,
+      errors: { _global: "Request payload must be an object." },
+    };
   }
 
-  const record = raw as Record<string, unknown>;
-
-  // Visitor Names
-  const visitorFamilyName =
-    typeof record.visitorFamilyName === "string"
-      ? record.visitorFamilyName.trim()
-      : "";
-  if (!visitorFamilyName) {
-    errors.visitorFamilyName = "Visitor family name is required.";
-  } else if (visitorFamilyName.length > 256) {
-    errors.visitorFamilyName = "Visitor family name must be at most 256 characters.";
-  } else if (FORBIDDEN_HIKCENTRAL_CHARS.test(visitorFamilyName)) {
-    errors.visitorFamilyName =
-      "Visitor family name cannot contain special characters like ' / \\ : * ? \" < > |";
+  const result = selfRegistrationSubmissionSchema.safeParse(raw);
+  if (!result.success) {
+    return { valid: false, errors: formatZodErrors(result.error) };
   }
 
-  const visitorGivenName =
-    typeof record.visitorGivenName === "string"
-      ? record.visitorGivenName.trim()
-      : "";
-  if (!visitorGivenName) {
-    errors.visitorGivenName = "Visitor given name is required.";
-  } else if (visitorGivenName.length > 256) {
-    errors.visitorGivenName = "Visitor given name must be at most 256 characters.";
-  } else if (FORBIDDEN_HIKCENTRAL_CHARS.test(visitorGivenName)) {
-    errors.visitorGivenName =
-      "Visitor given name cannot contain special characters like ' / \\ : * ? \" < > |";
-  }
-
-  // Phone
-  let visitorPhone: string | undefined;
-  if (record.visitorPhone !== undefined && record.visitorPhone !== null) {
-    if (typeof record.visitorPhone === "string") {
-      visitorPhone = record.visitorPhone.trim();
-      if (visitorPhone.length > 20) {
-        errors.visitorPhone = "Phone number must be at most 20 characters.";
-      }
-    } else {
-      errors.visitorPhone = "Phone number must be a string.";
-    }
-  }
-
-  // Email
-  let visitorEmail: string | undefined;
-  if (record.visitorEmail !== undefined && record.visitorEmail !== null) {
-    if (typeof record.visitorEmail === "string") {
-      visitorEmail = record.visitorEmail.trim();
-      if (visitorEmail && !visitorEmail.includes("@")) {
-        errors.visitorEmail = "Email must be a valid email address.";
-      }
-    } else {
-      errors.visitorEmail = "Email must be a string.";
-    }
-  }
-
-  // Certificate
-  let certificateType: CertificateType | undefined;
-  let certificateNo: string | undefined;
-  if (record.certificateType !== undefined && record.certificateType !== null) {
-    if (isCertificateType(record.certificateType)) {
-      certificateType = record.certificateType;
-    } else {
-      errors.certificateType = `Certificate type must be one of: ${CERTIFICATE_TYPES.join(", ")}.`;
-    }
-  }
-
-  if (record.certificateNo !== undefined && record.certificateNo !== null) {
-    if (typeof record.certificateNo === "string") {
-      certificateNo = record.certificateNo.trim();
-      if (certificateNo.length > 20) {
-        errors.certificateNo = "Certificate number must be at most 20 characters.";
-      }
-      if (certificateNo && certificateType === undefined) {
-        errors.certificateType = "Certificate type is required when certificate number is provided.";
-      }
-    } else {
-      errors.certificateNo = "Certificate number must be a string.";
-    }
-  }
-
-  // Face Photo
-  let facePhoto: string | undefined;
-  if (record.facePhoto !== undefined && record.facePhoto !== null) {
-    if (typeof record.facePhoto === "string") {
-      facePhoto = record.facePhoto.trim() || undefined;
-    } else {
-      errors.facePhoto = "Face photo must be a string.";
-    }
-  }
-
-  let mode: PreRegistrationMode | undefined;
-  if (record.mode !== undefined && record.mode !== null) {
-    if (isPreRegistrationMode(record.mode)) {
-      mode = record.mode;
-    } else {
-      errors.mode = "Invalid mode.";
-    }
-  }
-
-  let stubScenario: StubScenario | undefined;
-  if (record.stubScenario !== undefined && record.stubScenario !== null) {
-    if (isStubScenario(record.stubScenario)) {
-      stubScenario = record.stubScenario;
-    } else {
-      errors.stubScenario = "Invalid stub scenario.";
-    }
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return { valid: false, errors };
-  }
-
-  return {
-    valid: true,
-    input: {
-      visitorFamilyName,
-      visitorGivenName,
-      visitorPhone,
-      visitorEmail,
-      certificateType,
-      certificateNo,
-      facePhoto,
-      mode,
-      stubScenario,
-    },
-  };
+  return { valid: true, input: result.data };
 }

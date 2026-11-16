@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import type { Facility } from "@/lib/vms/vms-contract";
 import type { AccessLevel } from "@/lib/vms/access-level-contract";
 import type {
   GroupVisitResult,
@@ -42,19 +41,16 @@ interface VisitorFormRow {
 }
 
 interface GroupRegistrationClientProps {
-  facilities: Facility[];
   allAccessLevels: AccessLevel[];
 }
 
 export function GroupRegistrationClient({
-  facilities,
   allAccessLevels,
 }: GroupRegistrationClientProps) {
   // Group Header States
-  const [facilityId, setFacilityId] = useState(facilities[0]?.id ?? "fac-jakarta");
   const [visitorGroupName, setVisitorGroupName] = useState("");
-  const [hostId, setHostId] = useState("emp-101");
-  const [hostName, setHostName] = useState("Budi Santoso");
+  const [hostId, setHostId] = useState("");
+  const [hostName, setHostName] = useState("");
   const [visitReasonType, setVisitReasonType] = useState<number>(3); // Meeting
   const [visitReasonDetail, setVisitReasonDetail] = useState("");
 
@@ -95,8 +91,7 @@ export function GroupRegistrationClient({
 
   const csvInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedFacility = facilities.find((f) => f.id === facilityId) ?? facilities[0];
-  const availableAccessLevels = allAccessLevels.filter((al) => al.facilityId === facilityId);
+  const availableAccessLevels = allAccessLevels;
 
   // Dynamic visitors row operations
   const addVisitorRow = () => {
@@ -312,7 +307,6 @@ export function GroupRegistrationClient({
 
     try {
       const payload = {
-        facilityId,
         visitorGroupName: visitorGroupName.trim(),
         hostId: hostId.trim() || undefined,
         hostName: hostName.trim() || undefined,
@@ -507,11 +501,11 @@ export function GroupRegistrationClient({
         </div>
       )}
 
-      {/* 1. Group & Facility Booking Details */}
+      {/* 1. Group Booking Details */}
       <UiCard>
         <UiCardHeader
           title="1. Data Rombongan & Jadwal Kunjungan"
-          description="Tentukan nama rombongan delegasi, lokasi gedung tujuan, karyawan penanggung jawab, serta rentang jadwal kunjungan."
+          description="Tentukan nama rombongan delegasi, karyawan penanggung jawab, serta rentang jadwal kunjungan."
         />
         <UiCardContent className="space-y-5">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -534,29 +528,6 @@ export function GroupRegistrationClient({
             </div>
 
             <div>
-              <label htmlFor="group-facility-id" className="block text-xs font-semibold text-[var(--ks-ink)]">
-                Gedung / Lokasi Tujuan <span className="text-[var(--ks-vermilion)]">*</span>
-              </label>
-              <select
-                id="group-facility-id"
-                value={facilityId}
-                onChange={(e) => setFacilityId(e.target.value)}
-                className="mt-1.5 w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
-              >
-                {facilities.map((fac) => (
-                  <option key={fac.id} value={fac.id}>
-                    {fac.name} ({fac.timezone})
-                  </option>
-                ))}
-              </select>
-              {selectedFacility && (
-                <p className="mt-1 text-[11px] text-[var(--ks-muted)]">
-                  Zona Waktu: <span className="font-mono">{selectedFacility.timezone}</span>
-                </p>
-              )}
-            </div>
-
-            <div>
               <label htmlFor="group-host-id" className="block text-xs font-semibold text-[var(--ks-ink)]">
                 ID Karyawan Tuan Rumah
               </label>
@@ -568,7 +539,7 @@ export function GroupRegistrationClient({
                 spellCheck={false}
                 value={hostId}
                 onChange={(e) => setHostId(e.target.value)}
-                placeholder="cth. emp-101"
+                placeholder="ID personel HikCentral"
                 className="mt-1.5 w-full rounded-[var(--ks-radius-md)] border border-[var(--ks-rule-subtle)] bg-[var(--ks-paper)] px-3 py-2 text-sm text-[var(--ks-ink)] placeholder:text-[var(--ks-muted)] focus:border-[var(--ks-kinpaku)] focus:outline-hidden focus:ring-1 focus:ring-[var(--ks-kinpaku)]"
               />
             </div>

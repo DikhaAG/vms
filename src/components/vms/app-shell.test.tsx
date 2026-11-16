@@ -21,17 +21,13 @@ describe("AppShell Component", () => {
     expect(html).toContain("Konten Halaman Meja Resepsionis");
   });
 
-  it("passes facility state to sidebar and header and enforces overflow-hidden on main content area", () => {
-    const customFacilities = [
-      {
-        id: "fac-surabaya",
-        name: "Surabaya Industrial Hub",
-        timezone: "Asia/Jakarta",
-      },
-    ];
-
+  it("passes site name to sidebar and header and enforces overflow-hidden on main content area", () => {
     const html = renderToStaticMarkup(
-      <AppShell currentPath="/vms/reception" initialFacilities={customFacilities}>
+      <AppShell
+        currentPath="/vms/reception"
+        siteName="Surabaya Industrial Hub"
+        timezone="Asia/Jakarta"
+      >
         <div>Anak Komponen</div>
       </AppShell>
     );

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { defaultCheckInService } from "@/lib/vms/checkin-service";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function POST(request: Request) {
+export const dynamic = "force-dynamic";
+
+async function handlePOST(request: Request): Promise<NextResponse> {
   let body: unknown;
   try {
     body = await request.json();
@@ -11,7 +14,8 @@ export async function POST(request: Request) {
         ok: false,
         error: {
           kind: "validation",
-          message: "Request payload must be valid JSON.",
+          message: "Request body must be valid JSON.",
+          status: 400,
         },
       },
       { status: 400 },
@@ -24,7 +28,8 @@ export async function POST(request: Request) {
         ok: false,
         error: {
           kind: "validation",
-          message: "Request payload must be an object.",
+          message: "Request payload must be a JSON object.",
+          status: 400,
         },
       },
       { status: 400 },
@@ -32,16 +37,11 @@ export async function POST(request: Request) {
   }
 
   const result = await defaultCheckInService.createWalkInVisit(body);
-
-  if (!result.ok) {
-    const status = result.error?.status ?? 400;
-    return NextResponse.json(
-      {
-        ok: false,
-        error: result.error,
-      },
-      { status },
-    );
+  if (!result.ok || !result.visit || !result.pass) {
+    const status =
+      result.error?.status ??
+      (result.error?.kind === "validation" ? 400 : 502);
+    return NextResponse.json(result, { status });
   }
 
   return NextResponse.json(
@@ -51,7 +51,11 @@ export async function POST(request: Request) {
         visit: result.visit,
         pass: result.pass,
       },
+      visit: result.visit,
+      pass: result.pass,
     },
     { status: 201 },
   );
 }
+
+export const POST = withServerErrors(handlePOST);

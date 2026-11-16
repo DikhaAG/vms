@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { idDict, type NavigationItem, type NavIconKey } from "@/lib/vms/i18n/id";
-import type { Facility } from "@/lib/vms/vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS } from "@/lib/vms/vms-contract";
 import { useSafePathname } from "./use-safe-pathname";
 import { useModalFocusTrap } from "./use-modal-focus-trap";
 import { getTimezoneAbbreviation } from "./header";
@@ -14,9 +14,8 @@ export interface SidebarProps {
   onToggleCollapse?: () => void;
   mobileOpen?: boolean;
   onCloseMobile?: () => void;
-  facilities?: Facility[];
-  selectedFacilityId?: string;
-  selectedFacility?: Facility;
+  siteName?: string;
+  timezone?: string;
 }
 
 function renderNavIcon(icon: NavIconKey) {
@@ -78,24 +77,14 @@ export function Sidebar({
   onToggleCollapse,
   mobileOpen = false,
   onCloseMobile,
-  facilities = [],
-  selectedFacilityId,
-  selectedFacility,
+  siteName = DEFAULT_SYSTEM_SETTINGS.siteName,
+  timezone,
 }: SidebarProps) {
   const activePath = useSafePathname(propPath);
   const groups = Object.entries(idDict.navigation.groups);
   const drawerRef = useRef<HTMLDivElement>(null);
 
-  const activeFacility =
-    selectedFacility ||
-    facilities.find((f) => f.id === selectedFacilityId) ||
-    facilities[0] || {
-      id: "fac-jakarta",
-      name: "Jakarta Corporate HQ",
-      timezone: "Asia/Jakarta",
-    };
-
-  const tz = activeFacility.timezone || "Asia/Jakarta";
+  const tz = timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
   const tzAbbr = getTimezoneAbbreviation(tz);
   const [currentTime, setCurrentTime] = useState<string>("");
 
@@ -313,15 +302,15 @@ export function Sidebar({
               </button>
             </div>
 
-            {/* Mobile Drawer Telemetry Block (Active Facility + Live Clock) */}
+            {/* Mobile Drawer Telemetry Block (Site Name + Live Clock) */}
             <div className="px-4 py-3 bg-[var(--ks-paper-deep)]/80 border-b border-[var(--ks-rule)]">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <svg className="w-4 h-4 text-[var(--ks-text-faint)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
-                  <span className="text-xs font-semibold text-[var(--ks-ink)] truncate" title={activeFacility.name}>
-                    {activeFacility.name}
+                  <span className="text-xs font-semibold text-[var(--ks-ink)] truncate" title={siteName}>
+                    {siteName}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-[var(--ks-text-muted)] shrink-0">

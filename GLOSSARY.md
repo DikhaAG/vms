@@ -7,7 +7,7 @@ Enterprise visitor scheduling, approval, arrival verification, and time-bounded 
 ### Actors
 
 **Visitor**:
-An external person invited to or arriving at a facility for a temporary stay.
+An external person invited to or arriving at the Site for a temporary stay.
 _Avoid_: Guest, Person, Client
 
 **Host**:
@@ -24,12 +24,16 @@ _Avoid_: Reviewer, Manager, Authorizer
 
 ### Core Concepts
 
-**Facility**:
-A distinct physical site, building, or branch managed within the system, configured with its own IANA timezone and physical access points.
-_Avoid_: Site, Building, Location, Branch
+**Site**:
+The single physical building governed by one VMS deployment. Every Visit, Door, and Access Level belongs to the Site implicitly, so no record carries a building or location identifier. The Site's display label is the Site Name in System Settings.
+_Avoid_: Facility, Branch, Location, Campus
+
+**System Settings**:
+Global operational configuration parameters (Site Name, System Timezone, Overstay Grace Period, and Fast-Track Early Buffer) applying across the entire single-site deployment. The Site Name is the single building label shown on the invitation page and in active monitoring.
+_Avoid_: Facility config, Branch config, per-facility settings
 
 **Visit**:
-A bounded attendance by one Visitor during an explicit time window in a facility's local timezone, progressing through scheduling, approval, check-in, and check-out.
+A bounded attendance by one Visitor during an explicit time window in the System Timezone, progressing through scheduling, approval, check-in, and check-out.
 _Avoid_: Appointment, Booking, Session
 
 **Group Visit**:
@@ -61,16 +65,16 @@ The maximum number of authorized physical door entries allowed for a Credential 
 _Avoid_: Access count, Scan limit, Tap limit
 
 **Overstay**:
-The state when a Visitor has not checked out after the Visit's scheduled end time in the facility's local timezone and exceeds the Overstay Grace Period.
+The state when a Visitor has not checked out after the Visit's scheduled end time in the System Timezone and exceeds the Overstay Grace Period.
 _Avoid_: Expired visit, Late departure, Timeout
 
 **Overstay Grace Period**:
 The configurable duration after scheduled visit end time before an uncleared Visit triggers a security Overstay alert.
 _Avoid_: Tolerance time, Delay buffer, Overstay threshold
 
-**Facility Timezone**:
-The canonical IANA timezone identifier assigned to a Facility governing Visit scheduling and hardware synchronization.
-_Avoid_: Server timezone, Client timezone, Local time
+**System Timezone**:
+The canonical IANA timezone identifier configured globally for the system (governing Visit scheduling and HikCentral hardware synchronization).
+_Avoid_: Server timezone, Client timezone, Local time, Facility Timezone
 
 **Monitoring List**:
 A security register of individuals flagged for denied entry or mandatory security review.
@@ -81,7 +85,7 @@ The automated transition of an approved Visit to checked-in status upon the firs
 _Avoid_: Touchless entry, Direct check-in, Auto-entry, Skip reception
 
 **Perimeter Door**:
-An outer entry or exit point (such as a lobby speedgate or exterior turnstile) that defines the physical boundary between the outside world and the secured facility interior.
+An outer entry or exit point (such as a lobby speedgate or exterior turnstile) that defines the physical boundary between the outside world and the secured Site interior.
 _Avoid_: Outer door, External gate, Boundary point
 
 **Door Directionality**:
@@ -119,7 +123,7 @@ The canonical telemetry and summary metric display primitive, featuring uppercas
 _Avoid_: Static text widgets, unstandardized metric tiles, arbitrary counters
 
 **UiFilterToolbar**:
-The unified search, facility selection, and action control bar deployed across all operational list and monitoring views.
+The unified search and action control bar deployed across all operational list and monitoring views. In the single-site architecture it carries no facility selector.
 _Avoid_: Ad-hoc flex rows, disparate search inputs, fragmented filter bars
 
 **UiBadge**:
@@ -142,8 +146,9 @@ _Avoid_: Duplicate h1 tags, missing guide modals, inconsistent title bars
 | **Host** | **Karyawan Tuan Rumah** | Karyawan internal yang mengundang, membuat janji temu, dan bertanggung jawab atas tamu. |
 | **Receptionist** | **Petugas Resepsionis** | Staf meja depan yang melayani tamu datang langsung (*walk-in*), verifikasi identitas, dan cetak lencana/kartu akses. |
 | **Approver** | **Pejabat Penyetuju / Atasan** | Manajer atau staf keamanan yang berhak menyetujui atau menolak permohonan kunjungan. |
-| **Facility** | **Gedung / Lokasi Fasilitas** | Bangunan fisik tempat kunjungan berlangsung (misal: Kantor Pusat Jakarta, Cabang Bali, Gudang Jayapura). |
-| **Visit** | **Kunjungan / Janji Temu** | Sesi kehadiran satu tamu dalam jangka waktu tertentu di suatu gedung. |
+| **Site** | **Gedung** | Satu-satunya gedung yang dikelola oleh sistem ini. Tidak ada pilihan lokasi atau cabang. |
+| **System Settings** | **Pengaturan Sistem Global** | Konfigurasi terpusat untuk seluruh sistem (nama gedung, zona waktu, batas toleransi overstay, dan jeda auto check-in). |
+| **Visit** | **Kunjungan / Janji Temu** | Sesi kehadiran satu tamu dalam jangka waktu tertentu di gedung. |
 | **Pre-Registration** | **Pendaftaran Tamu Terjadwal** | Pendaftaran janji tamu di muka oleh karyawan sebelum tamu tiba di lokasi. |
 | **Self-Registration Link** | **Tautan Pendaftaran Mandiri** | Tautan web khusus bagi tamu untuk mengisi data diri dan foto selfie dari smartphone sebelum datang. |
 | **Walk-in** | **Tamu Datang Langsung** | Tamu yang datang mendadak ke meja resepsionis tanpa janji temu sebelumnya. |

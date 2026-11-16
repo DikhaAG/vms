@@ -172,8 +172,6 @@ export const idDict = {
   },
 
   header: {
-    selectFacility: "Pilih Gedung / Lokasi",
-    facilityTimezoneHint: "Waktu lokal fasilitas",
     systemConnected: "Sistem Pintu Terhubung",
     systemDisconnected: "Koneksi Terminal Terputus",
     systemChecking: "Memeriksa Gateway...",
@@ -208,7 +206,6 @@ export const idDict = {
     refresh: "Segarkan",
     actions: "Aksi Tindakan",
     status: "Status Saat Ini",
-    facility: "Gedung / Lokasi",
     date: "Tanggal Kunjungan",
     time: "Waktu Kunjungan",
     visitor: "Nama Tamu",
@@ -221,10 +218,30 @@ export const idDict = {
     accessLevel: "Hak Akses Pintu",
     purpose: "Keperluan Kunjungan",
     notes: "Catatan Tambahan",
-    allFacilities: "Semua Lokasi Fasilitas",
     noDataFound: "Tidak ada data yang ditemukan",
     confirmAction: "Konfirmasi Tindakan",
     guideButtonLabel: "Panduan Halaman Ini",
+  },
+
+  layTerms: {
+    noDataFound: "Tidak ada data yang ditemukan",
+    noMatchingRecords: "Tidak ada data yang sesuai dengan penyaringan",
+    tableEmpty: "Belum ada data tersedia",
+  },
+
+  table: {
+    page: "Halaman",
+    of: "dari",
+    rowsPerPage: "Baris per halaman",
+    previous: "Sebelumnya",
+    next: "Selanjutnya",
+    showing: "Menampilkan",
+    totalRows: "Total data",
+    searchPlaceholder: "Cari data...",
+    noDataFound: "Tidak ada data yang ditemukan",
+    sortAscending: "Urutkan naik",
+    sortDescending: "Urutkan turun",
+    sortClear: "Hapus urutan",
   },
 
   certificateTypes: {
@@ -491,6 +508,18 @@ export const idDict = {
     preRegistration: {
       title: "Buat Undangan Tamu Terjadwal",
       subtitle: "Jadwalkan Kunjungan Tamu di Muka & Kirim Tautan Pendaftaran Mandiri",
+      toasts: {
+        success: "Janji temu tamu berhasil didaftarkan dan dijadwalkan.",
+        error: "Pendaftaran tamu gagal diproses.",
+        inviteSuccess: "Tautan pendaftaran mandiri berhasil dibuat.",
+        inviteError: "Gagal membuat tautan pendaftaran mandiri.",
+        profileApplied: "Profil tersimpan tamu berhasil diterapkan.",
+        photoVerified: "Foto wajah berhasil diproses dan diverifikasi.",
+        photoNormalized: "Foto kamera web berhasil dinormalkan.",
+        photoRemoved: "Foto wajah telah dihapus.",
+        syncSuccess: "Terminal berhasil disinkronkan ulang.",
+        syncError: "Sinkronisasi ulang terminal gagal.",
+      },
       guide: {
         title: "Panduan Pembuatan Undangan Tamu",
         subtitle: "Langkah mengundang tamu bisnis perorangan sebelum kedatangan di lokasi",
@@ -499,8 +528,8 @@ export const idDict = {
         steps: [
           {
             step: 1,
-            title: "Pilih Gedung Fasilitas & Waktu Kunjungan",
-            description: "Tentukan lokasi gedung tujuan, tanggal kedatangan, serta jam mulai dan jam selesai pertemuan sesuai zona waktu lokal fasilitas.",
+            title: "Tentukan Waktu Kunjungan",
+            description: "Tentukan tanggal kedatangan, serta jam mulai dan jam selesai pertemuan sesuai zona waktu sistem gedung.",
           },
           {
             step: 2,
@@ -550,7 +579,7 @@ export const idDict = {
           {
             step: 1,
             title: "Tentukan Nama Rombongan & Jadwal Utama",
-            description: "Beri nama rombongan (contoh: 'Kunjungan Kerja Tim Audit BPK'), tentukan gedung tujuan, dan rentang jam kunjungan.",
+            description: "Beri nama rombongan (contoh: 'Kunjungan Kerja Tim Audit BPK') dan tentukan rentang jam kunjungan.",
           },
           {
             step: 2,
@@ -599,8 +628,8 @@ export const idDict = {
         steps: [
           {
             step: 1,
-            title: "Pilih Gedung Fasilitas yang Dikelola",
-            description: "Pilih fasilitas gedung terkait untuk memuat daftar pintu fisik yang terdaftar pada pengontrol pintu.",
+            title: "Sinkronkan Daftar Pintu Gedung",
+            description: "Muat daftar pintu fisik gedung yang terdaftar pada pengontrol pintu HikCentral.",
           },
           {
             step: 2,

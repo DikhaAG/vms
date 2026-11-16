@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { defaultActiveMonitoringService } from "@/lib/vms/active-monitoring-service";
 import { validateCheckOutInput } from "@/lib/vms/checkout-contract";
 import { HikCentralError } from "@/lib/hikcentral/client";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function POST(
+async function handlePOST(
   request: Request,
   context: { params: Promise<{ visitId: string }> },
 ) {
@@ -123,3 +124,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withServerErrors(handlePOST);

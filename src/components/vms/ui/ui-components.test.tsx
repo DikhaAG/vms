@@ -17,6 +17,8 @@ import {
   UiModal,
   UI_MODAL_SIZES,
   PageHeader,
+  UiDataTable,
+  useTableUrlState,
 } from "./index";
 import { idDict } from "@/lib/vms/i18n/id";
 
@@ -206,15 +208,15 @@ describe("UiKpiCard & UiKpiGrid Primitives", () => {
 });
 
 describe("UiFilterToolbar Primitive", () => {
-  it("renders standard container with slots for search, facility, and actions", () => {
+  it("renders standard container with slots for filters, search, and actions", () => {
     const html = renderToStaticMarkup(
       <UiFilterToolbar
-        facilitySlot={<select><option>Gedung Utama</option></select>}
+        filterSlot={<select><option>Peran Penyetuju</option></select>}
         searchSlot={<input placeholder="Cari nama..." />}
         actionsSlot={<button>Reset</button>}
       />
     );
-    expect(html).toContain("Gedung Utama");
+    expect(html).toContain("Peran Penyetuju");
     expect(html).toContain("Cari nama...");
     expect(html).toContain("Reset");
     expect(html).toContain("bg-[var(--ks-paper-raised)]");
@@ -354,3 +356,11 @@ describe("PageHeader Primitive", () => {
     expect(html).toContain("Meja Resepsionis");
   });
 });
+
+describe("UiDataTable Export Integrity", () => {
+  it("exports UiDataTable and useTableUrlState from index", () => {
+    expect(typeof UiDataTable).toBe("function");
+    expect(typeof useTableUrlState).toBe("function");
+  });
+});
+

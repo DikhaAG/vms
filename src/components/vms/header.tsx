@@ -3,14 +3,13 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { idDict } from "@/lib/vms/i18n/id";
-import type { Facility } from "@/lib/vms/vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS } from "@/lib/vms/vms-contract";
 import { useSafePathname } from "./use-safe-pathname";
 import { HikCentralStatusBadge } from "./hikcentral-status-badge";
 
 export interface HeaderProps {
-  facilities?: Facility[];
-  selectedFacilityId?: string;
-  onSelectFacility?: (facilityId: string) => void;
+  siteName?: string;
+  timezone?: string;
   currentPath?: string;
   onOpenMobileMenu?: () => void;
   systemHealthy?: boolean;
@@ -36,19 +35,16 @@ function getBreadcrumbHierarchy(path: string): { group?: string; title: string }
 }
 
 export function Header({
-  facilities = [],
-  selectedFacilityId,
-  onSelectFacility,
+  siteName = DEFAULT_SYSTEM_SETTINGS.siteName,
+  timezone,
   currentPath: propPath,
   onOpenMobileMenu,
   systemHealthy,
   operatorRole = idDict.header.operatorRole,
 }: HeaderProps) {
   const activePath = useSafePathname(propPath);
-  const selectedFacility =
-    facilities.find((f) => f.id === selectedFacilityId) || facilities[0];
 
-  const tz = selectedFacility?.timezone || "Asia/Jakarta";
+  const tz = timezone || DEFAULT_SYSTEM_SETTINGS.timezone;
   const tzAbbr = getTimezoneAbbreviation(tz);
 
   // Initialize with empty string to ensure server HTML and client initial render
@@ -111,32 +107,20 @@ export function Header({
         </nav>
       </div>
 
-      {/* Right Controls: Facility & Live Clock, System Health, Operator Profile */}
+      {/* Right Controls: Site Name & Live Clock, System Health, Operator Profile */}
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        {/* Facility Selector & Live Clock */}
+        {/* Site Name & Live Clock */}
         <div className="flex items-center gap-1.5 sm:gap-2 bg-[var(--ks-paper-deep)] border border-[var(--ks-rule)] rounded-[var(--ks-radius-md)] px-2 sm:px-2.5 py-1.5 shadow-2xs">
           <svg className="w-4 h-4 text-[var(--ks-text-faint)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
 
-          {facilities.length > 0 ? (
-            <select
-              aria-label={idDict.header.selectFacility}
-              value={selectedFacility?.id}
-              onChange={(e) => onSelectFacility?.(e.target.value)}
-              className="text-xs font-semibold text-[var(--ks-ink)] bg-transparent border-0 focus:ring-0 cursor-pointer pr-1 sm:pr-2 outline-hidden max-w-[120px] sm:max-w-none truncate"
-            >
-              {facilities.map((fac) => (
-                <option key={fac.id} value={fac.id} className="bg-[var(--ks-paper-raised)] text-[var(--ks-ink)]">
-                  {fac.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="text-xs font-semibold text-[var(--ks-ink)] max-w-[120px] sm:max-w-none truncate">
-              Jakarta Corporate HQ
-            </span>
-          )}
+          <span
+            className="text-xs font-semibold text-[var(--ks-ink)] max-w-[120px] sm:max-w-none truncate"
+            title={siteName}
+          >
+            {siteName}
+          </span>
 
           <div className="hidden sm:block h-3.5 w-px bg-[var(--ks-rule)] mx-1" />
 

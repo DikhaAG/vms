@@ -252,9 +252,8 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
     const text = [
       `Tiket Digital VMS: ${passCode}`,
       `Nama Tamu: ${v.visitorGivenName} ${v.visitorFamilyName}`,
-      `Gedung: ${initialData.facility.name}`,
-      `Alamat: ${initialData.facility.address ?? ""}`,
-      `Jadwal Kunjungan: ${initialData.scheduledStartTimeFacility} s/d ${initialData.scheduledEndTimeFacility} (${initialData.facility.timezone})`,
+      `Gedung: ${initialData.site.name}`,
+      `Jadwal Kunjungan: ${initialData.scheduledStartTimeFacility} s/d ${initialData.scheduledEndTimeFacility} (${initialData.site.timezone})`,
       `Tuan Rumah: ${initialData.host?.name ?? "Tuan Rumah"}`,
     ].join("\n");
 
@@ -293,7 +292,7 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                   Tiket Akses Digital Tamu
                 </span>
                 <h3 className="text-lg font-bold">
-                  {initialData.facility.name}
+                  {initialData.site.name}
                 </h3>
               </div>
               {qrPass?.appointCode && (
@@ -357,7 +356,7 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
 
                 <div>
                   <span className="text-xs text-neutral-500 dark:text-slate-400">
-                    Jadwal Kunjungan ({initialData.facility.timezone})
+                    Jadwal Kunjungan ({initialData.site.timezone})
                   </span>
                   <p className="font-mono text-xs font-semibold text-neutral-900 dark:text-white">
                     {initialData.scheduledStartTimeFacility.replace("T", " ")} —{" "}
@@ -365,14 +364,6 @@ export function InviteForm({ token, initialData }: InviteFormProps) {
                   </p>
                 </div>
 
-                {initialData.facility.address && (
-                  <div>
-                    <span className="text-xs text-neutral-500 dark:text-slate-400">Alamat Gedung</span>
-                    <p className="text-xs text-neutral-700 dark:text-slate-300">
-                      {initialData.facility.address}
-                    </p>
-                  </div>
-                )}
               </div>
             </div>
 

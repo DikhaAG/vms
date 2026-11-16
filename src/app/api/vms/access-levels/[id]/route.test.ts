@@ -1,7 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { GET, PUT, DELETE } from "./route";
+import { defaultVmsRepository, TEST_FIXTURE_ACCESS_LEVELS } from "@/lib/vms/repository";
 
 describe("Route: /api/vms/access-levels/[id]", () => {
+  beforeEach(async () => {
+    await defaultVmsRepository.saveAccessLevels(TEST_FIXTURE_ACCESS_LEVELS);
+  });
+
   it("GET returns 200 for an existing access level", async () => {
     const request = new Request(
       "http://localhost:3000/api/vms/access-levels/acc-jkt-lobby",

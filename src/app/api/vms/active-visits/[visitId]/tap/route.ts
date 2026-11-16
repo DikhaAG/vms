@@ -3,8 +3,9 @@ import { defaultActiveMonitoringService } from "@/lib/vms/active-monitoring-serv
 import { validateDoorTapInput } from "@/lib/vms/checkout-contract";
 import { HikCentralError } from "@/lib/hikcentral/client";
 import type { PreRegistrationMode, StubScenario } from "@/lib/vms/vms-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function POST(
+async function handlePOST(
   request: Request,
   context: { params: Promise<{ visitId: string }> },
 ) {
@@ -170,3 +171,5 @@ export async function POST(
     );
   }
 }
+
+export const POST = withServerErrors(handlePOST);

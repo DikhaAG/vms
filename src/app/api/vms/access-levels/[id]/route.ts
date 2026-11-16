@@ -4,8 +4,9 @@ import {
   updateAccessLevelService,
   deleteAccessLevelService,
 } from "@/lib/vms/access-level-service";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function GET(
+async function handleGET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
@@ -31,7 +32,7 @@ export async function GET(
   });
 }
 
-export async function PUT(
+async function handlePUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
@@ -78,7 +79,7 @@ export async function PUT(
   });
 }
 
-export async function DELETE(
+async function handleDELETE(
   _request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
@@ -105,3 +106,7 @@ export async function DELETE(
     ok: true,
   });
 }
+
+export const GET = withServerErrors(handleGET);
+export const PUT = withServerErrors(handlePUT);
+export const DELETE = withServerErrors(handleDELETE);

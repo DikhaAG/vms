@@ -1,13 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
+import { defaultCheckInService } from "@/lib/vms/checkin-service";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import type { Visit } from "@/lib/vms/vms-contract";
 
 describe("GET /api/vms/check-in/search", () => {
   const sampleVisit: Visit = {
     id: "route-search-vis-01",
-    facilityId: "fac-jakarta",
-    facilityName: "Jakarta Corporate HQ",
     visitorFamilyName: "Kusuma",
     visitorGivenName: "Bambang",
     visitorPhone: "+6281299990001",
@@ -27,9 +26,9 @@ describe("GET /api/vms/check-in/search", () => {
     await defaultVmsRepository.saveVisit(sampleVisit);
   });
 
-  it("returns matching visits for query and facilityId", async () => {
+  it("returns matching visits across the whole site for a query", async () => {
     const request = new Request(
-      "http://localhost:3000/api/vms/check-in/search?q=Bambang&facilityId=fac-jakarta",
+      "http://localhost:3000/api/vms/check-in/search?q=Bambang",
     );
     const response = await GET(request);
     expect(response.status).toBe(200);
@@ -50,5 +49,21 @@ describe("GET /api/vms/check-in/search", () => {
     const json = await response.json();
     expect(json.ok).toBe(true);
     expect(json.data).toEqual([]);
+  });
+
+  it("returns a structured 500 when the check-in service throws", async () => {
+    const spy = vi
+      .spyOn(defaultCheckInService, "searchArrivingVisitors")
+      .mockRejectedValueOnce(new Error("db down"));
+    try {
+      const res = await GET(new Request("http://localhost:3000/api/vms/check-in/search?q=x"));
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: { kind: "server", message: "db down" },
+      });
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

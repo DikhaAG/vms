@@ -20,8 +20,6 @@ describe("Approval Service", () => {
 
   const samplePendingVisit: Visit = {
     id: "vis-pending-1",
-    facilityId: "fac-jakarta",
-    facilityName: "Jakarta Corporate HQ",
     hostId: "emp-host-01",
     hostName: "Budi Santoso",
     visitorFamilyName: "Pratama",
@@ -42,8 +40,6 @@ describe("Approval Service", () => {
 
   const sampleEscalatedVisit: Visit = {
     id: "vis-escalated-1",
-    facilityId: "fac-jakarta",
-    facilityName: "Jakarta Corporate HQ",
     visitorFamilyName: "Blacklisted",
     visitorGivenName: "Mark",
     certificateType: 111,
@@ -77,7 +73,7 @@ describe("Approval Service", () => {
         status: "APPROVED",
       });
 
-      const result = await listPendingApprovals(undefined, { repository });
+      const result = await listPendingApprovals({ repository });
       expect(result.totalCount).toBe(2);
       expect(result.pendingVisits).toHaveLength(1);
       expect(result.escalatedVisits).toHaveLength(1);
@@ -86,17 +82,15 @@ describe("Approval Service", () => {
       expect(result.escalatedVisits[0].id).toBe("vis-escalated-1");
     });
 
-    it("filters pending visits by facilityId", async () => {
+    it("lists every pending visit site-wide regardless of legacy facility tags", async () => {
       await repository.saveVisit(samplePendingVisit);
       await repository.saveVisit({
         ...samplePendingVisit,
         id: "vis-bali-1",
-        facilityId: "fac-bali",
       });
 
-      const jakartaResults = await listPendingApprovals("fac-jakarta", { repository });
-      expect(jakartaResults.totalCount).toBe(1);
-      expect(jakartaResults.allVisits[0].facilityId).toBe("fac-jakarta");
+      const result = await listPendingApprovals({ repository });
+      expect(result.totalCount).toBe(2);
     });
   });
 

@@ -3,7 +3,6 @@ import { POST } from "./route";
 
 describe("POST /api/vms/group-registration", () => {
   const validPayload = {
-    facilityId: "fac-jakarta",
     hostId: "emp-host-01",
     hostName: "Budi Santoso",
     visitorGroupName: "Google DeepMind Engineering Delegation",
@@ -97,7 +96,7 @@ describe("POST /api/vms/group-registration", () => {
     expect(body.error?.kind).toBe("validation");
   });
 
-  it("returns 404 when facility does not exist", async () => {
+  it("registers a delegation even when a legacy client sends an unknown facilityId", async () => {
     const request = new Request(
       "http://localhost:3000/api/vms/group-registration",
       {
@@ -111,10 +110,9 @@ describe("POST /api/vms/group-registration", () => {
     );
 
     const response = await POST(request);
-    expect(response.status).toBe(404);
+    expect(response.status).toBe(201);
 
     const body = await response.json();
-    expect(body.ok).toBe(false);
-    expect(body.error?.kind).toBe("not_found");
+    expect(body.ok).toBe(true);
   });
 });

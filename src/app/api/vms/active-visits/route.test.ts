@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { GET } from "./route";
+import { defaultActiveMonitoringService } from "@/lib/vms/active-monitoring-service";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 import type { Visit } from "@/lib/vms/vms-contract";
 import type { ActiveVisitSummary } from "@/lib/vms/checkout-contract";
@@ -9,8 +10,6 @@ describe("GET /api/vms/active-visits", () => {
     // Reset/seed visits in defaultVmsRepository
     const activeVisit: Visit = {
       id: "vis-api-act-1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorGivenName: "Diana",
       visitorFamilyName: "Prince",
       visitReasonType: 3,
@@ -31,7 +30,6 @@ describe("GET /api/vms/active-visits", () => {
 
     const checkedOutVisit: Visit = {
       id: "vis-api-out-1",
-      facilityId: "fac-jakarta",
       visitorGivenName: "Clark",
       visitorFamilyName: "Kent",
       visitReasonType: 0,
@@ -51,8 +49,7 @@ describe("GET /api/vms/active-visits", () => {
   });
 
   it("returns active on-premise visits and summary metrics", async () => {
-    const req = new Request("http://localhost:3000/api/vms/active-visits");
-    const res = await GET(req);
+    const res = await GET();
 
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -73,14 +70,31 @@ describe("GET /api/vms/active-visits", () => {
     expect(typeof json.summary.quotaWarnings).toBe("number");
   });
 
-  it("filters active visits by facilityId query param", async () => {
-    const req = new Request("http://localhost:3000/api/vms/active-visits?facilityId=fac-bali");
-    const res = await GET(req);
-
+  it("returns all active visits across the single site regardless of legacy facilityId query param", async () => {
+    const res = await GET();
     expect(res.status).toBe(200);
+
     const json = await res.json();
     expect(json.ok).toBe(true);
-    const foundDiana = json.activeVisits.find((v: ActiveVisitSummary) => v.visitId === "vis-api-act-1");
-    expect(foundDiana).toBeUndefined();
+    const foundDiana = json.activeVisits.find(
+      (v: ActiveVisitSummary) => v.visitId === "vis-api-act-1",
+    );
+    expect(foundDiana).toBeDefined();
+  });
+
+  it("returns a structured 500 when the monitoring service throws", async () => {
+    const spy = vi
+      .spyOn(defaultActiveMonitoringService, "getActiveVisits")
+      .mockRejectedValueOnce(new Error("db down"));
+    try {
+      const res = await GET();
+      expect(res.status).toBe(500);
+      expect(await res.json()).toEqual({
+        ok: false,
+        error: { kind: "server", message: "db down" },
+      });
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

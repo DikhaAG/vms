@@ -48,14 +48,13 @@ export interface DeleteAccessLevelResult {
 }
 
 /**
- * Lists access levels, optionally filtered by facility.
+ * Lists all access levels (single-site: no facility scoping).
  */
 export async function listAccessLevelsService(
-  filter: { facilityId?: string } = {},
   deps: AccessLevelServiceDeps = {},
 ): Promise<AccessLevel[]> {
   const repository = deps.repository ?? defaultVmsRepository;
-  return repository.listAccessLevels(filter.facilityId);
+  return repository.listAccessLevels();
 }
 
 /**
@@ -95,19 +94,7 @@ export async function createAccessLevelService(
 
   const input: CreateAccessLevelInput = validation.input;
 
-  // 2. Validate facility existence
-  const facility = await repository.getFacility(input.facilityId);
-  if (!facility) {
-    return {
-      ok: false,
-      error: {
-        kind: "not_found",
-        message: `Facility '${input.facilityId}' not found.`,
-      },
-    };
-  }
-
-  // 3. Generate ID and prepare access level
+  // 2. Generate ID and prepare access level
   const id = `acc-${generateId().slice(0, 8)}`;
   const now = new Date().toISOString();
 
@@ -145,7 +132,6 @@ export async function createAccessLevelService(
   // 5. Persist into local repository
   const accessLevel: AccessLevel = {
     id,
-    facilityId: input.facilityId,
     name: input.name,
     description: input.description ?? "",
     doors: input.doors,
@@ -199,20 +185,6 @@ export async function updateAccessLevelService(
   }
 
   const updates: UpdateAccessLevelInput = validation.input;
-
-  // If facility changed, verify new facility exists
-  if (updates.facilityId && updates.facilityId !== existing.facilityId) {
-    const facility = await repository.getFacility(updates.facilityId);
-    if (!facility) {
-      return {
-        ok: false,
-        error: {
-          kind: "not_found",
-          message: `Facility '${updates.facilityId}' not found.`,
-        },
-      };
-    }
-  }
 
   // Sync to HikCentral
   try {
@@ -313,4 +285,38 @@ export async function deleteAccessLevelService(
   await repository.deleteAccessLevel(id);
 
   return { ok: true };
+}
+
+/**
+ * Resolves the access levels a visit grants: the explicit selection, or the
+ * building's default levels when none are selected. Names come from the
+ * repository, falling back to a generic label for unknown ids.
+ */
+export async function resolveVisitAccessLevels(
+  repository: IVmsRepository,
+  selectedIds: string[] | undefined,
+): Promise<{
+  accessLevelIds: string[] | undefined;
+  accessLevels: Array<{ id: string; name: string }> | undefined;
+}> {
+  const allAccessLevels = await repository.listAccessLevels();
+  let accessLevelIds = selectedIds;
+  if (!accessLevelIds || accessLevelIds.length === 0) {
+    const defaultLevels = allAccessLevels.filter((al) => al.isDefault);
+    if (defaultLevels.length > 0) {
+      accessLevelIds = defaultLevels.map((al) => al.id);
+    }
+  }
+
+  if (!accessLevelIds || accessLevelIds.length === 0) {
+    return { accessLevelIds, accessLevels: undefined };
+  }
+  const levelMap = new Map(allAccessLevels.map((al) => [al.id, al.name]));
+  return {
+    accessLevelIds,
+    accessLevels: accessLevelIds.map((id) => ({
+      id,
+      name: levelMap.get(id) ?? "Access Level",
+    })),
+  };
 }

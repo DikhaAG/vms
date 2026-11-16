@@ -37,21 +37,6 @@ function escapeHtml(str: string): string {
 }
 
 describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
-  const dummyFacilities = [
-    {
-      id: "fac-jakarta",
-      name: "Kantor Pusat Jakarta",
-      timezone: "Asia/Jakarta",
-      address: "Jl. Jenderal Sudirman No. 1, Jakarta",
-    },
-    {
-      id: "fac-bali",
-      name: "Bali Innovation Center",
-      timezone: "Asia/Makassar",
-      address: "Jl. Sunset Road No. 88, Kuta, Bali",
-    },
-  ];
-
   describe("1. Responsive App Shell & Navigation Layout", () => {
     it("renders desktop sidebar with all 3 localized operational groups", () => {
       const html = renderToStaticMarkup(
@@ -104,9 +89,8 @@ describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
     it("renders global header with facility selector, timezone clocks, hardware status, and operator chip", () => {
       const html = renderToStaticMarkup(
         <Header
-          facilities={dummyFacilities}
-          selectedFacilityId="fac-jakarta"
-          onSelectFacility={vi.fn()}
+          siteName="Kantor Pusat Jakarta"
+          timezone="Asia/Jakarta"
           onOpenMobileMenu={vi.fn()}
           systemHealthy={true}
         />,
@@ -229,10 +213,11 @@ describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
       expect(html).toContain("Buat Undangan Tamu Terjadwal");
       expect(html).toContain("Kunjungan Individual");
       expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("1. Pilih Gedung &amp; Zona Waktu Fasilitas");
-      expect(html).toContain("2. Data Identitas Tamu");
-      expect(html).toContain("3. Pengambilan &amp; Verifikasi Foto Biometrik Wajah");
-      expect(html).toContain("6. Kelompok Hak Akses Pintu &amp; Batas Tap");
+      expect(html).toContain("1. Data Identitas Tamu");
+      expect(html).toContain("2. Pengambilan &amp; Verifikasi Foto Biometrik Wajah");
+      expect(html).toContain("3. Jadwal Kunjungan &amp; Keperluan");
+      expect(html).toContain("4. Karyawan Tuan Rumah Internal");
+      expect(html).toContain("5. Kelompok Hak Akses Pintu &amp; Batas Tap");
       expect(html).toContain("Buat Tautan Pendaftaran Mandiri");
       expect(html).toContain("Kirim Janji Temu Tamu");
     });
@@ -250,16 +235,16 @@ describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
       expect(html).toContain("+ Tambah Anggota Tamu");
     });
 
-    it("renders /vms/access-levels with door presets, schedules, and elevator floor bundles", async () => {
+    it("renders /vms/access-levels with flat door presets and schedules without facility selector", async () => {
       const pageComponent = await AccessLevelsPage();
       const html = renderToStaticMarkup(pageComponent);
 
       expect(html).toContain("Hak Akses Pintu &amp; Kuota Tap");
       expect(html).toContain("Master Keamanan");
       expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("Lokasi Gedung:");
+      expect(html).not.toContain("Lokasi Gedung:");
       expect(html).toContain("+ Tambah Hak Akses Pintu");
-      expect(html).toContain("Jadwal Waktu Akses");
+      expect(html).toContain("Sinkronkan Pintu dari Server HikCentral");
     });
 
     it("renders /vms/visitors with PDP soft-delete compliance, biometric archive, and stat cards", async () => {

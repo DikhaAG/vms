@@ -9,7 +9,6 @@ describe("POST /api/vms/check-in/walk-in", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          facilityId: "fac-jakarta",
           hostId: "emp-host-01",
           hostName: "Budi Santoso",
           visitorFamilyName: "Pranoto",
@@ -44,7 +43,7 @@ describe("POST /api/vms/check-in/walk-in", () => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          visitorFamilyName: "MissingFacility",
+          visitorFamilyName: "MissingFields",
           receptionistUserId: "rec-01",
         }),
       },

@@ -93,16 +93,13 @@ describe("Sidebar Component", () => {
     expect(html).toContain("w-18");
   });
 
-  it("renders mobile drawer with prominent top telemetry block showing active facility and timezone clock", () => {
+  it("renders mobile drawer with prominent top telemetry block showing site name and timezone clock", () => {
     const html = renderToStaticMarkup(
       <Sidebar
         currentPath="/vms/reception"
         mobileOpen={true}
-        selectedFacility={{
-          id: "fac-bali",
-          name: "Bali Innovation Center",
-          timezone: "Asia/Makassar",
-        }}
+        siteName="Bali Innovation Center"
+        timezone="Asia/Makassar"
       />
     );
 

@@ -3,12 +3,15 @@
  * Free of Node.js dependencies and process.env reads — safe for Client Components.
  */
 
+import { z } from "zod";
 import type { MonitoringListFlag, ApprovalRecord } from "./approval-contract";
-import {
-  validateTapQuota,
-  type TapQuotaConfig,
-} from "./access-level-contract";
+import { tapQuotaSchema } from "./access-level-contract";
 import { isValidIanaTimezone } from "./timezone";
+import {
+  PRE_REGISTRATION_MODES,
+  preRegistrationModeSchema,
+  type PreRegistrationMode,
+} from "./pre-registration-mode-contract";
 import {
   DOOR_ACCESS_TYPES,
   EMERGENCY_GRANT_STATUSES,
@@ -16,6 +19,9 @@ import {
   isEmergencyGrantActive,
   isEmergencyGrantStatus,
   validateGrantEmergencyAccessInput,
+  doorSchema,
+  facilityDoorSchema,
+  type Door,
   type DoorAccessType,
   type EmergencyAccessGrant,
   type EmergencyGrantStatus,
@@ -23,14 +29,18 @@ import {
   type GrantEmergencyAccessInput,
   type VisitLastSeenDoor,
 } from "./checkout-contract";
+import { formatZodErrors, isRecord } from "./validation-helpers";
 
 export {
   DOOR_ACCESS_TYPES,
   EMERGENCY_GRANT_STATUSES,
+  doorSchema,
+  facilityDoorSchema,
   isDoorAccessType,
   isEmergencyGrantActive,
   isEmergencyGrantStatus,
   validateGrantEmergencyAccessInput,
+  type Door,
   type DoorAccessType,
   type EmergencyAccessGrant,
   type EmergencyGrantStatus,
@@ -50,9 +60,24 @@ export const VISIT_STATUSES = [
   "CANCELLED",
   "OVERSTAY",
 ] as const;
-export type VisitStatus = (typeof VISIT_STATUSES)[number];
+export const visitStatusSchema = z.enum(VISIT_STATUSES);
+export type VisitStatus = z.infer<typeof visitStatusSchema>;
 
 export const VISIT_REASON_TYPES = [0, 1, 2, 3, 4] as const;
+const [firstReason, ...restReasons] = VISIT_REASON_TYPES.map((t) =>
+  z.literal(t),
+);
+export const visitReasonTypeSchema = z.union(
+  [firstReason, ...restReasons],
+  {
+    error: (issue) => {
+      if (issue.input === undefined || issue.input === null) {
+        return "Visit reason type is required.";
+      }
+      return `Visit reason type must be one of: ${VISIT_REASON_TYPES.join(", ")}.`;
+    },
+  },
+);
 export type VisitReasonType = (typeof VISIT_REASON_TYPES)[number];
 
 export const VISIT_REASON_LABELS: Record<VisitReasonType, string> = {
@@ -64,6 +89,15 @@ export const VISIT_REASON_LABELS: Record<VisitReasonType, string> = {
 };
 
 export const CERTIFICATE_TYPES = [111, 414, 335, 222] as const;
+const [firstCert, ...restCerts] = CERTIFICATE_TYPES.map((t) => z.literal(t));
+export const certificateTypeSchema = z.union([firstCert, ...restCerts], {
+  error: (issue) => {
+    if (issue.input === undefined || issue.input === null) {
+      return "Certificate type is required.";
+    }
+    return `Certificate type must be one of: ${CERTIFICATE_TYPES.join(", ")}.`;
+  },
+});
 export type CertificateType = (typeof CERTIFICATE_TYPES)[number];
 
 export const CERTIFICATE_TYPE_LABELS: Record<CertificateType, string> = {
@@ -73,8 +107,7 @@ export const CERTIFICATE_TYPE_LABELS: Record<CertificateType, string> = {
   222: "Exit-Entry Permit",
 };
 
-export const PRE_REGISTRATION_MODES = ["live", "stub"] as const;
-export type PreRegistrationMode = (typeof PRE_REGISTRATION_MODES)[number];
+export { PRE_REGISTRATION_MODES, preRegistrationModeSchema, type PreRegistrationMode };
 
 export const STUB_SCENARIOS = [
   "success",
@@ -85,7 +118,10 @@ export const STUB_SCENARIOS = [
   "sync-pending",
   "monitoring-list-flagged",
 ] as const;
-export type StubScenario = (typeof STUB_SCENARIOS)[number];
+export const stubScenarioSchema = z.enum(STUB_SCENARIOS, {
+  error: `Stub scenario must be one of: ${STUB_SCENARIOS.join(", ")}.`,
+});
+export type StubScenario = z.infer<typeof stubScenarioSchema>;
 
 export const CREDENTIAL_SYNC_STATUSES = [
   "Applied",
@@ -93,99 +129,209 @@ export const CREDENTIAL_SYNC_STATUSES = [
   "Failed",
   "Unknown",
 ] as const;
-export type CredentialSyncStatus = (typeof CREDENTIAL_SYNC_STATUSES)[number];
+export const credentialSyncStatusSchema = z.enum(CREDENTIAL_SYNC_STATUSES);
+export type CredentialSyncStatus = z.infer<typeof credentialSyncStatusSchema>;
 
-export interface Facility {
-  id: string;
-  name: string;
-  timezone: string;
-  address?: string;
-  overstayGraceMinutes?: number;
-  autoCheckInEarlyBufferMinutes?: number;
-}
+export const hostEmployeeSchema = z.object({
+  id: z.string(),
+  personCode: z.string().optional(),
+  name: z.string(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  orgIndexCode: z.string().optional(),
+  departmentName: z.string().optional(),
+});
+export type HostEmployee = z.infer<typeof hostEmployeeSchema>;
 
-export interface HostEmployee {
-  id: string; // Internal host/person ID (or personCode / personId)
-  personCode?: string;
-  name: string;
-  email?: string;
-  phone?: string;
-  orgIndexCode?: string;
-  departmentName?: string;
-}
+export const hikCentralVisitReferenceSchema = z.object({
+  appointRecordId: z.string(),
+  visitorId: z.string(),
+  appointCode: z.string().optional(),
+  qrCodeImage: z.string().optional(),
+  pinCode: z.string().optional(),
+});
+export type HikCentralVisitReference = z.infer<
+  typeof hikCentralVisitReferenceSchema
+>;
 
-export interface HikCentralVisitReference {
-  appointRecordId: string;
-  visitorId: string;
-  appointCode?: string;
-  qrCodeImage?: string;
-  pinCode?: string;
-}
+export const visitSchema = z.object({
+  id: z.string(),
+  groupId: z.string().optional(),
+  visitorGroupName: z.string().optional(),
+  hostId: z.string().optional(),
+  hostName: z.string().optional(),
+  visitorFamilyName: z.string(),
+  visitorGivenName: z.string(),
+  visitorPhone: z.string().optional(),
+  visitorEmail: z.string().optional(),
+  certificateType: certificateTypeSchema.optional(),
+  certificateNo: z.string().optional(),
+  visitReasonType: visitReasonTypeSchema,
+  visitReasonDetail: z.string().optional(),
+  scheduledStartTimeUtc: z.string(),
+  scheduledEndTimeUtc: z.string(),
+  scheduledStartTimeFacility: z.string(),
+  scheduledEndTimeFacility: z.string(),
+  actualCheckInTimeUtc: z.string().optional(),
+  actualCheckOutTimeUtc: z.string().optional(),
+  tapCount: z.number().optional(),
+  checkOutReason: z.string().optional(),
+  cancelReason: z.string().optional(),
+  remark: z.string().optional(),
+  isForcedCheckOut: z.boolean().optional(),
+  checkedOutByUserId: z.string().optional(),
+  status: visitStatusSchema,
+  facePhoto: z.string().optional(),
+  credentialSyncStatus: credentialSyncStatusSchema.optional(),
+  hikCentral: hikCentralVisitReferenceSchema.optional(),
+  invitationToken: z.string().optional(),
+  monitoringListFlag: z.custom<MonitoringListFlag>().optional(),
+  approvalRecord: z.custom<ApprovalRecord>().optional(),
+  accessLevelIds: z.array(z.string()).optional(),
+  tapQuota: tapQuotaSchema.optional(),
+  emergencyGrants: z.array(z.custom<EmergencyAccessGrant>()).optional(),
+  lastSeenDoor: z.custom<VisitLastSeenDoor>().optional(),
+  isFastTrack: z.boolean().optional(),
+  createdAtUtc: z.string(),
+  updatedAtUtc: z.string(),
+});
+export type Visit = z.infer<typeof visitSchema>;
 
-export interface Visit {
-  id: string;
-  facilityId: string;
-  facilityName?: string;
-  groupId?: string;
-  visitorGroupName?: string;
-  hostId?: string;
-  hostName?: string;
-  visitorFamilyName: string;
-  visitorGivenName: string;
-  visitorPhone?: string;
-  visitorEmail?: string;
-  certificateType?: CertificateType;
-  certificateNo?: string;
-  visitReasonType: VisitReasonType;
-  visitReasonDetail?: string;
-  scheduledStartTimeUtc: string;
-  scheduledEndTimeUtc: string;
-  scheduledStartTimeFacility: string;
-  scheduledEndTimeFacility: string;
-  actualCheckInTimeUtc?: string;
-  actualCheckOutTimeUtc?: string;
-  tapCount?: number;
-  checkOutReason?: string;
-  cancelReason?: string;
-  remark?: string;
-  isForcedCheckOut?: boolean;
-  checkedOutByUserId?: string;
-  status: VisitStatus;
-  facePhoto?: string;
-  credentialSyncStatus?: CredentialSyncStatus;
-  hikCentral?: HikCentralVisitReference;
-  invitationToken?: string;
-  monitoringListFlag?: MonitoringListFlag;
-  approvalRecord?: ApprovalRecord;
-  accessLevelIds?: string[];
-  tapQuota?: TapQuotaConfig;
-  emergencyGrants?: EmergencyAccessGrant[];
-  lastSeenDoor?: VisitLastSeenDoor;
-  isFastTrack?: boolean;
-  createdAtUtc: string;
-  updatedAtUtc: string;
-}
+export const FORBIDDEN_HIKCENTRAL_CHARS = /['\/\\:*?"<>|]/;
 
-export interface CreatePreRegistrationInput {
-  facilityId: string;
-  hostId?: string;
-  hostName?: string;
-  visitorFamilyName: string;
-  visitorGivenName: string;
-  visitorPhone?: string;
-  visitorEmail?: string;
-  certificateType?: CertificateType;
-  certificateNo?: string;
-  visitReasonType: VisitReasonType;
-  visitReasonDetail?: string;
-  scheduledStartTime: string;
-  scheduledEndTime: string;
-  facePhoto?: string;
-  accessLevelIds?: string[];
-  tapQuota?: TapQuotaConfig;
-  mode?: PreRegistrationMode;
-  stubScenario?: StubScenario;
-}
+export const createPreRegistrationSchema = z
+  .object({
+    hostId: z.string().trim().optional(),
+    hostName: z.string().trim().optional(),
+    visitorFamilyName: z
+      .string({ error: "Visitor family name is required." })
+      .trim()
+      .min(1, "Visitor family name is required.")
+      .max(256, "Visitor family name must be at most 256 characters.")
+      .refine((val) => !FORBIDDEN_HIKCENTRAL_CHARS.test(val), {
+        message:
+          "Visitor family name cannot contain special characters like ' / \\ : * ? \" < > |",
+      }),
+    visitorGivenName: z
+      .string({ error: "Visitor given name is required." })
+      .trim()
+      .min(1, "Visitor given name is required.")
+      .max(256, "Visitor given name must be at most 256 characters.")
+      .refine((val) => !FORBIDDEN_HIKCENTRAL_CHARS.test(val), {
+        message:
+          "Visitor given name cannot contain special characters like ' / \\ : * ? \" < > |",
+      }),
+    visitorPhone: z
+      .string({ error: "Phone number must be a string." })
+      .trim()
+      .max(20, "Phone number must be at most 20 characters.")
+      .optional(),
+    visitorEmail: z
+      .string({ error: "Email must be a string." })
+      .trim()
+      .refine((val) => !val || val.includes("@"), {
+        message: "Email must be a valid email address.",
+      })
+      .optional(),
+    certificateType: certificateTypeSchema.optional(),
+    certificateNo: z
+      .string({ error: "Certificate number must be a string." })
+      .trim()
+      .max(20, "Certificate number must be at most 20 characters.")
+      .optional(),
+    visitReasonType: visitReasonTypeSchema,
+    visitReasonDetail: z
+      .string({ error: "Visit reason detail must be a string." })
+      .trim()
+      .max(128, "Visit reason detail must be at most 128 characters.")
+      .optional(),
+    scheduledStartTime: z
+      .string({ error: "Scheduled start time is required." })
+      .trim()
+      .min(1, "Scheduled start time is required."),
+    scheduledEndTime: z
+      .string({ error: "Scheduled end time is required." })
+      .trim()
+      .min(1, "Scheduled end time is required."),
+    facePhoto: z
+      .string({ error: "Face photo must be a string." })
+      .trim()
+      .optional(),
+    accessLevelIds: z
+      .array(z.string().trim(), {
+        error: "accessLevelIds must be an array of strings.",
+      })
+      .optional(),
+    tapQuota: tapQuotaSchema.optional(),
+    mode: preRegistrationModeSchema.optional(),
+    stubScenario: stubScenarioSchema.optional(),
+  })
+  .superRefine((data, ctx) => {
+    // If certificateNo provided, certificateType is required
+    if (data.certificateNo && data.certificateNo.trim().length > 0) {
+      if (data.certificateType === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["certificateType"],
+          message:
+            "Certificate type is required when certificate number is provided.",
+        });
+      }
+    }
+
+    // Reason type 4 (Others) requires detail
+    if (data.visitReasonType === 4) {
+      if (!data.visitReasonDetail || !data.visitReasonDetail.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["visitReasonDetail"],
+          message:
+            "Visit reason detail is required when reason type is 'Others' (4).",
+        });
+      }
+    }
+
+    // Date range validation
+    if (data.scheduledStartTime && data.scheduledEndTime) {
+      const s = data.scheduledStartTime.trim();
+      const e = data.scheduledEndTime.trim();
+      const startMs = Date.parse(
+        s.includes("Z") || /[+-]\d{2}/.test(s) ? s : `${s}Z`,
+      );
+      const endMs = Date.parse(
+        e.includes("Z") || /[+-]\d{2}/.test(e) ? e : `${e}Z`,
+      );
+
+      if (isNaN(startMs)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["scheduledStartTime"],
+          message: "Invalid start time format.",
+        });
+      }
+      if (isNaN(endMs)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["scheduledEndTime"],
+          message: "Invalid end time format.",
+        });
+      }
+      if (!isNaN(startMs) && !isNaN(endMs) && endMs <= startMs) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["scheduledEndTime"],
+          message: "Scheduled end time must be after start time.",
+        });
+      }
+    }
+  });
+export type CreatePreRegistrationInput = z.infer<
+  typeof createPreRegistrationSchema
+>;
+
+/** Canonical isomorphic alias for React Hook Form + Zod resolver integrations */
+export const preRegistrationInputSchema = createPreRegistrationSchema;
+export type PreRegistrationInput = CreatePreRegistrationInput;
 
 export type PreRegistrationErrorKind =
   | "validation"
@@ -209,43 +355,26 @@ export interface PreRegistrationResult {
 }
 
 export function isVisitStatus(value: unknown): value is VisitStatus {
-  return (
-    typeof value === "string" &&
-    (VISIT_STATUSES as readonly string[]).includes(value)
-  );
+  return visitStatusSchema.safeParse(value).success;
 }
 
 export function isVisitReasonType(value: unknown): value is VisitReasonType {
-  return (
-    typeof value === "number" &&
-    (VISIT_REASON_TYPES as readonly number[]).includes(value)
-  );
+  return visitReasonTypeSchema.safeParse(value).success;
 }
 
 export function isCertificateType(value: unknown): value is CertificateType {
-  return (
-    typeof value === "number" &&
-    (CERTIFICATE_TYPES as readonly number[]).includes(value)
-  );
+  return certificateTypeSchema.safeParse(value).success;
 }
 
 export function isPreRegistrationMode(
   value: unknown,
 ): value is PreRegistrationMode {
-  return (
-    typeof value === "string" &&
-    (PRE_REGISTRATION_MODES as readonly string[]).includes(value)
-  );
+  return preRegistrationModeSchema.safeParse(value).success;
 }
 
 export function isStubScenario(value: unknown): value is StubScenario {
-  return (
-    typeof value === "string" &&
-    (STUB_SCENARIOS as readonly string[]).includes(value)
-  );
+  return stubScenarioSchema.safeParse(value).success;
 }
-
-export const FORBIDDEN_HIKCENTRAL_CHARS = /['\/\\:*?"<>|]/;
 
 export interface ValidationSuccess {
   valid: true;
@@ -260,326 +389,156 @@ export interface ValidationFailure {
 export type ValidationOutcome = ValidationSuccess | ValidationFailure;
 
 /**
- * Pure validator for pre-registration input.
+ * Pure validator for pre-registration input. Backward-compatible wrapper delegating to createPreRegistrationSchema.
  */
 export function validatePreRegistrationInput(raw: unknown): ValidationOutcome {
-  const errors: Record<string, string> = {};
-
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { valid: false, errors: { _global: "Request payload must be an object." } };
+  if (!isRecord(raw)) {
+    return {
+      valid: false,
+      errors: { _global: "Request payload must be an object." },
+    };
   }
 
-  const record = raw as Record<string, unknown>;
-
-  // Facility ID
-  const facilityId = typeof record.facilityId === "string" ? record.facilityId.trim() : "";
-  if (!facilityId) {
-    errors.facilityId = "Facility is required.";
-  }
-
-  // Visitor Names
-  const visitorFamilyName =
-    typeof record.visitorFamilyName === "string"
-      ? record.visitorFamilyName.trim()
-      : "";
-  if (!visitorFamilyName) {
-    errors.visitorFamilyName = "Visitor family name is required.";
-  } else if (visitorFamilyName.length > 256) {
-    errors.visitorFamilyName = "Visitor family name must be at most 256 characters.";
-  } else if (FORBIDDEN_HIKCENTRAL_CHARS.test(visitorFamilyName)) {
-    errors.visitorFamilyName =
-      "Visitor family name cannot contain special characters like ' / \\ : * ? \" < > |";
-  }
-
-  const visitorGivenName =
-    typeof record.visitorGivenName === "string"
-      ? record.visitorGivenName.trim()
-      : "";
-  if (!visitorGivenName) {
-    errors.visitorGivenName = "Visitor given name is required.";
-  } else if (visitorGivenName.length > 256) {
-    errors.visitorGivenName = "Visitor given name must be at most 256 characters.";
-  } else if (FORBIDDEN_HIKCENTRAL_CHARS.test(visitorGivenName)) {
-    errors.visitorGivenName =
-      "Visitor given name cannot contain special characters like ' / \\ : * ? \" < > |";
-  }
-
-  // Phone
-  let visitorPhone: string | undefined;
-  if (record.visitorPhone !== undefined && record.visitorPhone !== null) {
-    if (typeof record.visitorPhone === "string") {
-      visitorPhone = record.visitorPhone.trim();
-      if (visitorPhone.length > 20) {
-        errors.visitorPhone = "Phone number must be at most 20 characters.";
-      }
-    } else {
-      errors.visitorPhone = "Phone number must be a string.";
-    }
-  }
-
-  // Email
-  let visitorEmail: string | undefined;
-  if (record.visitorEmail !== undefined && record.visitorEmail !== null) {
-    if (typeof record.visitorEmail === "string") {
-      visitorEmail = record.visitorEmail.trim();
-      if (visitorEmail && !visitorEmail.includes("@")) {
-        errors.visitorEmail = "Email must be a valid email address.";
-      }
-    } else {
-      errors.visitorEmail = "Email must be a string.";
-    }
-  }
-
-  // Certificate
-  let certificateType: CertificateType | undefined;
-  let certificateNo: string | undefined;
-  if (record.certificateType !== undefined && record.certificateType !== null) {
-    if (isCertificateType(record.certificateType)) {
-      certificateType = record.certificateType;
-    } else {
-      errors.certificateType = `Certificate type must be one of: ${CERTIFICATE_TYPES.join(", ")}.`;
-    }
-  }
-
-  if (record.certificateNo !== undefined && record.certificateNo !== null) {
-    if (typeof record.certificateNo === "string") {
-      certificateNo = record.certificateNo.trim();
-      if (certificateNo.length > 20) {
-        errors.certificateNo = "Certificate number must be at most 20 characters.";
-      }
-      if (certificateNo && certificateType === undefined) {
-        errors.certificateType = "Certificate type is required when certificate number is provided.";
-      }
-    } else {
-      errors.certificateNo = "Certificate number must be a string.";
-    }
-  }
-
-  // Visit Reason
-  let visitReasonType: VisitReasonType = 0;
-  if (record.visitReasonType !== undefined && record.visitReasonType !== null) {
-    if (isVisitReasonType(record.visitReasonType)) {
-      visitReasonType = record.visitReasonType;
-    } else {
-      errors.visitReasonType = `Visit reason type must be one of: ${VISIT_REASON_TYPES.join(", ")}.`;
-    }
-  } else {
-    errors.visitReasonType = "Visit reason type is required.";
-  }
-
-  let visitReasonDetail: string | undefined;
-  if (record.visitReasonDetail !== undefined && record.visitReasonDetail !== null) {
-    if (typeof record.visitReasonDetail === "string") {
-      visitReasonDetail = record.visitReasonDetail.trim();
-      if (visitReasonDetail.length > 128) {
-        errors.visitReasonDetail = "Visit reason detail must be at most 128 characters.";
-      }
-    } else {
-      errors.visitReasonDetail = "Visit reason detail must be a string.";
-    }
-  }
-
-  if (visitReasonType === 4 && (!visitReasonDetail || visitReasonDetail.length === 0)) {
-    errors.visitReasonDetail = "Visit reason detail is required when reason type is 'Others' (4).";
-  }
-
-  // Scheduled Start and End Times
-  const scheduledStartTime =
-    typeof record.scheduledStartTime === "string"
-      ? record.scheduledStartTime.trim()
-      : "";
-  if (!scheduledStartTime) {
-    errors.scheduledStartTime = "Scheduled start time is required.";
-  }
-
-  const scheduledEndTime =
-    typeof record.scheduledEndTime === "string"
-      ? record.scheduledEndTime.trim()
-      : "";
-  if (!scheduledEndTime) {
-    errors.scheduledEndTime = "Scheduled end time is required.";
-  }
-
-  if (scheduledStartTime && scheduledEndTime) {
-    const startDate = new Date(
-      scheduledStartTime.includes("Z") || /[+-]\d{2}/.test(scheduledStartTime)
-        ? scheduledStartTime
-        : scheduledStartTime + "Z",
-    );
-    const endDate = new Date(
-      scheduledEndTime.includes("Z") || /[+-]\d{2}/.test(scheduledEndTime)
-        ? scheduledEndTime
-        : scheduledEndTime + "Z",
-    );
-
-    if (isNaN(startDate.getTime())) {
-      errors.scheduledStartTime = "Invalid start time format.";
-    }
-    if (isNaN(endDate.getTime())) {
-      errors.scheduledEndTime = "Invalid end time format.";
-    }
-
-    if (!isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
-      if (endDate.getTime() <= startDate.getTime()) {
-        errors.scheduledEndTime = "Scheduled end time must be after start time.";
-      }
-    }
-  }
-
-  // Face photo (optional)
-  let facePhoto: string | undefined;
-  if (record.facePhoto !== undefined && record.facePhoto !== null) {
-    if (typeof record.facePhoto === "string") {
-      facePhoto = record.facePhoto.trim() || undefined;
-    } else {
-      errors.facePhoto = "Face photo must be a string.";
-    }
-  }
-
-  // Access Levels (optional)
-  let accessLevelIds: string[] | undefined;
-  if (record.accessLevelIds !== undefined && record.accessLevelIds !== null) {
-    if (Array.isArray(record.accessLevelIds)) {
-      accessLevelIds = record.accessLevelIds
-        .map((id) => (typeof id === "string" ? id.trim() : ""))
-        .filter(Boolean);
-    } else {
-      errors.accessLevelIds = "accessLevelIds must be an array of strings.";
-    }
-  }
-
-  // Tap Quota (optional)
-  let tapQuota: TapQuotaConfig | undefined;
-  if (record.tapQuota !== undefined && record.tapQuota !== null) {
-    const quotaValidation = validateTapQuota(record.tapQuota);
-    if (quotaValidation.valid) {
-      tapQuota = quotaValidation.quota;
-    } else {
-      for (const [key, msg] of Object.entries(quotaValidation.errors)) {
-        errors[`tapQuota.${key}`] = msg;
-      }
-    }
-  }
-
-  // Mode and stubScenario
-  let mode: PreRegistrationMode | undefined;
-  if (record.mode !== undefined && record.mode !== null) {
-    if (isPreRegistrationMode(record.mode)) {
-      mode = record.mode;
-    } else {
-      errors.mode = `Mode must be one of: ${PRE_REGISTRATION_MODES.join(", ")}.`;
-    }
-  }
-
-  let stubScenario: StubScenario | undefined;
-  if (record.stubScenario !== undefined && record.stubScenario !== null) {
-    if (isStubScenario(record.stubScenario)) {
-      stubScenario = record.stubScenario;
-    } else {
-      errors.stubScenario = `Stub scenario must be one of: ${STUB_SCENARIOS.join(", ")}.`;
-    }
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return { valid: false, errors };
+  const result = createPreRegistrationSchema.safeParse(raw);
+  if (!result.success) {
+    return { valid: false, errors: formatZodErrors(result.error) };
   }
 
   return {
     valid: true,
     input: {
-      facilityId,
-      hostId: typeof record.hostId === "string" ? record.hostId.trim() : undefined,
-      hostName: typeof record.hostName === "string" ? record.hostName.trim() : undefined,
-      visitorFamilyName,
-      visitorGivenName,
-      visitorPhone,
-      visitorEmail,
-      certificateType,
-      certificateNo,
-      visitReasonType,
-      visitReasonDetail,
-      scheduledStartTime,
-      scheduledEndTime,
-      facePhoto,
-      accessLevelIds,
-      tapQuota,
-      mode,
-      stubScenario,
+      hostId: result.data.hostId,
+      hostName: result.data.hostName,
+      visitorFamilyName: result.data.visitorFamilyName,
+      visitorGivenName: result.data.visitorGivenName,
+      visitorPhone: result.data.visitorPhone,
+      visitorEmail: result.data.visitorEmail,
+      certificateType: result.data.certificateType,
+      certificateNo: result.data.certificateNo,
+      visitReasonType: result.data.visitReasonType,
+      visitReasonDetail: result.data.visitReasonDetail,
+      scheduledStartTime: result.data.scheduledStartTime,
+      scheduledEndTime: result.data.scheduledEndTime,
+      facePhoto: result.data.facePhoto,
+      accessLevelIds: result.data.accessLevelIds,
+      tapQuota: result.data.tapQuota
+        ? {
+            mode: result.data.tapQuota.mode,
+            maxTaps:
+              result.data.tapQuota.mode === "unlimited"
+                ? 0
+                : result.data.tapQuota.maxTaps ?? 0,
+          }
+        : undefined,
+      mode: result.data.mode,
+      stubScenario: result.data.stubScenario,
     },
   };
 }
 
-export interface UpdateFacilityInput {
-  name?: string;
-  timezone?: string;
-  overstayGraceMinutes?: number;
-  address?: string;
-}
+// ---------------------------------------------------------------------------
+// Global System Settings (Single-Site Architecture)
+// ---------------------------------------------------------------------------
 
-export type FacilityValidationOutcome =
-  | { valid: true; input: UpdateFacilityInput }
+export const DEFAULT_SYSTEM_SETTINGS = {
+  siteName: "Gedung Utama",
+  timezone: "Asia/Jakarta",
+  overstayGraceMinutes: 15,
+  autoCheckInEarlyBufferMinutes: 15,
+} as const;
+
+export const systemSettingsSchema = z.object({
+  id: z.string().default("default"),
+  siteName: z
+    .string({ error: "Site name is required." })
+    .trim()
+    .min(1, "Site name is required.")
+    .default(DEFAULT_SYSTEM_SETTINGS.siteName),
+  timezone: z
+    .string({ error: "Timezone is required." })
+    .trim()
+    .min(1, "Timezone is required.")
+    .refine(isValidIanaTimezone, {
+      message:
+        "Timezone must be a valid IANA timezone identifier (e.g., 'Asia/Jakarta').",
+    })
+    .default(DEFAULT_SYSTEM_SETTINGS.timezone),
+  overstayGraceMinutes: z
+    .number({ error: "Overstay grace period must be a number." })
+    .int("Overstay grace period must be an integer.")
+    .min(0, "Overstay grace period cannot be negative.")
+    .default(DEFAULT_SYSTEM_SETTINGS.overstayGraceMinutes),
+  autoCheckInEarlyBufferMinutes: z
+    .number({ error: "Auto check-in early buffer must be a number." })
+    .int("Auto check-in early buffer must be an integer.")
+    .min(0, "Auto check-in early buffer cannot be negative.")
+    .default(DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes),
+  updatedAt: z.string().optional(),
+});
+export type SystemSettings = z.infer<typeof systemSettingsSchema>;
+
+export const updateSystemSettingsSchema = z.object({
+  siteName: z
+    .string()
+    .trim()
+    .min(1, "Site name cannot be empty.")
+    .optional(),
+  timezone: z
+    .string()
+    .trim()
+    .min(1, "Timezone cannot be empty.")
+    .refine(isValidIanaTimezone, {
+      message:
+        "Timezone must be a valid IANA timezone identifier (e.g., 'Asia/Jakarta').",
+    })
+    .optional(),
+  overstayGraceMinutes: z
+    .number({ error: "Overstay grace period must be a number." })
+    .int("Overstay grace period must be an integer.")
+    .min(0, "Overstay grace period cannot be negative.")
+    .optional(),
+  autoCheckInEarlyBufferMinutes: z
+    .number({ error: "Auto check-in early buffer must be a number." })
+    .int("Auto check-in early buffer must be an integer.")
+    .min(0, "Auto check-in early buffer cannot be negative.")
+    .optional(),
+});
+export type UpdateSystemSettingsInput = z.infer<typeof updateSystemSettingsSchema>;
+
+export type SystemSettingsValidationOutcome =
+  | { valid: true; input: UpdateSystemSettingsInput }
   | { valid: false; errors: Record<string, string> };
 
 /**
- * Pure validator for facility update configuration payloads.
+ * Pure validator for system settings update payloads.
  */
-export function validateUpdateFacilityInput(
+export function validateUpdateSystemSettingsInput(
   raw: unknown,
-): FacilityValidationOutcome {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+): SystemSettingsValidationOutcome {
+  if (!isRecord(raw)) {
     return {
       valid: false,
       errors: { _global: "Request payload must be a JSON object." },
     };
   }
 
-  const rec = raw as Record<string, unknown>;
-  const errors: Record<string, string> = {};
-  const input: UpdateFacilityInput = {};
-
-  if (rec.name !== undefined) {
-    if (typeof rec.name !== "string" || !rec.name.trim()) {
-      errors.name = "Facility name must not be empty.";
-    } else {
-      input.name = rec.name.trim();
-    }
+  const result = updateSystemSettingsSchema.safeParse(raw);
+  if (!result.success) {
+    return { valid: false, errors: formatZodErrors(result.error) };
   }
 
-  if (rec.timezone !== undefined) {
-    if (
-      typeof rec.timezone !== "string" ||
-      !isValidIanaTimezone(rec.timezone.trim())
-    ) {
-      errors.timezone = `Invalid IANA timezone identifier: "${rec.timezone}".`;
-    } else {
-      input.timezone = rec.timezone.trim();
-    }
-  }
-
-  if (rec.overstayGraceMinutes !== undefined) {
-    if (
-      typeof rec.overstayGraceMinutes !== "number" ||
-      isNaN(rec.overstayGraceMinutes) ||
-      rec.overstayGraceMinutes < 0
-    ) {
-      errors.overstayGraceMinutes =
-        "overstayGraceMinutes must be a non-negative number.";
-    } else {
-      input.overstayGraceMinutes = Math.floor(rec.overstayGraceMinutes);
-    }
-  }
-
-  if (rec.address !== undefined) {
-    if (typeof rec.address !== "string") {
-      errors.address = "address must be a string.";
-    } else {
-      input.address = rec.address.trim();
-    }
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return { valid: false, errors };
-  }
-
-  return { valid: true, input };
+  return {
+    valid: true,
+    input: {
+      ...result.data,
+      overstayGraceMinutes:
+        typeof result.data.overstayGraceMinutes === "number"
+          ? Math.floor(result.data.overstayGraceMinutes)
+          : undefined,
+      autoCheckInEarlyBufferMinutes:
+        typeof result.data.autoCheckInEarlyBufferMinutes === "number"
+          ? Math.floor(result.data.autoCheckInEarlyBufferMinutes)
+          : undefined,
+    },
+  };
 }

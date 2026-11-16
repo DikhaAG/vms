@@ -1,59 +1,83 @@
+import { z } from "zod";
 import type { VisitStatus } from "./vms-contract";
+import { formatZodErrors, isRecord } from "./validation-helpers";
 
 export const APPROVAL_ACTIONS = ["approve", "reject"] as const;
-export type ApprovalAction = (typeof APPROVAL_ACTIONS)[number];
+
+export const approvalActionSchema = z.enum(APPROVAL_ACTIONS, {
+  error: `Action must be one of: ${APPROVAL_ACTIONS.join(", ")}.`,
+});
+export type ApprovalAction = z.infer<typeof approvalActionSchema>;
 
 export function isApprovalAction(value: unknown): value is ApprovalAction {
-  return (
-    typeof value === "string" &&
-    (APPROVAL_ACTIONS as readonly string[]).includes(value)
-  );
+  return approvalActionSchema.safeParse(value).success;
 }
 
-export interface ApprovalDecisionInput {
-  action: ApprovalAction;
-  comment?: string;
-}
+export const approvalDecisionSchema = z
+  .object({
+    action: approvalActionSchema,
+    comment: z
+      .string({ error: "Comment must be a string." })
+      .trim()
+      .max(500, "Comment must be at most 500 characters.")
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.action === "reject") {
+      if (!data.comment || data.comment.length === 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["comment"],
+          message: "A non-empty rejection reason comment is required.",
+        });
+      }
+    }
+  });
+export type ApprovalDecisionInput = z.infer<typeof approvalDecisionSchema>;
 
-export interface ApproverUser {
-  id: string;
-  name: string;
-  role?: string;
-  email?: string;
-}
+export const approverUserSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: z.string().optional(),
+  email: z.string().optional(),
+});
+export type ApproverUser = z.infer<typeof approverUserSchema>;
 
-export interface ApprovalRecord {
-  id: string;
-  visitId: string;
-  action: ApprovalAction;
-  previousStatus: VisitStatus;
-  newStatus: VisitStatus;
-  approverId: string;
-  approverName: string;
-  approverRole?: string;
-  comment?: string;
-  decidedAtUtc: string;
-  hikCentralSyncStatus?: "synced" | "failed" | "skipped";
-}
+export const approvalRecordSchema = z.object({
+  id: z.string(),
+  visitId: z.string(),
+  action: approvalActionSchema,
+  previousStatus: z.custom<VisitStatus>(),
+  newStatus: z.custom<VisitStatus>(),
+  approverId: z.string(),
+  approverName: z.string(),
+  approverRole: z.string().optional(),
+  comment: z.string().optional(),
+  decidedAtUtc: z.string(),
+  hikCentralSyncStatus: z.enum(["synced", "failed", "skipped"]).optional(),
+});
+export type ApprovalRecord = z.infer<typeof approvalRecordSchema>;
 
-export interface MonitoringListMatch {
-  id?: string;
-  enableRegister?: number;
-  rejectNum?: number;
-  visitorType?: number;
-  type?: string;
-  remark?: string;
-  visitorTypeName?: string;
-  identificationType?: number;
-  certificateNo?: string;
-}
+export const monitoringListMatchSchema = z.object({
+  id: z.string().optional(),
+  enableRegister: z.number().optional(),
+  rejectNum: z.number().optional(),
+  visitorType: z.number().optional(),
+  type: z.string().optional(),
+  remark: z.string().optional(),
+  visitorTypeName: z.string().optional(),
+  identificationType: z.number().optional(),
+  certificateNo: z.string().optional(),
+});
+export type MonitoringListMatch = z.infer<typeof monitoringListMatchSchema>;
 
-export interface MonitoringListFlag {
-  isFlagged: boolean;
-  flaggedAtUtc: string;
-  reason?: string;
-  matches?: MonitoringListMatch[];
-}
+export const monitoringListFlagSchema = z.object({
+  isFlagged: z.boolean(),
+  flaggedAtUtc: z.string(),
+  reason: z.string().optional(),
+  matches: z.array(monitoringListMatchSchema).optional(),
+});
+export type MonitoringListFlag = z.infer<typeof monitoringListFlagSchema>;
 
 export interface ApprovalValidationSuccess {
   valid: true;
@@ -71,58 +95,30 @@ export type ApprovalValidationOutcome =
 
 /**
  * Pure validator for approval decisions.
- * Enforces mandatory comments on rejection.
+ * Enforces mandatory comments on rejection. Backward-compatible wrapper.
  */
 export function validateApprovalDecision(
   raw: unknown,
 ): ApprovalValidationOutcome {
-  const errors: Record<string, string> = {};
-
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+  if (!isRecord(raw)) {
     return {
       valid: false,
       errors: { _global: "Request payload must be an object." },
     };
   }
 
-  const record = raw as Record<string, unknown>;
-
-  // Action validation
-  if (!isApprovalAction(record.action)) {
-    errors.action = `Action must be one of: ${APPROVAL_ACTIONS.join(", ")}.`;
+  const result = approvalDecisionSchema.safeParse(raw);
+  if (result.success) {
+    return {
+      valid: true,
+      input: {
+        action: result.data.action,
+        comment: result.data.comment || undefined,
+      },
+    };
   }
 
-  // Comment validation
-  let comment: string | undefined;
-  if (record.comment !== undefined && record.comment !== null) {
-    if (typeof record.comment === "string") {
-      const trimmed = record.comment.trim();
-      if (trimmed.length > 500) {
-        errors.comment = "Comment must be at most 500 characters.";
-      } else if (trimmed.length > 0) {
-        comment = trimmed;
-      }
-    } else {
-      errors.comment = "Comment must be a string.";
-    }
-  }
-
-  // Reject action requires a non-empty comment explaining the rejection reason
-  if (record.action === "reject" && (!comment || comment.length === 0)) {
-    errors.comment = "A non-empty rejection reason comment is required.";
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return { valid: false, errors };
-  }
-
-  return {
-    valid: true,
-    input: {
-      action: record.action as ApprovalAction,
-      comment,
-    },
-  };
+  return { valid: false, errors: formatZodErrors(result.error) };
 }
 
 /**

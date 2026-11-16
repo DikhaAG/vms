@@ -3,15 +3,14 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { EmergencyAccessModal } from "./emergency-access-modal";
 import type {
   ActiveVisitSummary,
-  FacilityDoor,
+  Door,
 } from "@/lib/vms/checkout-contract";
 
-describe("EmergencyAccessModal Component", () => {
+describe("EmergencyAccessModal Component (Single-Site Checklist)", () => {
   const mockVisit: ActiveVisitSummary = {
     visitId: "vis-modal-1",
-    facility: {
-      id: "fac-jakarta",
-      name: "Jakarta HQ DC",
+    site: {
+      name: "Gedung Utama",
       timezone: "Asia/Jakarta",
     },
     visitor: {
@@ -37,12 +36,12 @@ describe("EmergencyAccessModal Component", () => {
     emergencyGrants: [],
   };
 
-  const mockDoors: FacilityDoor[] = [
+  const mockDoors: Door[] = [
     {
       id: "door-1",
       doorIndexCode: "door-jkt-01",
       doorName: "Server Room A",
-      facilityId: "fac-jakarta",
+      regionIndexCode: "reg-dc",
       accessType: "SINGLE_DIRECTION_IN",
       isPerimeter: false,
     },
@@ -50,15 +49,15 @@ describe("EmergencyAccessModal Component", () => {
       id: "door-2",
       doorIndexCode: "door-jkt-02",
       doorName: "Electrical Vault",
-      facilityId: "fac-jakarta",
+      regionIndexCode: "reg-util",
       accessType: "DUAL_DIRECTION",
       isPerimeter: false,
     },
     {
       id: "door-3",
-      doorIndexCode: "door-bali-01",
-      doorName: "Bali Lab",
-      facilityId: "fac-bali",
+      doorIndexCode: "door-lab-01",
+      doorName: "R&D Innovation Lab",
+      regionIndexCode: "reg-rnd",
       accessType: "DUAL_DIRECTION",
       isPerimeter: false,
     },
@@ -73,11 +72,10 @@ describe("EmergencyAccessModal Component", () => {
         onSuccess={vi.fn()}
       />,
     );
-
     expect(html).toBe("");
   });
 
-  it("renders modal dialog, visitor summary, and filtered doors for the visit facility", () => {
+  it("renders single authoritative building door checklist without facility boundaries", () => {
     const html = renderToStaticMarkup(
       <EmergencyAccessModal
         visit={mockVisit}
@@ -89,11 +87,10 @@ describe("EmergencyAccessModal Component", () => {
 
     expect(html).toContain("Izin Akses Pintu Darurat Sementara");
     expect(html).toContain("Bruce Wayne");
-    expect(html).toContain("Jakarta HQ DC");
+    expect(html).not.toContain("Fasilitas:");
     expect(html).toContain("Server Room A");
     expect(html).toContain("Electrical Vault");
-    // Should filter out Bali door
-    expect(html).not.toContain("Bali Lab");
+    expect(html).toContain("R&amp;D Innovation Lab");
     expect(html).toContain("ID Petugas Keamanan");
     expect(html).toContain("Alasan Justifikasi Operasional");
   });

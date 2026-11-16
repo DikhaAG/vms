@@ -3,13 +3,11 @@ import {
   listAccessLevelsService,
   createAccessLevelService,
 } from "@/lib/vms/access-level-service";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function GET(request: Request) {
+async function handleGET() {
   try {
-    const url = new URL(request.url);
-    const facilityId = url.searchParams.get("facilityId") || undefined;
-
-    const accessLevels = await listAccessLevelsService({ facilityId });
+    const accessLevels = await listAccessLevelsService();
 
     return NextResponse.json({
       ok: true,
@@ -32,7 +30,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   let body: unknown;
   try {
     body = await request.json();
@@ -76,3 +74,6 @@ export async function POST(request: Request) {
     { status: 201 },
   );
 }
+
+export const GET = withServerErrors(handleGET);
+export const POST = withServerErrors(handlePOST);

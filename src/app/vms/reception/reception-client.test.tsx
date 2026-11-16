@@ -1,26 +1,19 @@
-import { describe, it, expect } from "vitest";
-import React from "react";
+import { describe, it, expect, afterEach } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ReceptionClient } from "./reception-client";
-import type { Facility, Visit } from "@/lib/vms/vms-contract";
+import ReceptionPage from "./page";
+import { DEFAULT_SYSTEM_SETTINGS, type Visit } from "@/lib/vms/vms-contract";
 import type { AccessLevel } from "@/lib/vms/access-level-contract";
+import { defaultVmsRepository } from "@/lib/vms/repository";
+import { defaultCheckInService } from "@/lib/vms/checkin-service";
 
-describe("ReceptionClient Component Localization", () => {
-  const mockFacilities: Facility[] = [
-    {
-      id: "fac-jakarta",
-      name: "Jakarta Corporate HQ",
-      timezone: "Asia/Jakarta",
-    },
-  ];
-
+describe("Reception Desk & Walk-In UI (Ticket 05)", () => {
   const mockAccessLevels: AccessLevel[] = [
     {
       id: "acc-1",
-      facilityId: "fac-jakarta",
       name: "Lobby Turnstiles",
       description: "Standard ground floor access",
-      doors: ["Turnstile 1"],
+      doors: ["Turnstile 1", "Turnstile 2"],
       floors: ["1F"],
       timeScheduleId: 1,
       isDefault: true,
@@ -30,8 +23,6 @@ describe("ReceptionClient Component Localization", () => {
   const mockVisits: Visit[] = [
     {
       id: "vis-rec-1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorFamilyName: "Santoso",
       visitorGivenName: "Budi",
       visitorPhone: "+628123456789",
@@ -51,8 +42,6 @@ describe("ReceptionClient Component Localization", () => {
     },
     {
       id: "vis-rec-2",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorFamilyName: "Pratama",
       visitorGivenName: "Doni",
       visitorPhone: "+628123456788",
@@ -73,46 +62,89 @@ describe("ReceptionClient Component Localization", () => {
     },
   ];
 
-  it("renders Indonesian action button for walk-in registration", () => {
-    const html = renderToStaticMarkup(
-      <ReceptionClient
-        facilities={mockFacilities}
-        allAccessLevels={mockAccessLevels}
-        initialVisits={mockVisits}
-      />
-    );
-
-    expect(html).toContain("Daftarkan Tamu Datang Langsung (Walk-in)");
+  afterEach(async () => {
+    await defaultVmsRepository.updateSettings({
+      timezone: DEFAULT_SYSTEM_SETTINGS.timezone,
+    });
   });
 
-  it("renders status tabs in Indonesian", () => {
+  it("renders single-site reception dashboard without any facility filter in UiFilterToolbar", () => {
     const html = renderToStaticMarkup(
       <ReceptionClient
-        facilities={mockFacilities}
+        systemTimezone="Asia/Jakarta"
         allAccessLevels={mockAccessLevels}
         initialVisits={mockVisits}
-      />
+      />,
     );
 
+    // AC #1: No facility selector in toolbar or page
+    expect(html).not.toContain("Semua Gedung Fasilitas");
+    expect(html).not.toContain("Saring Berdasarkan Gedung");
+    expect(html).toContain("Daftarkan Tamu Datang Langsung (Walk-in)");
     expect(html).toContain("Tamu Diharapkan Hari Ini");
     expect(html).toContain("Sedang di Gedung");
     expect(html).toContain("Semua Kunjungan");
   });
 
-  it("renders card details and action buttons in Indonesian", () => {
+  it("wires ReceptionPage server component to global systemSettings without facility list", async () => {
+    await defaultVmsRepository.updateSettings({ timezone: "Asia/Makassar" });
+
+    const pageComponent = await ReceptionPage();
+    const html = renderToStaticMarkup(pageComponent);
+
+    expect(html).toContain("Meja Resepsionis");
+    expect(html).toContain("Asia/Makassar");
+    expect(html).not.toContain("Semua Gedung Fasilitas");
+  });
+
+  it("renders card details and check-in action buttons without facility boundaries", () => {
     const html = renderToStaticMarkup(
       <ReceptionClient
-        facilities={mockFacilities}
+        systemTimezone="Asia/Jakarta"
         allAccessLevels={mockAccessLevels}
         initialVisits={mockVisits}
-      />
+      />,
     );
 
     expect(html).toContain("Budi Santoso");
     expect(html).toContain("Karyawan Tuan Rumah:");
-    expect(html).toContain("Gedung:");
     expect(html).toContain("Keperluan:");
     expect(html).toContain("Verifikasi &amp; Proses Masuk");
+    expect(html).not.toContain("Gedung Fasilitas");
+  });
+
+  it("renders issued badge modal with site-wide access levels and print action after walk-in intake", async () => {
+    const outcome = await defaultCheckInService.createWalkInVisit({
+      hostId: "emp-host-01",
+      hostName: "Budi Santoso",
+      visitorGivenName: "Rina",
+      visitorFamilyName: "Maharani",
+      certificateType: 111,
+      certificateNo: "3171055566677788",
+      visitReasonType: 0,
+      receptionistUserId: "rec-01",
+      receptionistName: "Dewi Frontdesk",
+      verificationMethod: "id_card",
+      mode: "stub",
+      stubScenario: "success",
+    });
+
+    expect(outcome.ok).toBe(true);
+    expect(outcome.pass).toBeDefined();
+
+    const html = renderToStaticMarkup(
+      <ReceptionClient
+        systemTimezone="Asia/Jakarta"
+        allAccessLevels={mockAccessLevels}
+        initialVisits={[outcome.visit!]}
+        initialIssuedPass={outcome.pass}
+      />,
+    );
+
+    expect(html).toContain("Lencana Kunjungan Tamu");
+    expect(html).toContain("Lencana Masuk Aktif");
+    expect(html).toContain("Rina Maharani");
+    expect(html).toContain(outcome.pass!.pinCode!);
+    expect(html).toContain("Cetak Lencana Tamu");
   });
 });
-

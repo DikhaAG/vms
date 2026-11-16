@@ -10,7 +10,6 @@ export const metadata = {
 };
 
 export default async function GroupRegistrationPage() {
-  const facilities = await defaultVmsRepository.listFacilities();
   const allAccessLevels = await defaultVmsRepository.listAccessLevels();
 
   const pageInfo = idDict.pages.groupRegistration;
@@ -25,7 +24,6 @@ export default async function GroupRegistrationPage() {
       />
 
       <GroupRegistrationClient
-        facilities={facilities}
         allAccessLevels={allAccessLevels}
       />
     </div>

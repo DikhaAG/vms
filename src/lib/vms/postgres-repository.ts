@@ -11,11 +11,13 @@ import type {
   UpdateVisitApprovalParams,
 } from "./repository";
 import type {
-  Facility,
   HostEmployee,
+  SystemSettings,
   Visit,
   VisitStatus,
 } from "./vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS } from "./vms-contract";
+import { defaultSystemSettings } from "./system-settings-defaults";
 import type { AccessLevel } from "./access-level-contract";
 import type { ApprovalRecord } from "./approval-contract";
 import type { CheckInAuditEvent, VerificationMethod } from "./checkin-contract";
@@ -37,58 +39,61 @@ export class PostgresVmsRepository implements IVmsRepository {
     this.db = db ?? createPostgresClient();
   }
 
-  // 1. Facilities
-  async getFacility(id: string): Promise<Facility | undefined> {
+  // 0. Global System Settings (Single-Site Architecture)
+  async getSettings(): Promise<SystemSettings> {
     const rows = await this.db
       .select()
-      .from(s.facilities)
-      .where(eq(s.facilities.id, id));
-    return rows.length > 0 ? structuredClone(rows[0].data) : undefined;
+      .from(s.systemSettings)
+      .where(eq(s.systemSettings.id, "default"));
+
+    if (rows.length === 0) {
+      return defaultSystemSettings();
+    }
+
+    // Backfill siteName for rows written before the single-site contract migration.
+    const data = structuredClone(rows[0].data);
+    return { ...data, siteName: data.siteName ?? DEFAULT_SYSTEM_SETTINGS.siteName };
   }
 
-  async listFacilities(): Promise<Facility[]> {
-    const rows = await this.db.select().from(s.facilities);
-    return rows.map((r) => structuredClone(r.data));
-  }
+  async updateSettings(updates: Partial<SystemSettings>): Promise<SystemSettings> {
+    const current = await this.getSettings();
+    const cleanedUpdates = Object.fromEntries(
+      Object.entries(updates).filter(([, v]) => v !== undefined),
+    );
+    const updated: SystemSettings = {
+      ...current,
+      ...cleanedUpdates,
+      id: "default",
+      updatedAt: new Date().toISOString(),
+    };
 
-  async saveFacility(facility: Facility): Promise<void> {
-    const cloned = structuredClone(facility);
     await this.db
-      .insert(s.facilities)
+      .insert(s.systemSettings)
       .values({
-        id: cloned.id,
-        name: cloned.name,
-        timezone: cloned.timezone,
-        address: cloned.address,
-        overstayGraceMinutes: cloned.overstayGraceMinutes ?? 15,
-        data: cloned,
+        id: "default",
+        siteName: updated.siteName,
+        timezone: updated.timezone,
+        overstayGraceMinutes: updated.overstayGraceMinutes,
+        autoCheckInEarlyBufferMinutes: updated.autoCheckInEarlyBufferMinutes,
+        updatedAt: updated.updatedAt ?? new Date().toISOString(),
+        data: updated,
       })
       .onConflictDoUpdate({
-        target: s.facilities.id,
+        target: s.systemSettings.id,
         set: {
-          name: cloned.name,
-          timezone: cloned.timezone,
-          address: cloned.address,
-          overstayGraceMinutes: cloned.overstayGraceMinutes ?? 15,
-          data: cloned,
+          siteName: updated.siteName,
+          timezone: updated.timezone,
+          overstayGraceMinutes: updated.overstayGraceMinutes,
+          autoCheckInEarlyBufferMinutes: updated.autoCheckInEarlyBufferMinutes,
+          updatedAt: updated.updatedAt ?? new Date().toISOString(),
+          data: updated,
         },
       });
-  }
 
-  async updateFacility(
-    id: string,
-    updates: Partial<Omit<Facility, "id">>,
-  ): Promise<Facility> {
-    const existing = await this.getFacility(id);
-    if (!existing) {
-      throw new Error(`Facility with id '${id}' not found.`);
-    }
-    const updated: Facility = { ...existing, ...updates, id };
-    await this.saveFacility(updated);
     return structuredClone(updated);
   }
 
-  // 2. Visits
+  // 1. Visits
   private async enrichVisitEmergencyGrants(visit: Visit): Promise<void> {
     const now = Date.now();
     const allGrants = await this.getEmergencyGrants(visit.id);
@@ -120,9 +125,6 @@ export class PostgresVmsRepository implements IVmsRepository {
   async listVisits(filter?: ListVisitsFilter): Promise<Visit[]> {
     const query = this.db.select().from(s.visits);
     const conditions = [];
-    if (filter?.facilityId) {
-      conditions.push(eq(s.visits.facilityId, filter.facilityId));
-    }
     if (filter?.status) {
       conditions.push(eq(s.visits.status, filter.status));
     }
@@ -141,7 +143,6 @@ export class PostgresVmsRepository implements IVmsRepository {
       .insert(s.visits)
       .values({
         id: cloned.id,
-        facilityId: cloned.facilityId,
         status: cloned.status,
         createdAtUtc: cloned.createdAtUtc,
         data: cloned,
@@ -149,7 +150,6 @@ export class PostgresVmsRepository implements IVmsRepository {
       .onConflictDoUpdate({
         target: s.visits.id,
         set: {
-          facilityId: cloned.facilityId,
           status: cloned.status,
           data: cloned,
         },
@@ -173,10 +173,9 @@ export class PostgresVmsRepository implements IVmsRepository {
   // 3. Search & Check-in
   async searchVisits(
     query: string,
-    facilityId?: string,
     status?: VisitStatus | VisitStatus[],
   ): Promise<Visit[]> {
-    let list = await this.listVisits({ facilityId });
+    let list = await this.listVisits({});
 
     if (status) {
       const allowed = Array.isArray(status) ? status : [status];
@@ -285,10 +284,9 @@ export class PostgresVmsRepository implements IVmsRepository {
   // 4. Approvals
   async getVisitsByStatus(
     statuses: VisitStatus | VisitStatus[],
-    facilityId?: string,
   ): Promise<Visit[]> {
     const targetStatuses = Array.isArray(statuses) ? statuses : [statuses];
-    const all = await this.listVisits({ facilityId });
+    const all = await this.listVisits({});
     return all.filter((v) => targetStatuses.includes(v.status));
   }
 
@@ -408,14 +406,8 @@ export class PostgresVmsRepository implements IVmsRepository {
   }
 
   // 6. Access levels
-  async listAccessLevels(facilityId?: string): Promise<AccessLevel[]> {
-    const rows = facilityId
-      ? await this.db
-          .select()
-          .from(s.accessLevels)
-          .where(eq(s.accessLevels.facilityId, facilityId))
-      : await this.db.select().from(s.accessLevels);
-
+  async listAccessLevels(): Promise<AccessLevel[]> {
+    const rows = await this.db.select().from(s.accessLevels);
     return rows.map((r) => structuredClone(r.data));
   }
 
@@ -433,18 +425,22 @@ export class PostgresVmsRepository implements IVmsRepository {
       .insert(s.accessLevels)
       .values({
         id: cloned.id,
-        facilityId: cloned.facilityId,
         name: cloned.name,
         data: cloned,
       })
       .onConflictDoUpdate({
         target: s.accessLevels.id,
         set: {
-          facilityId: cloned.facilityId,
           name: cloned.name,
           data: cloned,
         },
       });
+  }
+
+  async saveAccessLevels(accessLevels: AccessLevel[]): Promise<void> {
+    for (const al of accessLevels) {
+      await this.saveAccessLevel(al);
+    }
   }
 
   async deleteAccessLevel(id: string): Promise<void> {
@@ -452,8 +448,8 @@ export class PostgresVmsRepository implements IVmsRepository {
   }
 
   // 7. Active Visits, Door Taps & Check-out
-  async listActiveVisits(facilityId?: string): Promise<Visit[]> {
-    const all = await this.listVisits({ facilityId });
+  async listActiveVisits(): Promise<Visit[]> {
+    const all = await this.listVisits({});
     const active = all.filter(
       (v) => v.status === "CHECKED_IN" || v.status === "OVERSTAY",
     );
@@ -677,25 +673,19 @@ export class PostgresVmsRepository implements IVmsRepository {
     return rows.length > 0 ? structuredClone(rows[0].data) : undefined;
   }
 
-  async getDoorByName(doorName: string, facilityId?: string): Promise<FacilityDoor | undefined> {
-    const all = await this.listDoors(facilityId);
+  async getDoorByName(doorName: string): Promise<FacilityDoor | undefined> {
+    const all = await this.listDoors();
     return all.find((d) => d.doorName.toLowerCase() === doorName.toLowerCase());
   }
 
-  async findDoor(codeOrName: string, facilityId?: string): Promise<FacilityDoor | undefined> {
+  async findDoor(codeOrName: string): Promise<FacilityDoor | undefined> {
     const byCode = await this.getDoor(codeOrName);
     if (byCode) return byCode;
-    return await this.getDoorByName(codeOrName, facilityId);
+    return await this.getDoorByName(codeOrName);
   }
 
-  async listDoors(facilityId?: string): Promise<FacilityDoor[]> {
-    const rows = facilityId
-      ? await this.db
-          .select()
-          .from(s.facilityDoors)
-          .where(eq(s.facilityDoors.facilityId, facilityId))
-      : await this.db.select().from(s.facilityDoors);
-
+  async listDoors(): Promise<FacilityDoor[]> {
+    const rows = await this.db.select().from(s.facilityDoors);
     return rows.map((r) => structuredClone(r.data));
   }
 
@@ -705,7 +695,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       .insert(s.facilityDoors)
       .values({
         doorIndexCode: cloned.doorIndexCode,
-        facilityId: cloned.facilityId,
+        regionIndexCode: cloned.regionIndexCode ?? null,
         doorName: cloned.doorName,
         isPerimeter: Boolean(cloned.isPerimeter),
         data: cloned,
@@ -713,7 +703,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       .onConflictDoUpdate({
         target: s.facilityDoors.doorIndexCode,
         set: {
-          facilityId: cloned.facilityId,
+          regionIndexCode: cloned.regionIndexCode ?? null,
           doorName: cloned.doorName,
           isPerimeter: Boolean(cloned.isPerimeter),
           data: cloned,

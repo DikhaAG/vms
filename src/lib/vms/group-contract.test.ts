@@ -2,12 +2,17 @@ import { describe, expect, it } from "vitest";
 import {
   validateGroupVisitInput,
   validateSoftDeleteInput,
+  visitorPersonalDetailsSchema,
+  groupVisitInputSchema,
+  memberVisitResultSchema,
+  groupVisitResultSchema,
+  visitorProfileSchema,
+  softDeleteProfileSchema,
   type GroupVisitInput,
 } from "./group-contract";
 
 describe("group-contract", () => {
   const validBaseInput: GroupVisitInput = {
-    facilityId: "fac-jakarta",
     hostId: "emp-101",
     hostName: "Budi Santoso",
     visitorGroupName: "Google DeepMind Delegation",
@@ -57,14 +62,22 @@ describe("group-contract", () => {
       }
     });
 
-    it("rejects missing facilityId", () => {
+    it("accepts input without a facility", () => {
+      const outcome = validateGroupVisitInput(validBaseInput);
+      expect(outcome.valid).toBe(true);
+      if (outcome.valid) {
+        expect(outcome.input).not.toHaveProperty("facilityId");
+      }
+    });
+
+    it("accepts a legacy client payload carrying facilityId but drops it from the validated input", () => {
       const outcome = validateGroupVisitInput({
         ...validBaseInput,
-        facilityId: "",
+        facilityId: "fac-jakarta",
       });
-      expect(outcome.valid).toBe(false);
-      if (!outcome.valid) {
-        expect(outcome.errors.facilityId).toMatch(/facility/i);
+      expect(outcome.valid).toBe(true);
+      if (outcome.valid) {
+        expect(outcome.input).not.toHaveProperty("facilityId");
       }
     });
 
@@ -192,6 +205,71 @@ describe("group-contract", () => {
       if (!outcome.valid) {
         expect(outcome.errors._global).toBeDefined();
       }
+    });
+  });
+
+  describe("Zod canonical schemas directly", () => {
+    it("validates visitorPersonalDetailsSchema directly", () => {
+      const valid = visitorPersonalDetailsSchema.safeParse({
+        visitorFamilyName: "Hassabis",
+        visitorGivenName: "Demis",
+        certificateType: 414,
+        certificateNo: "GBR123",
+      });
+      expect(valid.success).toBe(true);
+
+      const invalid = visitorPersonalDetailsSchema.safeParse({
+        visitorFamilyName: "Bad/Name",
+        visitorGivenName: "Demis",
+      });
+      expect(invalid.success).toBe(false);
+    });
+
+    it("validates softDeleteProfileSchema directly", () => {
+      const valid = softDeleteProfileSchema.safeParse({
+        isDeleted: true,
+        reason: "PDP request",
+      });
+      expect(valid.success).toBe(true);
+
+      const invalid = softDeleteProfileSchema.safeParse({
+        isDeleted: "yes",
+      });
+      expect(invalid.success).toBe(false);
+    });
+
+    it("validates memberVisitResultSchema and groupVisitResultSchema", () => {
+      const member = memberVisitResultSchema.safeParse({
+        visitId: "vis-1",
+        visitorName: "Demis Hassabis",
+        status: "APPROVED",
+      });
+      expect(member.success).toBe(true);
+
+      const group = groupVisitResultSchema.safeParse({
+        groupId: "grp-1",
+        visitorGroupName: "AI Delegation",
+        memberVisits: [{ visitId: "vis-1", visitorName: "Demis Hassabis", status: "APPROVED" }],
+        successCount: 1,
+        failureCount: 0,
+      });
+      expect(group.success).toBe(true);
+    });
+
+    it("validates groupVisitInputSchema and visitorProfileSchema directly", () => {
+      const groupInput = groupVisitInputSchema.safeParse(validBaseInput);
+      expect(groupInput.success).toBe(true);
+
+      const profile = visitorProfileSchema.safeParse({
+        id: "prof-1",
+        certificateType: 111,
+        certificateNo: "3171012345670001",
+        fullName: "Demis Hassabis",
+        isDeleted: false,
+        createdAtUtc: "2026-11-13T10:00:00Z",
+        updatedAtUtc: "2026-11-13T10:00:00Z",
+      });
+      expect(profile.success).toBe(true);
     });
   });
 });

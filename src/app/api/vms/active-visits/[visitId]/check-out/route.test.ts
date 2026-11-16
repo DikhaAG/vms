@@ -9,7 +9,6 @@ describe("POST /api/vms/active-visits/[visitId]/check-out", () => {
   beforeEach(async () => {
     const activeVisit: Visit = {
       id: visitId,
-      facilityId: "fac-jakarta",
       visitorGivenName: "Bruce",
       visitorFamilyName: "Wayne",
       visitReasonType: 0,

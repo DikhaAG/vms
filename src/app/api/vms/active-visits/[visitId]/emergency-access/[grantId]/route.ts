@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { defaultActiveMonitoringService } from "@/lib/vms/active-monitoring-service";
 import { HikCentralError } from "@/lib/hikcentral/client";
 import type { PreRegistrationMode, StubScenario } from "@/lib/vms/vms-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function DELETE(
+async function handleDELETE(
   request: Request,
   context: { params: Promise<{ visitId: string; grantId: string }> },
 ) {
@@ -122,3 +123,5 @@ export async function DELETE(
     );
   }
 }
+
+export const DELETE = withServerErrors(handleDELETE);

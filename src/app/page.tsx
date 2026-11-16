@@ -20,7 +20,7 @@ export default function HomePage() {
           </span>
         </div>
         <p className="mt-1 text-xs text-neutral-600">
-          Multi-facility host pre-registration with IANA timezone translations,
+          Single-site host pre-registration with System Timezone translations,
           UTC normalization, biometric face normalization, and HikCentral OpenAPI appointment reservation.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -67,7 +67,7 @@ export default function HomePage() {
           </span>
         </div>
         <p className="mt-1 text-xs text-neutral-600">
-          Review pending visitor requests across facilities, inspect biometric photos and identity numbers,
+          Review pending visitor requests in one site-wide queue, inspect biometric photos and identity numbers,
           and screen against HikCentral Monitoring Lists (Blacklists) with security officer escalation queues.
         </p>
         <div className="mt-4">
@@ -138,7 +138,7 @@ export default function HomePage() {
         </div>
         <p className="mt-1 text-xs text-neutral-600">
           Live on-premise attendance monitor, door tap quota enforcement with automated revocation,
-          facility overstay grace period alerts, and single-click normal or forced check-out via HikCentral.
+          system-wide overstay grace period alerts, and single-click normal or forced check-out via HikCentral.
         </p>
         <div className="mt-4">
           <Link

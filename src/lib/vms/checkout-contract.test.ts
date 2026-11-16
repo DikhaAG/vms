@@ -15,6 +15,14 @@ import {
   validateDoorTapInput,
   validateFacilityDoorInput,
   validateGrantEmergencyAccessInput,
+  doorDirectionSchema,
+  doorAccessTypeSchema,
+  emergencyGrantStatusSchema,
+  facilityDoorSchema,
+  doorSchema,
+  doorTapEventSchema,
+  checkOutInputSchema,
+  grantEmergencyAccessInputSchema,
   type CheckOutInput,
   type DoorTapEvent,
   type EmergencyAccessGrant,
@@ -50,7 +58,6 @@ describe("checkout-contract", () => {
     it("accepts valid facility door configuration", () => {
       const valid: FacilityDoor = {
         id: "door-jkt-1",
-        facilityId: "fac-jakarta",
         doorIndexCode: "door-turnstile-1",
         doorName: "Main Entrance Turnstile",
         accessType: "DUAL_DIRECTION",
@@ -61,7 +68,7 @@ describe("checkout-contract", () => {
       const res = validateFacilityDoorInput(valid);
       expect(res.valid).toBe(true);
       if (res.valid) {
-        expect(res.input.facilityId).toBe("fac-jakarta");
+        expect(res.input).not.toHaveProperty("facilityId");
         expect(res.input.doorIndexCode).toBe("door-turnstile-1");
         expect(res.input.accessType).toBe("DUAL_DIRECTION");
         expect(res.input.isPerimeter).toBe(true);
@@ -91,7 +98,7 @@ describe("checkout-contract", () => {
       });
       expect(res.valid).toBe(false);
       if (!res.valid) {
-        expect(res.errors.facilityId).toBeDefined();
+        expect(res.errors).not.toHaveProperty("facilityId");
         expect(res.errors.doorIndexCode).toBeDefined();
         expect(res.errors.doorName).toBeDefined();
         expect(res.errors.accessType).toMatch(/must be 'DUAL_DIRECTION' or 'SINGLE_DIRECTION_IN'/i);
@@ -102,7 +109,6 @@ describe("checkout-contract", () => {
   describe("evaluateOverstayStatus", () => {
     const baseVisit: Visit = {
       id: "vis-101",
-      facilityId: "fac-jakarta",
       visitorGivenName: "Alice",
       visitorFamilyName: "Smith",
       visitReasonType: 3,
@@ -116,16 +122,11 @@ describe("checkout-contract", () => {
       updatedAtUtc: "2026-11-13T08:05:00.000Z",
     };
 
-    const facility = {
-      id: "fac-jakarta",
-      name: "Jakarta Corporate HQ",
-      timezone: "Asia/Jakarta",
-      overstayGraceMinutes: 15,
-    };
+    const settings = { overstayGraceMinutes: 15 };
 
     it("evaluates as NOT overstay when now is before scheduledEndTime", () => {
       const now = new Date("2026-11-13T09:30:00.000Z");
-      const result = evaluateOverstayStatus(baseVisit, facility, now);
+      const result = evaluateOverstayStatus(baseVisit, settings, now);
 
       expect(result.isOverstay).toBe(false);
       expect(result.overstayMinutes).toBe(0);
@@ -136,7 +137,7 @@ describe("checkout-contract", () => {
     it("evaluates as NOT overstay when now is within grace period", () => {
       // Scheduled end is 10:00, grace is 15 min -> cutoff is 10:15
       const now = new Date("2026-11-13T10:10:00.000Z");
-      const result = evaluateOverstayStatus(baseVisit, facility, now);
+      const result = evaluateOverstayStatus(baseVisit, settings, now);
 
       expect(result.isOverstay).toBe(false);
       expect(result.overstayMinutes).toBe(0);
@@ -145,14 +146,14 @@ describe("checkout-contract", () => {
     it("evaluates as overstay when now is past cutoff time (scheduled end + grace period)", () => {
       // 10:35 is 35 minutes past scheduled end (10:00), past cutoff (10:15)
       const now = new Date("2026-11-13T10:35:00.000Z");
-      const result = evaluateOverstayStatus(baseVisit, facility, now);
+      const result = evaluateOverstayStatus(baseVisit, settings, now);
 
       expect(result.isOverstay).toBe(true);
       expect(result.overstayMinutes).toBe(35);
       expect(result.cutoffTimeUtc).toBe("2026-11-13T10:15:00.000Z");
     });
 
-    it("uses default 15 minutes grace period if facility has none defined", () => {
+    it("uses default 15 minutes grace period if settings define none", () => {
       const now = new Date("2026-11-13T10:16:00.000Z");
       const result = evaluateOverstayStatus(baseVisit, null, now);
 
@@ -652,6 +653,92 @@ describe("checkout-contract", () => {
       expect(result.error).toBe(
         "Visit window has expired. Scheduled end was 2026-11-13T12:00:00.000Z. Please proceed to reception.",
       );
+    });
+  });
+
+  describe("Zod canonical schemas directly", () => {
+    it("validates doorDirectionSchema and doorAccessTypeSchema", () => {
+      expect(doorDirectionSchema.safeParse("in").success).toBe(true);
+      expect(doorDirectionSchema.safeParse("out").success).toBe(true);
+      expect(doorDirectionSchema.safeParse("sideways").success).toBe(false);
+
+      expect(doorAccessTypeSchema.safeParse("DUAL_DIRECTION").success).toBe(true);
+      expect(doorAccessTypeSchema.safeParse("SINGLE_DIRECTION_IN").success).toBe(true);
+      expect(doorAccessTypeSchema.safeParse("INVALID").success).toBe(false);
+    });
+
+    it("validates facilityDoorSchema entity validation", () => {
+      const res = facilityDoorSchema.safeParse({
+        facilityId: "fac-jkt",
+        doorIndexCode: "d-1",
+        doorName: "Main Entrance",
+        accessType: "DUAL_DIRECTION",
+        isPerimeter: false,
+      });
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.accessType).toBe("DUAL_DIRECTION");
+        expect(res.data.isPerimeter).toBe(false);
+      }
+    });
+
+    it("validates flat doorSchema with regionIndexCode and strips a legacy facilityId", () => {
+      const res = doorSchema.safeParse({
+        facilityId: "fac-legacy",
+        doorIndexCode: "d-turnstile-2",
+        doorName: "Turnstile Gate 2",
+        regionIndexCode: "reg-lobby",
+        accessType: "DUAL_DIRECTION",
+        isPerimeter: true,
+      });
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.doorIndexCode).toBe("d-turnstile-2");
+        expect(res.data.regionIndexCode).toBe("reg-lobby");
+        expect(res.data).not.toHaveProperty("facilityId");
+        expect(res.data.isPerimeter).toBe(true);
+      }
+    });
+
+    it("validates checkOutInputSchema forced reason requirement", () => {
+      const normalRes = checkOutInputSchema.safeParse({
+        visitId: "vis-1",
+        operatorUserId: "op-1",
+        isForced: false,
+      });
+      expect(normalRes.success).toBe(true);
+
+      const forcedWithoutReason = checkOutInputSchema.safeParse({
+        visitId: "vis-1",
+        operatorUserId: "op-1",
+        isForced: true,
+      });
+      expect(forcedWithoutReason.success).toBe(false);
+    });
+
+    it("validates emergencyGrantStatusSchema", () => {
+      expect(emergencyGrantStatusSchema.safeParse("ACTIVE").success).toBe(true);
+      expect(emergencyGrantStatusSchema.safeParse("EXPIRED").success).toBe(true);
+      expect(emergencyGrantStatusSchema.safeParse("REVOKED").success).toBe(true);
+      expect(emergencyGrantStatusSchema.safeParse("UNKNOWN").success).toBe(false);
+    });
+
+    it("validates doorTapEventSchema and grantEmergencyAccessInputSchema directly", () => {
+      const tapRes = doorTapEventSchema.safeParse({
+        visitId: "vis-1",
+        doorIndexCode: "door-101",
+        tappedAtUtc: "2026-11-13T10:00:00Z",
+        direction: "in",
+      });
+      expect(tapRes.success).toBe(true);
+
+      const grantRes = grantEmergencyAccessInputSchema.safeParse({
+        doorIndexCodes: ["door-101"],
+        grantedByUserId: "op-1",
+        reason: "VIP emergency escalation access requirement",
+        durationHours: 2,
+      });
+      expect(grantRes.success).toBe(true);
     });
   });
 });

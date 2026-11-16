@@ -6,7 +6,18 @@ import {
   isVisitReasonType,
   isVisitStatus,
   validatePreRegistrationInput,
-  validateUpdateFacilityInput,
+  visitStatusSchema,
+  visitReasonTypeSchema,
+  certificateTypeSchema,
+  preRegistrationModeSchema,
+  stubScenarioSchema,
+  credentialSyncStatusSchema,
+  createPreRegistrationSchema,
+  systemSettingsSchema,
+  updateSystemSettingsSchema,
+  DEFAULT_SYSTEM_SETTINGS,
+  validateUpdateSystemSettingsInput,
+  doorSchema,
   type CreatePreRegistrationInput,
 } from "./vms-contract";
 
@@ -48,7 +59,6 @@ describe("vms-contract", () => {
 
   describe("validatePreRegistrationInput", () => {
     const validInput: CreatePreRegistrationInput = {
-      facilityId: "fac-jakarta",
       visitorFamilyName: "Smith",
       visitorGivenName: "Alice",
       visitorPhone: "+628123456789",
@@ -103,12 +113,18 @@ describe("vms-contract", () => {
       const result = validatePreRegistrationInput({});
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.errors.facilityId).toBeDefined();
         expect(result.errors.visitorFamilyName).toBeDefined();
         expect(result.errors.visitorGivenName).toBeDefined();
         expect(result.errors.scheduledStartTime).toBeDefined();
         expect(result.errors.scheduledEndTime).toBeDefined();
       }
+    });
+
+    it("allows facilityId to be omitted in single-site architecture", () => {
+      const inputWithoutFacility = { ...validInput };
+      delete (inputWithoutFacility as Record<string, unknown>).facilityId;
+      const result = validatePreRegistrationInput(inputWithoutFacility);
+      expect(result.valid).toBe(true);
     });
 
     it("validates scheduled end time is strictly after start time", () => {
@@ -162,45 +178,123 @@ describe("vms-contract", () => {
     });
   });
 
-  describe("validateUpdateFacilityInput", () => {
-    it("accepts valid facility updates", () => {
-      const res = validateUpdateFacilityInput({
-        name: "Jakarta HQ Updated",
-        timezone: "Asia/Jakarta",
-        overstayGraceMinutes: 20,
-        address: "Jl. Sudirman",
+  describe("Zod canonical schemas directly", () => {
+    it("validates visitStatusSchema and credentialSyncStatusSchema", () => {
+      expect(visitStatusSchema.safeParse("APPROVED").success).toBe(true);
+      expect(visitStatusSchema.safeParse("CHECKED_IN").success).toBe(true);
+      expect(visitStatusSchema.safeParse("UNKNOWN_STATUS").success).toBe(false);
+
+      expect(credentialSyncStatusSchema.safeParse("Applied").success).toBe(true);
+      expect(credentialSyncStatusSchema.safeParse("Invalid").success).toBe(false);
+    });
+
+    it("validates visitReasonTypeSchema and certificateTypeSchema", () => {
+      expect(visitReasonTypeSchema.safeParse(0).success).toBe(true);
+      expect(visitReasonTypeSchema.safeParse(4).success).toBe(true);
+      expect(visitReasonTypeSchema.safeParse(9).success).toBe(false);
+
+      expect(certificateTypeSchema.safeParse(111).success).toBe(true);
+      expect(certificateTypeSchema.safeParse(414).success).toBe(true);
+      expect(certificateTypeSchema.safeParse(999).success).toBe(false);
+    });
+
+    it("validates preRegistrationModeSchema and stubScenarioSchema", () => {
+      expect(preRegistrationModeSchema.safeParse("live").success).toBe(true);
+      expect(preRegistrationModeSchema.safeParse("stub").success).toBe(true);
+      expect(preRegistrationModeSchema.safeParse("invalid").success).toBe(false);
+
+      expect(stubScenarioSchema.safeParse("network-error").success).toBe(true);
+      expect(stubScenarioSchema.safeParse("face-quality-failed").success).toBe(true);
+      expect(stubScenarioSchema.safeParse("invalid-scenario").success).toBe(false);
+    });
+
+    it("validates createPreRegistrationSchema directly", () => {
+      const valid = createPreRegistrationSchema.safeParse({
+        facilityId: "fac-jkt",
+        visitorFamilyName: "Santoso",
+        visitorGivenName: "Budi",
+        visitReasonType: 0,
+        scheduledStartTime: "2026-11-20T09:00:00Z",
+        scheduledEndTime: "2026-11-20T11:00:00Z",
       });
+      expect(valid.success).toBe(true);
+    });
+
+    it("validates DEFAULT_SYSTEM_SETTINGS and systemSettingsSchema defaults", () => {
+      expect(DEFAULT_SYSTEM_SETTINGS.timezone).toBe("Asia/Jakarta");
+      expect(DEFAULT_SYSTEM_SETTINGS.overstayGraceMinutes).toBe(15);
+      expect(DEFAULT_SYSTEM_SETTINGS.autoCheckInEarlyBufferMinutes).toBe(15);
+
+      const parsed = systemSettingsSchema.safeParse({});
+      expect(parsed.success).toBe(true);
+      if (parsed.success) {
+        expect(parsed.data.id).toBe("default");
+        expect(parsed.data.timezone).toBe("Asia/Jakarta");
+        expect(parsed.data.overstayGraceMinutes).toBe(15);
+        expect(parsed.data.autoCheckInEarlyBufferMinutes).toBe(15);
+      }
+    });
+
+    it("validates systemSettingsSchema with custom valid IANA timezone and numeric boundaries", () => {
+      const valid = systemSettingsSchema.safeParse({
+        id: "default",
+        timezone: "Asia/Makassar",
+        overstayGraceMinutes: 30,
+        autoCheckInEarlyBufferMinutes: 20,
+      });
+      expect(valid.success).toBe(true);
+
+      const invalidTimezone = systemSettingsSchema.safeParse({
+        timezone: "Invalid/Not_A_Timezone",
+      });
+      expect(invalidTimezone.success).toBe(false);
+
+      const negativeGrace = systemSettingsSchema.safeParse({
+        overstayGraceMinutes: -5,
+      });
+      expect(negativeGrace.success).toBe(false);
+
+      const negativeEarlyBuffer = systemSettingsSchema.safeParse({
+        autoCheckInEarlyBufferMinutes: -1,
+      });
+      expect(negativeEarlyBuffer.success).toBe(false);
+    });
+
+    it("validates updateSystemSettingsSchema and validateUpdateSystemSettingsInput pure validator", () => {
+      const partialUpdate = {
+        overstayGraceMinutes: 45,
+      };
+      expect(updateSystemSettingsSchema.safeParse(partialUpdate).success).toBe(true);
+      const res = validateUpdateSystemSettingsInput(partialUpdate);
       expect(res.valid).toBe(true);
       if (res.valid) {
-        expect(res.input.name).toBe("Jakarta HQ Updated");
-        expect(res.input.timezone).toBe("Asia/Jakarta");
-        expect(res.input.overstayGraceMinutes).toBe(20);
-        expect(res.input.address).toBe("Jl. Sudirman");
+        expect(res.input.overstayGraceMinutes).toBe(45);
+        expect(res.input.timezone).toBeUndefined();
+      }
+
+      const invalidInput = validateUpdateSystemSettingsInput({
+        timezone: "Invalid/Fake",
+      });
+      expect(invalidInput.valid).toBe(false);
+      if (!invalidInput.valid) {
+        expect(invalidInput.errors.timezone).toBeDefined();
       }
     });
 
-    it("rejects non-object or null payload", () => {
-      expect(validateUpdateFacilityInput(null).valid).toBe(false);
-      expect(validateUpdateFacilityInput("string").valid).toBe(false);
-    });
-
-    it("rejects invalid IANA timezone", () => {
-      const res = validateUpdateFacilityInput({
-        timezone: "Invalid/Zone",
-      });
-      expect(res.valid).toBe(false);
-      if (!res.valid) {
-        expect(res.errors.timezone).toBeDefined();
-      }
-    });
-
-    it("rejects negative overstayGraceMinutes", () => {
-      const res = validateUpdateFacilityInput({
-        overstayGraceMinutes: -1,
-      });
-      expect(res.valid).toBe(false);
-      if (!res.valid) {
-        expect(res.errors.overstayGraceMinutes).toBeDefined();
+    it("validates doorSchema preserves regionIndexCode and carries no facilityId", () => {
+      const flatDoor = {
+        doorIndexCode: "door-turnstile-1",
+        doorName: "Main Entrance SpeedGate",
+        regionIndexCode: "region-hq-fl1",
+        accessType: "DUAL_DIRECTION" as const,
+        isPerimeter: true,
+      };
+      const res = doorSchema.safeParse(flatDoor);
+      expect(res.success).toBe(true);
+      if (res.success) {
+        expect(res.data.doorIndexCode).toBe("door-turnstile-1");
+        expect(res.data.regionIndexCode).toBe("region-hq-fl1");
+        expect(res.data).not.toHaveProperty("facilityId");
       }
     });
   });

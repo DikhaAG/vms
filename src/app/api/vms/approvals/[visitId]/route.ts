@@ -4,8 +4,9 @@ import type {
   ApprovalAction,
   ApproverUser,
 } from "@/lib/vms/approval-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function POST(
+async function handlePOST(
   request: Request,
   context: { params: Promise<{ visitId: string }> },
 ) {
@@ -92,3 +93,5 @@ export async function POST(
     { status: 200 },
   );
 }
+
+export const POST = withServerErrors(handlePOST);

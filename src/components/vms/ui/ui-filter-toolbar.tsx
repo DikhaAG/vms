@@ -1,21 +1,21 @@
 import React, { type HTMLAttributes } from "react";
 
 export interface UiFilterToolbarProps extends HTMLAttributes<HTMLDivElement> {
-  facilitySlot?: React.ReactNode;
+  filterSlot?: React.ReactNode;
   searchSlot?: React.ReactNode;
   actionsSlot?: React.ReactNode;
   children?: React.ReactNode;
 }
 
 export function UiFilterToolbar({
-  facilitySlot,
+  filterSlot,
   searchSlot,
   actionsSlot,
   children,
   className = "",
   ...props
 }: UiFilterToolbarProps) {
-  const hasSlots = Boolean(facilitySlot || searchSlot || actionsSlot);
+  const hasSlots = Boolean(filterSlot || searchSlot || actionsSlot);
 
   return (
     <div
@@ -25,7 +25,7 @@ export function UiFilterToolbar({
       {hasSlots ? (
         <>
           <div className="flex flex-1 flex-wrap items-center gap-3">
-            {facilitySlot}
+            {filterSlot}
             {searchSlot}
           </div>
           {actionsSlot && (

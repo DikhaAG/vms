@@ -73,3 +73,21 @@ export function UiCardContent({
     </div>
   );
 }
+
+export interface UiLoadingFallbackProps {
+  message?: string;
+  className?: string;
+}
+
+export function UiLoadingFallback({
+  message = "Memuat data...",
+  className = "",
+}: UiLoadingFallbackProps) {
+  return (
+    <div
+      className={`rounded-xl border border-[var(--ks-rule-subtle)] bg-[var(--ks-surface-card)] p-8 text-center text-sm text-[var(--ks-muted)] shadow-xs ${className}`.trim()}
+    >
+      {message}
+    </div>
+  );
+}

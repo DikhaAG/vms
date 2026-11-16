@@ -16,7 +16,6 @@ describe("invitation-service", () => {
   });
 
   const baseInput: CreateInvitationInput = {
-    facilityId: "fac-jakarta",
     hostName: "Budi Santoso",
     hostId: "emp-001",
     visitReasonType: 3,
@@ -40,8 +39,6 @@ describe("invitation-service", () => {
 
       expect(result.visit).toBeDefined();
       expect(result.visit?.status).toBe("DRAFT");
-      expect(result.visit?.facilityId).toBe("fac-jakarta");
-      expect(result.visit?.facilityName).toBe("Jakarta Corporate HQ");
       expect(result.visit?.hostName).toBe("Budi Santoso");
       expect(result.visit?.scheduledStartTimeFacility).toBe(
         "2026-11-20T09:00:00+07:00",
@@ -79,17 +76,6 @@ describe("invitation-service", () => {
       expect(result.visit?.visitorEmail).toBe("rian.pratama@example.com");
     });
 
-    it("rejects unknown facility", async () => {
-      const result = await createInvitation(
-        { ...baseInput, facilityId: "fac-unknown" },
-        { repository, now: () => mockNow },
-      );
-
-      expect(result.ok).toBe(false);
-      expect(result.error?.kind).toBe("not_found");
-      expect(result.error?.message).toContain("fac-unknown");
-    });
-
     it("rejects invalid input schema", async () => {
       const result = await createInvitation(
         { ...baseInput, scheduledEndTime: "invalid-time" },
@@ -119,7 +105,10 @@ describe("invitation-service", () => {
       expect(validation.valid).toBe(true);
       expect(validation.status).toBe("valid");
       expect(validation.visit?.id).toBe(created.visit?.id);
-      expect(validation.facility?.id).toBe("fac-jakarta");
+      expect(validation.site).toEqual({
+        name: "Gedung Utama",
+        timezone: "Asia/Jakarta",
+      });
     });
 
     it("returns invalid status for non-existent token", async () => {
@@ -205,11 +194,11 @@ describe("invitation-service", () => {
 
       expect(result.ok).toBe(true);
       expect(result.data).toBeDefined();
-      expect(result.data?.facility.name).toBe("Jakarta Corporate HQ");
-      expect(result.data?.facility.timezone).toBe("Asia/Jakarta");
-      expect(result.data?.facility.address).toBe(
-        "Jl. Jend. Sudirman Kav. 52-53, Senayan, Jakarta Selatan",
-      );
+      expect(result.data?.site).toEqual({
+        name: "Gedung Utama",
+        timezone: "Asia/Jakarta",
+      });
+      expect(result.data).not.toHaveProperty("facility");
       expect(result.data?.host?.name).toBe("Budi Santoso");
       expect(result.data?.visitReasonLabel).toBe("Meeting");
       expect(result.data?.visitReasonDetail).toBe(

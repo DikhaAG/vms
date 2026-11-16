@@ -26,7 +26,7 @@ describe("PostgreSQL Database Client & Initialization", () => {
     const result = await initPostgresDb(mockPool);
     expect(result.ok).toBe(true);
     expect(mockQuery).toHaveBeenCalledTimes(1);
-    expect(mockQuery.mock.calls[0][0]).toContain("CREATE TABLE IF NOT EXISTS facilities");
+    expect(mockQuery.mock.calls[0][0]).toContain("DROP TABLE IF EXISTS facilities");
   });
 
   it("handles initialization failures gracefully", async () => {

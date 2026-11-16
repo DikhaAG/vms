@@ -4,82 +4,125 @@
  * Safe for Client Components (zero Node.js dependencies, zero process.env reads).
  */
 
-import {
-  isStubScenario,
-  type PreRegistrationMode,
-  type StubScenario,
-  type VisitStatus,
-} from "./vms-contract";
+import { z } from "zod";
+import { siteSchema } from "./site-contract";
+import { formatZodErrors, isRecord } from "./validation-helpers";
+import { preRegistrationModeSchema } from "./pre-registration-mode-contract";
+import type { StubScenario, VisitStatus } from "./vms-contract";
 import type { TapQuotaConfig } from "./access-level-contract";
 
 export const DOOR_DIRECTIONS = ["in", "out"] as const;
-export type DoorDirection = (typeof DOOR_DIRECTIONS)[number];
+export const doorDirectionSchema = z.enum(DOOR_DIRECTIONS, {
+  error: "Direction must be 'in' or 'out'.",
+});
+export type DoorDirection = z.infer<typeof doorDirectionSchema>;
 
 export function isDoorDirection(value: unknown): value is DoorDirection {
-  return (
-    typeof value === "string" &&
-    (DOOR_DIRECTIONS as readonly string[]).includes(value)
-  );
+  return doorDirectionSchema.safeParse(value).success;
 }
 
 export const DOOR_ACCESS_TYPES = [
   "DUAL_DIRECTION",
   "SINGLE_DIRECTION_IN",
 ] as const;
-export type DoorAccessType = (typeof DOOR_ACCESS_TYPES)[number];
+export const doorAccessTypeSchema = z.enum(DOOR_ACCESS_TYPES, {
+  error: "Access type must be 'DUAL_DIRECTION' or 'SINGLE_DIRECTION_IN'.",
+});
+export type DoorAccessType = z.infer<typeof doorAccessTypeSchema>;
 
 export function isDoorAccessType(value: unknown): value is DoorAccessType {
-  return (
-    typeof value === "string" &&
-    (DOOR_ACCESS_TYPES as readonly string[]).includes(value)
-  );
+  return doorAccessTypeSchema.safeParse(value).success;
 }
 
-export interface FacilityDoor {
-  id?: string;
-  facilityId: string;
-  doorIndexCode: string;
-  doorName: string;
-  accessType: DoorAccessType;
-  isPerimeter: boolean;
-  roomTimeoutMinutes?: number;
-}
+export const facilityDoorSchema = z.object({
+  id: z.string().optional(),
+  regionIndexCode: z.string().trim().optional(),
+  doorIndexCode: z.string().trim().min(1, "Door index code is required."),
+  doorName: z.string().trim().min(1, "Door name is required."),
+  channelNo: z.union([z.string(), z.number()]).optional(),
+  doorState: z.number().int().optional(),
+  doorOutState: z.number().int().optional(),
+  acsDevIndexCode: z.string().trim().optional(),
+  isOnline: z.boolean().optional(),
+  accessType: doorAccessTypeSchema.default("DUAL_DIRECTION"),
+  isPerimeter: z.boolean().default(false),
+  roomTimeoutMinutes: z
+    .number()
+    .positive("Room timeout must be a positive number of minutes.")
+    .optional(),
+});
+export type FacilityDoor = z.infer<typeof facilityDoorSchema>;
 
-export interface VisitLastSeenDoor {
-  doorIndexCode: string;
-  doorName?: string;
-  tappedAtUtc: string;
-  direction: DoorDirection;
-  accessType?: DoorAccessType;
-  isPerimeter?: boolean;
-}
+export const doorSchema = facilityDoorSchema;
+export type Door = FacilityDoor;
 
-export interface DoorTapEvent {
-  id?: string;
-  visitId: string;
-  doorIndexCode: string;
-  doorName?: string;
-  tappedAtUtc: string;
-  direction: DoorDirection;
-  inAndOutType?: number;
-  isPerimeter?: boolean;
-  isImplicit?: boolean;
-  implicit?: boolean;
-  transitionNote?: string;
-}
+export const visitLastSeenDoorSchema = z.object({
+  doorIndexCode: z.string(),
+  doorName: z.string().optional(),
+  tappedAtUtc: z.string(),
+  direction: doorDirectionSchema,
+  accessType: doorAccessTypeSchema.optional(),
+  isPerimeter: z.boolean().optional(),
+});
+export type VisitLastSeenDoor = z.infer<typeof visitLastSeenDoorSchema>;
 
-export interface HostArrivalNotification {
-  id: string;
-  visitId: string;
-  hostId?: string;
-  hostName?: string;
-  visitorName: string;
-  doorIndexCode: string;
-  doorName?: string;
-  arrivedAtUtc: string;
-  message: string;
-  createdAtUtc: string;
-}
+export const doorTapEventSchema = z
+  .object({
+    id: z.string().optional(),
+    visitId: z
+      .string({ error: "Visit ID is required." })
+      .trim()
+      .min(1, "Visit ID is required."),
+    doorIndexCode: z
+      .string({ error: "Door index code is required." })
+      .trim()
+      .min(1, "Door index code is required."),
+    doorName: z.string().optional(),
+    tappedAtUtc: z.string(),
+    direction: doorDirectionSchema,
+    inAndOutType: z.number().int().optional(),
+    isPerimeter: z.boolean().optional(),
+    isImplicit: z.boolean().optional(),
+    implicit: z.boolean().optional(),
+    transitionNote: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.inAndOutType !== undefined) {
+      if (data.inAndOutType !== 1 && data.inAndOutType !== 2) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["inAndOutType"],
+          message: "inAndOutType must be 1 (entry) or 2 (exit).",
+        });
+      } else if (data.direction) {
+        if (
+          (data.direction === "in" && data.inAndOutType !== 1) ||
+          (data.direction === "out" && data.inAndOutType !== 2)
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["inAndOutType"],
+            message: `inAndOutType (${data.inAndOutType}) does not match direction '${data.direction}'.`,
+          });
+        }
+      }
+    }
+  });
+export type DoorTapEvent = z.infer<typeof doorTapEventSchema>;
+
+export const hostArrivalNotificationSchema = z.object({
+  id: z.string(),
+  visitId: z.string(),
+  hostId: z.string().optional(),
+  hostName: z.string().optional(),
+  visitorName: z.string(),
+  doorIndexCode: z.string(),
+  doorName: z.string().optional(),
+  arrivedAtUtc: z.string(),
+  message: z.string(),
+  createdAtUtc: z.string(),
+});
+export type HostArrivalNotification = z.infer<typeof hostArrivalNotificationSchema>;
 
 export interface AutoCheckInEvaluation {
   eligible: boolean;
@@ -88,100 +131,173 @@ export interface AutoCheckInEvaluation {
   bufferMinutes: number;
 }
 
-export interface CheckOutInput {
-  visitId: string;
-  operatorUserId: string;
-  operatorName?: string;
-  checkOutTimeUtc?: string;
-  reason?: string;
-  isForced: boolean;
-  mode?: PreRegistrationMode;
-  stubScenario?: StubScenario;
-}
+export const checkOutInputSchema = z
+  .object({
+    visitId: z.string().trim().min(1, "Visit ID is required."),
+    operatorUserId: z.string().trim().min(1, "Operator user ID is required."),
+    operatorName: z.string().trim().optional(),
+    checkOutTimeUtc: z.string().trim().optional(),
+    reason: z.string().trim().optional(),
+    isForced: z.boolean().default(false),
+    mode: preRegistrationModeSchema.optional(),
+    stubScenario: z.custom<StubScenario>().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.isForced && (!data.reason || !data.reason.trim())) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["reason"],
+        message: "A reason is required for force check-out.",
+      });
+    }
+  });
+export type CheckOutInput = z.infer<typeof checkOutInputSchema>;
 
-export interface CheckOutAuditEvent {
-  id: string;
-  visitId: string;
-  checkedOutAtUtc: string;
-  operatorUserId: string;
-  operatorName?: string;
-  reason?: string;
-  isForced: boolean;
-  appointRecordIdRevoked?: string;
-}
+export const checkOutAuditEventSchema = z.object({
+  id: z.string(),
+  visitId: z.string(),
+  checkedOutAtUtc: z.string(),
+  operatorUserId: z.string(),
+  operatorName: z.string().optional(),
+  reason: z.string().optional(),
+  isForced: z.boolean(),
+  appointRecordIdRevoked: z.string().optional(),
+});
+export type CheckOutAuditEvent = z.infer<typeof checkOutAuditEventSchema>;
 
 export const EMERGENCY_GRANT_STATUSES = [
   "ACTIVE",
   "EXPIRED",
   "REVOKED",
 ] as const;
-export type EmergencyGrantStatus = (typeof EMERGENCY_GRANT_STATUSES)[number];
+export const emergencyGrantStatusSchema = z.enum(EMERGENCY_GRANT_STATUSES);
+export type EmergencyGrantStatus = z.infer<typeof emergencyGrantStatusSchema>;
 
 export function isEmergencyGrantStatus(
   value: unknown,
 ): value is EmergencyGrantStatus {
-  return (
-    typeof value === "string" &&
-    (EMERGENCY_GRANT_STATUSES as readonly string[]).includes(value)
-  );
+  return emergencyGrantStatusSchema.safeParse(value).success;
 }
 
-export interface EmergencyAccessGrant {
-  id: string;
-  visitId: string;
-  doorIndexCodes: string[];
-  doorNames: string[];
-  grantedByUserId: string;
-  grantedByName: string;
-  reason: string;
-  grantedAtUtc: string;
-  expiresAtUtc: string;
-  status: EmergencyGrantStatus;
-  revokedAtUtc?: string;
-  revokedByUserId?: string;
-  revokedByName?: string;
-}
+export const emergencyAccessGrantSchema = z.object({
+  id: z.string(),
+  visitId: z.string(),
+  doorIndexCodes: z.array(z.string()),
+  doorNames: z.array(z.string()),
+  grantedByUserId: z.string(),
+  grantedByName: z.string(),
+  reason: z.string(),
+  grantedAtUtc: z.string(),
+  expiresAtUtc: z.string(),
+  status: emergencyGrantStatusSchema,
+  revokedAtUtc: z.string().optional(),
+  revokedByUserId: z.string().optional(),
+  revokedByName: z.string().optional(),
+});
+export type EmergencyAccessGrant = z.infer<typeof emergencyAccessGrantSchema>;
 
-export interface ActiveVisitSummary {
-  visitId: string;
-  groupId?: string;
-  visitorGroupName?: string;
-  visitor: {
-    givenName: string;
-    familyName: string;
-    fullName: string;
-    phone?: string;
-    email?: string;
-    certificateNo?: string;
-    photo?: string;
-  };
-  host?: {
-    id?: string;
-    name?: string;
-  };
-  facility: {
-    id: string;
-    name: string;
-    timezone: string;
-  };
-  visitReason: string;
-  checkInTimeUtc: string;
-  scheduledStartTimeUtc: string;
-  scheduledEndTimeUtc: string;
-  tapCount: number;
-  maxTaps: number; // 0 for unlimited
-  tapQuotaMode: "unlimited" | "limited";
-  isQuotaExceeded: boolean;
-  isOverstay: boolean;
-  overstayMinutes: number;
-  status: VisitStatus;
-  appointRecordId?: string;
-  accessLevelIds?: string[];
-  emergencyGrants?: EmergencyAccessGrant[];
-  lastSeenDoor?: VisitLastSeenDoor;
-  isFastTrack?: boolean;
-  movementBreadcrumbs?: DoorTapEvent[];
-}
+export const grantEmergencyAccessInputSchema = z
+  .object({
+    visitId: z.string().optional(),
+    doorIndexCodes: z
+      .array(z.string())
+      .min(1, "At least one door code is required."),
+    doorNames: z.array(z.string()).optional(),
+    grantedByUserId: z
+      .string({ error: "Authorizing operator user ID is required." })
+      .trim()
+      .min(1, "Authorizing operator user ID is required."),
+    grantedByName: z.string().optional(),
+    reason: z
+      .string({ error: "A business justification reason of at least 10 characters is required." })
+      .trim()
+      .min(
+        10,
+        "A business justification reason of at least 10 characters is required.",
+      ),
+    grantedAtUtc: z.string().optional(),
+    expiresAtUtc: z.string().optional(),
+    durationHours: z.number().optional(),
+    mode: preRegistrationModeSchema.optional(),
+    stubScenario: z.custom<StubScenario>().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.durationHours !== undefined) {
+      if (isNaN(data.durationHours) || data.durationHours <= 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["durationHours"],
+          message: "Duration must be a positive number of hours.",
+        });
+      }
+    }
+    const grantedAt = data.grantedAtUtc ? new Date(data.grantedAtUtc) : new Date();
+    if (data.expiresAtUtc && data.expiresAtUtc.trim()) {
+      const exp = new Date(data.expiresAtUtc.trim());
+      if (isNaN(exp.getTime())) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["expiresAtUtc"],
+          message: "Invalid expiration timestamp format.",
+        });
+      } else if (exp.getTime() <= grantedAt.getTime()) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["expiresAtUtc"],
+          message: "Expiration must be in the future.",
+        });
+      }
+    } else if (data.durationHours === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["expiresAtUtc"],
+        message: "Either expiresAtUtc or durationHours must be specified.",
+      });
+    }
+  });
+export type GrantEmergencyAccessInput = z.infer<
+  typeof grantEmergencyAccessInputSchema
+>;
+
+export const activeVisitSummarySchema = z.object({
+  visitId: z.string(),
+  groupId: z.string().optional(),
+  visitorGroupName: z.string().optional(),
+  visitor: z.object({
+    givenName: z.string(),
+    familyName: z.string(),
+    fullName: z.string(),
+    phone: z.string().optional(),
+    email: z.string().optional(),
+    certificateNo: z.string().optional(),
+    photo: z.string().optional(),
+  }),
+  host: z
+    .object({
+      id: z.string().optional(),
+      name: z.string().optional(),
+    })
+    .optional(),
+  site: siteSchema,
+  visitReason: z.string(),
+  checkInTimeUtc: z.string(),
+  scheduledStartTimeUtc: z.string(),
+  scheduledEndTimeUtc: z.string(),
+  tapCount: z.number(),
+  maxTaps: z.number(),
+  tapQuotaMode: z.enum(["unlimited", "limited"]),
+  isQuotaExceeded: z.boolean(),
+  isOverstay: z.boolean(),
+  overstayMinutes: z.number(),
+  status: z.custom<VisitStatus>(),
+  appointRecordId: z.string().optional(),
+  accessLevelIds: z.array(z.string()).optional(),
+  emergencyGrants: z.array(emergencyAccessGrantSchema).optional(),
+  lastSeenDoor: visitLastSeenDoorSchema.optional(),
+  isFastTrack: z.boolean().optional(),
+  movementBreadcrumbs: z.array(doorTapEventSchema).optional(),
+});
+export type ActiveVisitSummary = z.infer<typeof activeVisitSummarySchema>;
 
 export interface OverstayEvaluation {
   isOverstay: boolean;
@@ -191,26 +307,26 @@ export interface OverstayEvaluation {
   cutoffTimeUtc: string;
 }
 
-/**
- * Pure evaluation function for Overstay status.
- * Compares current wall-clock time against scheduledEndTime + overstayGraceMinutes.
- */
 export function evaluateOverstayStatus(
   visit: { scheduledEndTimeUtc: string; status?: VisitStatus },
-  facility?: { overstayGraceMinutes?: number } | null,
+  settings?: { overstayGraceMinutes?: number } | null,
   nowUtc?: string | Date,
 ): OverstayEvaluation {
-  const now = nowUtc instanceof Date ? nowUtc : nowUtc ? new Date(nowUtc) : new Date();
+  const now =
+    nowUtc instanceof Date ? nowUtc : nowUtc ? new Date(nowUtc) : new Date();
   const scheduledEnd = new Date(visit.scheduledEndTimeUtc);
-  const graceMinutes = typeof facility?.overstayGraceMinutes === "number"
-    ? facility.overstayGraceMinutes
-    : 15;
+  const graceMinutes =
+    typeof settings?.overstayGraceMinutes === "number"
+      ? settings.overstayGraceMinutes
+      : 15;
 
   const cutoffMs = scheduledEnd.getTime() + graceMinutes * 60 * 1000;
   const nowMs = now.getTime();
 
   if (nowMs > cutoffMs) {
-    const elapsedMinutes = Math.floor((nowMs - scheduledEnd.getTime()) / (60 * 1000));
+    const elapsedMinutes = Math.floor(
+      (nowMs - scheduledEnd.getTime()) / (60 * 1000),
+    );
     return {
       isOverstay: true,
       overstayMinutes: Math.max(1, elapsedMinutes),
@@ -229,9 +345,6 @@ export function evaluateOverstayStatus(
   };
 }
 
-/**
- * Pure evaluation function for Tap Quota enforcement.
- */
 export function isTapQuotaExceeded(
   tapCount: number,
   tapQuota?: TapQuotaConfig,
@@ -251,9 +364,6 @@ export function isTapQuotaExceeded(
   return false;
 }
 
-/**
- * Pure evaluation function for determining whether a visit and door are eligible for touchless auto check-in.
- */
 export function isAutoCheckInEligible(
   visit: { status: VisitStatus },
   door?: { isPerimeter?: boolean } | null,
@@ -261,11 +371,6 @@ export function isAutoCheckInEligible(
   return visit.status === "APPROVED" && Boolean(door?.isPerimeter);
 }
 
-/**
- * Pure evaluation function for Auto Check-In on First Perimeter Tap.
- * Validates visit status, door perimeter qualification, tap direction,
- * and arrival time window (including configurable early arrival buffer).
- */
 export function evaluateAutoCheckIn(params: {
   visit: {
     status: VisitStatus;
@@ -287,7 +392,9 @@ export function evaluateAutoCheckIn(params: {
       ? params.earlyArrivalBufferMinutes
       : 15;
 
-  const scheduledStartMs = new Date(params.visit.scheduledStartTimeUtc).getTime();
+  const scheduledStartMs = new Date(
+    params.visit.scheduledStartTimeUtc,
+  ).getTime();
   const earliestAllowedMs = scheduledStartMs - bufferMinutes * 60 * 1000;
   const earliestAllowedUtc = new Date(earliestAllowedMs).toISOString();
 
@@ -369,217 +476,132 @@ export interface ValidationFailure {
 export type ValidationResult<T> = ValidationSuccess<T> | ValidationFailure;
 
 /**
- * Pure validator for CheckOutInput.
+ * Pure validator for CheckOutInput. Backward-compatible wrapper.
  */
-export function validateCheckOutInput(raw: unknown): ValidationResult<CheckOutInput> {
-  const errors: Record<string, string> = {};
-
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { valid: false, errors: { _global: "CheckOut input must be an object." } };
+export function validateCheckOutInput(
+  raw: unknown,
+): ValidationResult<CheckOutInput> {
+  if (!isRecord(raw)) {
+    return {
+      valid: false,
+      errors: { _global: "CheckOut input must be an object." },
+    };
   }
 
-  const rec = raw as Record<string, unknown>;
-
-  if (typeof rec.visitId !== "string" || !rec.visitId.trim()) {
-    errors.visitId = "Visit ID is required.";
+  const result = checkOutInputSchema.safeParse(raw);
+  if (result.success) {
+    return {
+      valid: true,
+      input: {
+        visitId: result.data.visitId,
+        operatorUserId: result.data.operatorUserId,
+        operatorName: result.data.operatorName,
+        checkOutTimeUtc:
+          result.data.checkOutTimeUtc || new Date().toISOString(),
+        reason: result.data.reason || undefined,
+        isForced: result.data.isForced,
+        mode: result.data.mode,
+        stubScenario: result.data.stubScenario as StubScenario | undefined,
+      },
+    };
   }
 
-  if (typeof rec.operatorUserId !== "string" || !rec.operatorUserId.trim()) {
-    errors.operatorUserId = "Operator user ID is required.";
-  }
-
-  const isForced = Boolean(rec.isForced);
-  const reason = typeof rec.reason === "string" ? rec.reason.trim() : "";
-
-  if (isForced && !reason) {
-    errors.reason = "A reason is required for force check-out.";
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return { valid: false, errors };
-  }
-
-  const checkOutTimeUtc =
-    typeof rec.checkOutTimeUtc === "string" && rec.checkOutTimeUtc.trim()
-      ? rec.checkOutTimeUtc.trim()
-      : new Date().toISOString();
-
-  return {
-    valid: true,
-    input: {
-      visitId: (rec.visitId as string).trim(),
-      operatorUserId: (rec.operatorUserId as string).trim(),
-      operatorName:
-        typeof rec.operatorName === "string" ? rec.operatorName.trim() : undefined,
-      checkOutTimeUtc,
-      reason: reason || undefined,
-      isForced,
-      mode: rec.mode === "stub" ? "stub" : "live",
-      stubScenario: isStubScenario(rec.stubScenario) ? rec.stubScenario : undefined,
-    },
-  };
+  return { valid: false, errors: formatZodErrors(result.error) };
 }
 
 /**
- * Pure validator for FacilityDoor input.
+ * Pure validator for FacilityDoor input. Backward-compatible wrapper.
  */
-export function validateFacilityDoorInput(raw: unknown): ValidationResult<FacilityDoor> {
-  const errors: Record<string, string> = {};
-
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { valid: false, errors: { _global: "Door configuration must be an object." } };
+export function validateFacilityDoorInput(
+  raw: unknown,
+): ValidationResult<FacilityDoor> {
+  if (!isRecord(raw)) {
+    return {
+      valid: false,
+      errors: { _global: "Door configuration must be an object." },
+    };
   }
 
-  const rec = raw as Record<string, unknown>;
-
-  if (typeof rec.facilityId !== "string" || !rec.facilityId.trim()) {
-    errors.facilityId = "Facility ID is required.";
+  const result = facilityDoorSchema.safeParse(raw);
+  if (result.success) {
+    const id =
+      result.data.id && result.data.id.trim()
+        ? result.data.id.trim()
+        : `door-${result.data.doorIndexCode}`;
+    return {
+      valid: true,
+      input: {
+        id,
+        regionIndexCode: result.data.regionIndexCode,
+        doorIndexCode: result.data.doorIndexCode,
+        doorName: result.data.doorName,
+        accessType: result.data.accessType,
+        isPerimeter: result.data.isPerimeter,
+        roomTimeoutMinutes: result.data.roomTimeoutMinutes,
+      },
+    };
   }
 
-  if (typeof rec.doorIndexCode !== "string" || !rec.doorIndexCode.trim()) {
-    errors.doorIndexCode = "Door index code is required.";
-  }
-
-  if (typeof rec.doorName !== "string" || !rec.doorName.trim()) {
-    errors.doorName = "Door name is required.";
-  }
-
-  let accessType: DoorAccessType = "DUAL_DIRECTION";
-  if (rec.accessType !== undefined) {
-    if (!isDoorAccessType(rec.accessType)) {
-      errors.accessType = "Access type must be 'DUAL_DIRECTION' or 'SINGLE_DIRECTION_IN'.";
-    } else {
-      accessType = rec.accessType;
-    }
-  }
-
-  const isPerimeter = Boolean(rec.isPerimeter);
-
-  let roomTimeoutMinutes: number | undefined;
-  if (rec.roomTimeoutMinutes !== undefined) {
-    if (typeof rec.roomTimeoutMinutes === "number" && rec.roomTimeoutMinutes > 0) {
-      roomTimeoutMinutes = rec.roomTimeoutMinutes;
-    } else {
-      errors.roomTimeoutMinutes = "Room timeout must be a positive number of minutes.";
-    }
-  }
-
-  if (Object.keys(errors).length > 0) {
-    return { valid: false, errors };
-  }
-
-  const id =
-    typeof rec.id === "string" && rec.id.trim()
-      ? rec.id.trim()
-      : `door-${(rec.doorIndexCode as string).trim()}`;
-
-  return {
-    valid: true,
-    input: {
-      id,
-      facilityId: (rec.facilityId as string).trim(),
-      doorIndexCode: (rec.doorIndexCode as string).trim(),
-      doorName: (rec.doorName as string).trim(),
-      accessType,
-      isPerimeter,
-      roomTimeoutMinutes,
-    },
-  };
+  return { valid: false, errors: formatZodErrors(result.error) };
 }
 
 /**
- * Pure validator for DoorTapEvent input.
+ * Pure validator for DoorTapEvent input. Backward-compatible wrapper.
  */
-export function validateDoorTapInput(raw: unknown): ValidationResult<DoorTapEvent> {
-  const errors: Record<string, string> = {};
-
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { valid: false, errors: { _global: "Door tap input must be an object." } };
+export function validateDoorTapInput(
+  raw: unknown,
+): ValidationResult<DoorTapEvent> {
+  if (!isRecord(raw)) {
+    return {
+      valid: false,
+      errors: { _global: "Door tap input must be an object." },
+    };
   }
 
-  const rec = raw as Record<string, unknown>;
-
-  if (typeof rec.visitId !== "string" || !rec.visitId.trim()) {
-    errors.visitId = "Visit ID is required.";
-  }
-
-  if (typeof rec.doorIndexCode !== "string" || !rec.doorIndexCode.trim()) {
-    errors.doorIndexCode = "Door index code is required.";
-  }
-
-  let direction: DoorDirection = "in";
-  let hasExplicitDirection = false;
-  if (rec.direction !== undefined) {
-    if (!isDoorDirection(rec.direction)) {
-      errors.direction = "Direction must be 'in' or 'out'.";
-    } else {
-      direction = rec.direction;
-      hasExplicitDirection = true;
-    }
-  }
-
-  let inAndOutType: number | undefined;
-  if (rec.inAndOutType !== undefined) {
-    if (rec.inAndOutType !== 1 && rec.inAndOutType !== 2) {
-      errors.inAndOutType = "inAndOutType must be 1 (entry) or 2 (exit).";
-    } else {
-      inAndOutType = rec.inAndOutType as number;
-      if (hasExplicitDirection) {
-        if (
-          (direction === "in" && inAndOutType !== 1) ||
-          (direction === "out" && inAndOutType !== 2)
-        ) {
-          errors.inAndOutType = `inAndOutType (${inAndOutType}) does not match direction '${direction}'.`;
-        }
-      } else {
-        direction = inAndOutType === 1 ? "in" : "out";
-      }
-    }
-  } else {
-    inAndOutType = direction === "in" ? 1 : 2;
-  }
-
-  const isPerimeter =
-    typeof rec.isPerimeter === "boolean" ? rec.isPerimeter : undefined;
-  const isImplicit =
-    typeof rec.isImplicit === "boolean"
-      ? rec.isImplicit
-      : typeof rec.implicit === "boolean"
-        ? rec.implicit
-        : undefined;
-  const implicit = isImplicit;
-  const transitionNote =
-    typeof rec.transitionNote === "string" ? rec.transitionNote.trim() : undefined;
-
-  const tappedAtUtc =
+  const rec = raw;
+  const direction: unknown =
+    rec.direction !== undefined
+      ? rec.direction
+      : rec.inAndOutType === 2
+        ? "out"
+        : "in";
+  const tappedAtUtc: unknown =
     typeof rec.tappedAtUtc === "string" && rec.tappedAtUtc.trim()
       ? rec.tappedAtUtc.trim()
       : new Date().toISOString();
 
-  if (Object.keys(errors).length > 0) {
-    return { valid: false, errors };
+  const normalized = {
+    ...rec,
+    direction,
+    tappedAtUtc,
+  };
+
+  const result = doorTapEventSchema.safeParse(normalized);
+  if (!result.success) {
+    return { valid: false, errors: formatZodErrors(result.error) };
   }
+
+  const data = result.data;
+  const inAndOutType = data.inAndOutType ?? (data.direction === "in" ? 1 : 2);
+  const isImplicit = data.isImplicit ?? data.implicit;
 
   return {
     valid: true,
     input: {
-      visitId: (rec.visitId as string).trim(),
-      doorIndexCode: (rec.doorIndexCode as string).trim(),
-      doorName: typeof rec.doorName === "string" ? rec.doorName.trim() : undefined,
-      tappedAtUtc,
-      direction,
+      visitId: data.visitId,
+      doorIndexCode: data.doorIndexCode,
+      doorName: data.doorName?.trim() || undefined,
+      tappedAtUtc: data.tappedAtUtc,
+      direction: data.direction,
       inAndOutType,
-      isPerimeter,
+      isPerimeter: data.isPerimeter,
       isImplicit,
-      implicit,
-      transitionNote,
+      implicit: isImplicit,
+      transitionNote: data.transitionNote?.trim() || undefined,
     },
   };
 }
 
-/**
- * Pure evaluation function checking if an emergency access grant is actively valid.
- */
 export function isEmergencyGrantActive(
   grant: EmergencyAccessGrant,
   nowUtc?: string | Date,
@@ -587,54 +609,36 @@ export function isEmergencyGrantActive(
   if (grant.status !== "ACTIVE") {
     return false;
   }
-  const now = nowUtc instanceof Date ? nowUtc : nowUtc ? new Date(nowUtc) : new Date();
+  const now =
+    nowUtc instanceof Date ? nowUtc : nowUtc ? new Date(nowUtc) : new Date();
   const expiresAt = new Date(grant.expiresAtUtc);
   return now.getTime() < expiresAt.getTime();
 }
 
-export interface GrantEmergencyAccessInput {
-  visitId?: string;
-  doorIndexCodes: string[];
-  doorNames?: string[];
-  grantedByUserId: string;
-  grantedByName?: string;
-  reason: string;
-  grantedAtUtc?: string;
-  expiresAtUtc?: string;
-  durationHours?: number;
-  mode?: PreRegistrationMode;
-  stubScenario?: StubScenario;
-}
-
 /**
- * Pure validator for GrantEmergencyAccessInput.
+ * Pure validator for GrantEmergencyAccessInput. Backward-compatible wrapper.
  */
 export function validateGrantEmergencyAccessInput(
   raw: unknown,
 ): ValidationResult<GrantEmergencyAccessInput> {
-  const errors: Record<string, string> = {};
-
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+  if (!isRecord(raw)) {
     return {
       valid: false,
       errors: { _global: "Emergency access input must be an object." },
     };
   }
 
-  const rec = raw as Record<string, unknown>;
-
-  // Door resolution: accept doorIndexCodes array or single doorIndexCode
+  const rec = raw;
   let doorIndexCodes: string[] = [];
   if (Array.isArray(rec.doorIndexCodes)) {
     doorIndexCodes = rec.doorIndexCodes
       .filter((d): d is string => typeof d === "string" && Boolean(d.trim()))
       .map((d) => d.trim());
-  } else if (typeof rec.doorIndexCode === "string" && rec.doorIndexCode.trim()) {
+  } else if (
+    typeof rec.doorIndexCode === "string" &&
+    rec.doorIndexCode.trim()
+  ) {
     doorIndexCodes = [rec.doorIndexCode.trim()];
-  }
-
-  if (doorIndexCodes.length === 0) {
-    errors.doorIndexCodes = "At least one door code is required.";
   }
 
   let doorNames: string[] | undefined;
@@ -646,75 +650,41 @@ export function validateGrantEmergencyAccessInput(
     doorNames = [rec.doorName.trim()];
   }
 
-  if (typeof rec.grantedByUserId !== "string" || !rec.grantedByUserId.trim()) {
-    errors.grantedByUserId = "Authorizing operator user ID is required.";
+  const normalized = {
+    ...rec,
+    doorIndexCodes,
+    doorNames,
+  };
+
+  const result = grantEmergencyAccessInputSchema.safeParse(normalized);
+  if (!result.success) {
+    return { valid: false, errors: formatZodErrors(result.error) };
   }
 
-  const grantedByName =
-    typeof rec.grantedByName === "string" ? rec.grantedByName.trim() : undefined;
-
-  const reason = typeof rec.reason === "string" ? rec.reason.trim() : "";
-  if (!reason || reason.length < 10) {
-    errors.reason = "A business justification reason of at least 10 characters is required.";
-  }
-
-  // Base timestamp for duration calculations
+  const data = result.data;
   const grantedAtUtc =
-    typeof rec.grantedAtUtc === "string" && rec.grantedAtUtc.trim()
-      ? rec.grantedAtUtc.trim()
-      : new Date().toISOString();
-  const baseTime = new Date(grantedAtUtc);
-
-  let calculatedExpiresAtUtc: string | undefined;
-
-  if (typeof rec.expiresAtUtc === "string" && rec.expiresAtUtc.trim()) {
-    const parsedExpiresAt = new Date(rec.expiresAtUtc.trim());
-    if (isNaN(parsedExpiresAt.getTime())) {
-      errors.expiresAtUtc = "Invalid expiration timestamp format.";
-    } else if (parsedExpiresAt.getTime() <= baseTime.getTime()) {
-      errors.expiresAtUtc = "Expiration must be in the future.";
-    } else {
-      calculatedExpiresAtUtc = parsedExpiresAt.toISOString();
-    }
-  } else if (rec.durationHours !== undefined) {
-    const durationHours =
-      typeof rec.durationHours === "number" ? rec.durationHours : Number(rec.durationHours);
-    if (isNaN(durationHours) || durationHours <= 0) {
-      errors.durationHours = "Duration must be a positive number of hours.";
-    } else {
-      calculatedExpiresAtUtc = new Date(
-        baseTime.getTime() + durationHours * 3600 * 1000,
-      ).toISOString();
-    }
-  } else {
-    errors.expiresAtUtc =
-      "Valid expiration timestamp (expiresAtUtc) or duration in hours (durationHours) is required.";
+    data.grantedAtUtc?.trim() || new Date().toISOString();
+  let calculatedExpiresAtUtc = data.expiresAtUtc?.trim();
+  if (!calculatedExpiresAtUtc && typeof data.durationHours === "number") {
+    calculatedExpiresAtUtc = new Date(
+      new Date(grantedAtUtc).getTime() + data.durationHours * 60 * 60 * 1000,
+    ).toISOString();
   }
-
-  if (Object.keys(errors).length > 0 || !calculatedExpiresAtUtc) {
-    return { valid: false, errors };
-  }
-
-  const visitId =
-    typeof rec.visitId === "string" && rec.visitId.trim()
-      ? rec.visitId.trim()
-      : undefined;
 
   return {
     valid: true,
     input: {
-      visitId,
-      doorIndexCodes,
-      doorNames,
-      grantedByUserId: (rec.grantedByUserId as string).trim(),
-      grantedByName,
-      reason,
+      visitId: data.visitId,
+      doorIndexCodes: data.doorIndexCodes,
+      doorNames: data.doorNames,
+      grantedByUserId: data.grantedByUserId,
+      grantedByName: data.grantedByName?.trim() || undefined,
+      reason: data.reason,
       grantedAtUtc,
       expiresAtUtc: calculatedExpiresAtUtc,
-      durationHours:
-        typeof rec.durationHours === "number" ? rec.durationHours : undefined,
-      mode: rec.mode === "stub" ? "stub" : "live",
-      stubScenario: isStubScenario(rec.stubScenario) ? rec.stubScenario : undefined,
+      durationHours: data.durationHours,
+      mode: data.mode === "stub" ? "stub" : "live",
+      stubScenario: data.stubScenario,
     },
   };
 }

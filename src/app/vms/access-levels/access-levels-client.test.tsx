@@ -3,23 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { AccessLevelsClient } from "./access-levels-client";
 import { AccessLevelFormModal } from "./access-level-form-modal";
 import AccessLevelsPage from "./page";
-import type { Facility } from "@/lib/vms/vms-contract";
 import type { AccessLevel } from "@/lib/vms/access-level-contract";
 
 describe("AccessLevels UI Localization", () => {
-  const dummyFacilities: Facility[] = [
-    {
-      id: "fac-jakarta",
-      name: "Kantor Pusat Jakarta",
-      timezone: "Asia/Jakarta",
-      address: "Jl. Jenderal Sudirman No. 1, Jakarta",
-    },
-  ];
-
   const dummyAccessLevels: AccessLevel[] = [
     {
       id: "al-lobby",
-      facilityId: "fac-jakarta",
       name: "Pintu Masuk Lobi Utama",
       description: "Akses gerbang lobi dan pintu putar lantai 1",
       doors: ["Lobby SpeedGate A"],
@@ -31,16 +20,14 @@ describe("AccessLevels UI Localization", () => {
     },
   ];
 
-  it("renders localized filter bar, cards, and buttons in Indonesian", () => {
+  it("renders localized filter bar, cards, and buttons flatly without facility selector", () => {
     const html = renderToStaticMarkup(
       <AccessLevelsClient
-        facilities={dummyFacilities}
         initialAccessLevels={dummyAccessLevels}
       />,
     );
 
-    expect(html).toContain("Lokasi Gedung:");
-    expect(html).toContain("Semua Lokasi Fasilitas (1)");
+    expect(html).not.toContain("Lokasi Gedung:");
     expect(html).toContain("Sinkronkan Pintu dari Server HikCentral");
     expect(html).toContain("+ Tambah Hak Akses Pintu");
     expect(html).toContain("Pintu Masuk Lobi Utama");
@@ -62,22 +49,19 @@ describe("AccessLevels UI Localization", () => {
     expect(html).toContain("aria-haspopup=\"dialog\"");
   });
 
-  it("renders AccessLevelFormModal with UiModal and localized form controls", () => {
+  it("renders AccessLevelFormModal with UiModal and complete door checklist without facility selector", () => {
     const html = renderToStaticMarkup(
       <AccessLevelFormModal
         isOpen={true}
         editingLevel={null}
-        facilities={dummyFacilities}
         availableDoors={[
           {
-            facilityId: "fac-jakarta",
             doorIndexCode: "door-01",
             doorName: "Pintu Putar Lobi",
             isPerimeter: true,
             accessType: "SINGLE_DIRECTION_IN",
           },
         ]}
-        defaultFacilityId="fac-jakarta"
         isSyncingDoors={false}
         isSubmitting={false}
         formErrors={{}}
@@ -90,9 +74,10 @@ describe("AccessLevels UI Localization", () => {
     expect(html).toContain("Buat Kelompok Hak Akses Baru");
     expect(html).toContain("role=\"dialog\"");
     expect(html).toContain("aria-modal=\"true\"");
-    expect(html).toContain("Gedung / Lokasi Fasilitas *");
+    expect(html).not.toContain("Gedung / Lokasi Fasilitas *");
     expect(html).toContain("Nama Kelompok Hak Akses *");
     expect(html).toContain("Daftar Pintu Fisik Server HikCentral *");
+    expect(html).toContain("Pintu Putar Lobi");
     expect(html).toContain("Batal");
     expect(html).toContain("Buat Hak Akses");
   });

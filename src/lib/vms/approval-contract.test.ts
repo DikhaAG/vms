@@ -4,6 +4,12 @@ import {
   isApprovalAction,
   validateApprovalDecision,
   isAllowedApprovalTransition,
+  approvalActionSchema,
+  approvalDecisionSchema,
+  approverUserSchema,
+  approvalRecordSchema,
+  monitoringListMatchSchema,
+  monitoringListFlagSchema,
 } from "./approval-contract";
 import type { VisitStatus } from "./vms-contract";
 
@@ -134,6 +140,64 @@ describe("Approval Contract & Validators", () => {
         expect(isAllowedApprovalTransition(status, "approve")).toBe(false);
         expect(isAllowedApprovalTransition(status, "reject")).toBe(false);
       }
+    });
+  });
+
+  describe("Zod canonical schemas directly", () => {
+    it("validates approvalActionSchema", () => {
+      expect(approvalActionSchema.safeParse("approve").success).toBe(true);
+      expect(approvalActionSchema.safeParse("reject").success).toBe(true);
+      expect(approvalActionSchema.safeParse("other").success).toBe(false);
+    });
+
+    it("validates approvalDecisionSchema directly", () => {
+      const approveRes = approvalDecisionSchema.safeParse({ action: "approve" });
+      expect(approveRes.success).toBe(true);
+
+      const rejectMissingComment = approvalDecisionSchema.safeParse({ action: "reject" });
+      expect(rejectMissingComment.success).toBe(false);
+
+      const rejectWithComment = approvalDecisionSchema.safeParse({
+        action: "reject",
+        comment: "Security discrepancy",
+      });
+      expect(rejectWithComment.success).toBe(true);
+    });
+
+    it("validates approverUserSchema and monitoringListFlagSchema", () => {
+      const userRes = approverUserSchema.safeParse({
+        id: "usr-01",
+        name: "Security Chief",
+      });
+      expect(userRes.success).toBe(true);
+
+      const flagRes = monitoringListFlagSchema.safeParse({
+        isFlagged: true,
+        flaggedAtUtc: "2026-11-13T10:00:00Z",
+        reason: "Blacklist watch match",
+      });
+      expect(flagRes.success).toBe(true);
+    });
+
+    it("validates approvalRecordSchema and monitoringListMatchSchema directly", () => {
+      const recordRes = approvalRecordSchema.safeParse({
+        id: "app-rec-1",
+        visitId: "vis-1",
+        action: "approve",
+        previousStatus: "PENDING_APPROVAL",
+        newStatus: "APPROVED",
+        approverId: "usr-01",
+        approverName: "Security Chief",
+        decidedAtUtc: "2026-11-13T10:00:00Z",
+      });
+      expect(recordRes.success).toBe(true);
+
+      const matchRes = monitoringListMatchSchema.safeParse({
+        listType: "blacklist",
+        matchedName: "John Doe",
+        similarity: 0.95,
+      });
+      expect(matchRes.success).toBe(true);
     });
   });
 });

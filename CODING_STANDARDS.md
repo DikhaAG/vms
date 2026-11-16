@@ -12,7 +12,7 @@ Judgement-call conventions enforced by `/code-review` alongside ESLint and TypeS
 ## External API Contracts
 
 - **Validate `data` at runtime even when `code === "0"`:** HikCentral responses occasionally omit or alter `data` fields. Narrow `response.data` with an explicit type guard before returning `ok: true` or rendering success state in the UI.
-- **Validate boundary payloads before calling use-cases:** Parse JSON inside `try/catch` in Route Handlers, check field types explicitly, and map validation vs config vs upstream/network errors to clear HTTP status codes (`400` / `500` / `502`).
+- **Validate boundary payloads before calling use-cases:** Parse JSON inside `try/catch` in Route Handlers, check field types explicitly, and map validation vs config vs upstream/network errors to clear HTTP status codes (`400` / `500` / `502`). Unexpected throws are caught by `withServerErrors` (`src/lib/vms/route-errors.ts`), which every VMS route export must use; `src/test/production-integrity.test.ts` enforces it.
 - **Iterate over batch/multi-resource parameters in hardware adapters:** When an adapter receives a collection of physical resources (e.g. `doorIndexCodes: string[]`, `cameraIndexCodes`), iterate or batch across all items so all target hardware controllers receive grants. Never silently truncate to `[0]`.
 - **Distinguish optional bodies from malformed bodies in Route Handlers:** In endpoints where a request body is optional (e.g. `DELETE`), inspect content length or text before calling `request.json()`. If a non-empty body contains invalid JSON syntax or fails schema validation, return HTTP `400 Bad Request` immediately rather than silently swallowing into an empty default object.
 

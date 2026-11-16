@@ -11,10 +11,10 @@ export const metadata = {
 };
 
 export default async function ReceptionPage() {
-  const facilities = await defaultVmsRepository.listFacilities();
+  const settings = await defaultVmsRepository.getSettings();
   const allAccessLevels = await defaultVmsRepository.listAccessLevels();
+  const hosts = await defaultVmsRepository.listHosts();
   const initialVisits = await defaultCheckInService.searchArrivingVisitors("");
-
   const pageInfo = idDict.pages.reception;
 
   return (
@@ -25,10 +25,10 @@ export default async function ReceptionPage() {
         badge="Lobi Utama"
         pageKey="reception"
       />
-
       <ReceptionClient
-        facilities={facilities}
+        systemTimezone={settings.timezone}
         allAccessLevels={allAccessLevels}
+        hosts={hosts}
         initialVisits={initialVisits}
       />
     </div>

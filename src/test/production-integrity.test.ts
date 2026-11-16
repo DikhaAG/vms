@@ -37,6 +37,11 @@ describe("Production Code Integrity & Guardrails", () => {
       "Muat Contoh Foto",
       "Muat Contoh Standar",
       "Gunakan Contoh",
+      // Sample host directory: hosts must come from the HikCentral host sync.
+      "emp-host-0",
+      "emp-101",
+      "emp-general",
+      "Budi Santoso",
     ];
 
     const violations: { file: string; token: string }[] = [];
@@ -79,5 +84,28 @@ describe("Production Code Integrity & Guardrails", () => {
     // Must NOT contain initialStatus = "online"
     expect(content).not.toMatch(/initialStatus\s*=\s*"online"/);
   });
-});
 
+  it("wraps every exported HTTP method in src/app/api/vms route files with withServerErrors", () => {
+    const routeFiles = getFilesRecursively(
+      path.join(rootDir, "src/app/api/vms"),
+      "route.ts",
+    );
+    expect(routeFiles.length).toBeGreaterThan(0);
+
+    const unwrapped: string[] = [];
+    for (const file of routeFiles) {
+      const content = fs.readFileSync(file, "utf-8");
+      const rel = path.relative(rootDir, file);
+      const methodExports = content.matchAll(
+        /^export\s+(?:async\s+function|const|let|function)\s+(GET|POST|PUT|PATCH|DELETE)\b(.*)$/gm,
+      );
+      for (const [, method, rest] of methodExports) {
+        if (!/^\s*=\s*withServerErrors\(/.test(rest)) {
+          unwrapped.push(`${rel} ${method}`);
+        }
+      }
+    }
+
+    expect(unwrapped).toEqual([]);
+  });
+});

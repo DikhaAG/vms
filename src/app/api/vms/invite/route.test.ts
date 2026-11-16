@@ -29,7 +29,6 @@ describe("POST /api/vms/invite", () => {
     expect(body.inviteUrl).toMatch(/^\/invite\//);
     expect(body.visit).toBeDefined();
     expect(body.visit.status).toBe("DRAFT");
-    expect(body.visit.facilityId).toBe("fac-jakarta");
   });
 
   it("returns 400 when request body is not valid JSON", async () => {
@@ -64,21 +63,4 @@ describe("POST /api/vms/invite", () => {
     expect(body.error.fieldErrors.scheduledStartTime).toBeDefined();
   });
 
-  it("returns 404 when facility does not exist", async () => {
-    const request = new Request("http://localhost:3000/api/vms/invite", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...validPayload,
-        facilityId: "non-existent-facility",
-      }),
-    });
-
-    const response = await POST(request);
-    expect(response.status).toBe(404);
-
-    const body = await response.json();
-    expect(body.ok).toBe(false);
-    expect(body.error.kind).toBe("not_found");
-  });
 });

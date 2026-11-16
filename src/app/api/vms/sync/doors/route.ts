@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { syncHikCentralDoors } from "@/lib/vms/hikcentral-door-adapter";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request: Request): Promise<NextResponse> {
+async function handlePOST(request: Request): Promise<NextResponse> {
   let body: Record<string, unknown> = {};
 
   const text = await request.text();
@@ -37,15 +38,14 @@ export async function POST(request: Request): Promise<NextResponse> {
     }
   }
 
-  const facilityId =
-    typeof body.facilityId === "string" ? body.facilityId : undefined;
   const pageNo = typeof body.pageNo === "number" ? body.pageNo : undefined;
   const pageSize = typeof body.pageSize === "number" ? body.pageSize : undefined;
+  const userId = typeof body.userId === "string" ? body.userId : undefined;
 
   const result = await syncHikCentralDoors({
-    facilityId,
     pageNo,
     pageSize,
+    userId,
   });
 
   if (!result.ok) {
@@ -61,3 +61,4 @@ export async function POST(request: Request): Promise<NextResponse> {
   return NextResponse.json(result, { status: 200 });
 }
 
+export const POST = withServerErrors(handlePOST);

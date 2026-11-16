@@ -5,7 +5,11 @@ import { POST as postDoorTap } from "@/app/api/vms/active-visits/[visitId]/tap/r
 import { POST as postEmergencyAccess } from "@/app/api/vms/active-visits/[visitId]/emergency-access/route";
 import { POST as postCheckOut } from "@/app/api/vms/active-visits/[visitId]/check-out/route";
 import { GET as getActiveVisits } from "@/app/api/vms/active-visits/route";
-import { defaultVmsRepository } from "@/lib/vms/repository";
+import {
+  defaultVmsRepository,
+  TEST_FIXTURE_DOORS,
+  TEST_FIXTURE_ACCESS_LEVELS,
+} from "@/lib/vms/repository";
 import {
   createSampleFaceJpegDataUri,
   normalizeFaceImage,
@@ -14,7 +18,9 @@ import type { PreRegistrationResult } from "@/lib/vms/vms-contract";
 
 describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience", () => {
   beforeEach(async () => {
-    // Ensure default access levels and facilities are in known state
+    // Ensure default test doors, access levels, and facilities are in known state
+    await defaultVmsRepository.saveDoors(TEST_FIXTURE_DOORS);
+    await defaultVmsRepository.saveAccessLevels(TEST_FIXTURE_ACCESS_LEVELS);
     const jktLobby = await defaultVmsRepository.getAccessLevel("acc-jkt-lobby");
     if (jktLobby) {
       await defaultVmsRepository.saveAccessLevel({
@@ -148,10 +154,7 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
     );
 
     // Verify presence in active monitoring dashboard
-    const activeMonitoringReq = new Request(
-      "http://localhost:3000/api/vms/active-visits?facilityId=fac-jakarta",
-    );
-    const activeMonitoringRes = await getActiveVisits(activeMonitoringReq);
+    const activeMonitoringRes = await getActiveVisits();
     expect(activeMonitoringRes.status).toBe(200);
     const activeMonitoringBody = await activeMonitoringRes.json();
     expect(activeMonitoringBody.ok).toBe(true);
@@ -455,7 +458,7 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
     }
 
     // Verify checked out visitor no longer appears in active occupancy
-    const postCheckOutMonitoring = await getActiveVisits(activeMonitoringReq);
+    const postCheckOutMonitoring = await getActiveVisits();
     const activeList = (await postCheckOutMonitoring.json()).activeVisits;
     expect(activeList.some((v: { visitId: string }) => v.visitId === visitId)).toBe(false);
   });
@@ -468,8 +471,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const newVisitId = `vis-resilience-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: newVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Devi",
         visitorFamilyName: "Sari",
         visitorPhone: "+6281987654321",
@@ -690,8 +691,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const earlyVisitId = `vis-early-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: earlyVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Tari",
         visitorFamilyName: "Hapsari",
         visitorPhone: "+6281777888999",
@@ -742,8 +741,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const internalVisitId = `vis-internal-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: internalVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Fajar",
         visitorFamilyName: "Nugroho",
         visitorPhone: "+6281777888111",
@@ -795,8 +792,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const expiredVisitId = `vis-exp-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: expiredVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Reza",
         visitorFamilyName: "Rahadian",
         visitorPhone: "+6281777888222",
@@ -871,8 +866,6 @@ describe("E2E Tracer Bullet: Access Enhancements & Hardware Failure Resilience",
       const quotaVisitId = `vis-quota-${Date.now()}`;
       await defaultVmsRepository.saveVisit({
         id: quotaVisitId,
-        facilityId: "fac-jakarta",
-        facilityName: "Jakarta Corporate HQ",
         visitorGivenName: "Maya",
         visitorFamilyName: "Indah",
         visitorPhone: "+6281777888333",

@@ -1,20 +1,20 @@
 import { NextResponse } from "next/server";
 import { defaultActiveMonitoringService } from "@/lib/vms/active-monitoring-service";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function GET(request: Request) {
+export const dynamic = "force-dynamic";
+
+async function handleGET(): Promise<NextResponse> {
   try {
-    const url = new URL(request.url);
-    const facilityId = url.searchParams.get("facilityId") || undefined;
-
-    const activeVisits =
-      await defaultActiveMonitoringService.getActiveVisits(facilityId);
-
+    const activeVisits = await defaultActiveMonitoringService.getActiveVisits();
     const totalOnPremise = activeVisits.length;
     const overstayAlerts = activeVisits.filter((v) => v.isOverstay).length;
     const quotaWarnings = activeVisits.filter(
       (v) =>
         v.isQuotaExceeded ||
-        (v.tapQuotaMode === "limited" && v.maxTaps > 0 && v.tapCount >= v.maxTaps - 1),
+        (v.tapQuotaMode === "limited" &&
+          v.maxTaps > 0 &&
+          v.tapCount >= v.maxTaps - 1),
     ).length;
     const normal = Math.max(0, totalOnPremise - overstayAlerts);
 
@@ -29,17 +29,20 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Failed to retrieve active visits";
     return NextResponse.json(
       {
         ok: false,
         error: {
           kind: "server",
-          message,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Failed to retrieve active visits.",
         },
       },
       { status: 500 },
     );
   }
 }
+
+export const GET = withServerErrors(handleGET);

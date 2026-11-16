@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
   validatePreRegistrationInput,
-  type CreatePreRegistrationInput,
+  type PreRegistrationErrorKind,
   type PreRegistrationMode,
   type PreRegistrationResult,
   type StubScenario,
@@ -18,8 +18,10 @@ import {
   type HikCentralDeleteAppointmentSuccess,
 } from "./hikcentral-appointment-adapter";
 import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import { resolveFallbackTimezone } from "./system-settings-defaults";
+import { resolveVisitAccessLevels } from "./access-level-service";
 import { HikCentralError } from "../hikcentral/client";
-import { toJpegDataUri } from "./face-normalizer";
+import { normalizeFaceImage, toPngDataUri } from "./face-normalizer";
 import { parseMonitoringListFlag } from "./hikcentral-approval-adapter";
 
 export interface PreRegistrationServiceDeps {
@@ -40,11 +42,12 @@ export interface PreRegistrationServiceDeps {
 
 /**
  * Creates and registers a visitor pre-registration.
- * Normalizes start/end times to UTC and facility-specific ISO 8601 offset strings,
- * reserves the appointment in HikCentral OpenAPI, and persists the Visit in PENDING_APPROVAL state.
+ * Normalizes start/end times to UTC and ISO 8601 offset strings derived from global systemSettings.timezone,
+ * assigns flat building access levels, reserves the appointment in HikCentral OpenAPI,
+ * and persists the Visit in PENDING_APPROVAL (or SECURITY_ESCALATED) state.
  */
 export async function createPreRegistration(
-  rawInput: CreatePreRegistrationInput,
+  rawInput: unknown,
   deps: PreRegistrationServiceDeps = {},
 ): Promise<PreRegistrationResult> {
   const repository = deps.repository ?? defaultVmsRepository;
@@ -62,36 +65,27 @@ export async function createPreRegistration(
         kind: "validation",
         message: "Input validation failed.",
         fieldErrors: validation.errors,
+        status: 400,
       },
     };
   }
 
   const input = validation.input;
+  // Server-injected deps win over the validated body; default to live dispatch.
+  const effectiveMode: PreRegistrationMode = deps.mode ?? input.mode ?? "live";
+  const effectiveStubScenario: StubScenario | undefined =
+    deps.stubScenario ?? input.stubScenario;
 
-  // 2. Fetch facility to obtain canonical IANA timezone
-  const facility = await repository.getFacility(input.facilityId);
-  if (!facility) {
-    return {
-      ok: false,
-      error: {
-        kind: "not_found",
-        message: `Facility '${input.facilityId}' not found.`,
-      },
-    };
-  }
+  // 2. Fetch global system settings to obtain canonical IANA timezone
+  const settings = await repository.getSettings();
+  const timezone = settings?.timezone || resolveFallbackTimezone();
 
-  // 3. Timezone conversion and normalization
+  // 3. Timezone conversion and normalization against global system timezone
   let startUtc: Date;
   let endUtc: Date;
   try {
-    startUtc = parseLocalDateTimeToUtc(
-      input.scheduledStartTime,
-      facility.timezone,
-    );
-    endUtc = parseLocalDateTimeToUtc(
-      input.scheduledEndTime,
-      facility.timezone,
-    );
+    startUtc = parseLocalDateTimeToUtc(input.scheduledStartTime, timezone);
+    endUtc = parseLocalDateTimeToUtc(input.scheduledEndTime, timezone);
   } catch (err) {
     return {
       ok: false,
@@ -100,7 +94,8 @@ export async function createPreRegistration(
         message:
           err instanceof Error
             ? err.message
-            : "Invalid scheduled time format for facility timezone.",
+            : "Invalid scheduled time format for system timezone.",
+        status: 400,
       },
     };
   }
@@ -114,36 +109,49 @@ export async function createPreRegistration(
         fieldErrors: {
           scheduledEndTime: "Scheduled end time must be after start time.",
         },
+        status: 400,
       },
     };
   }
 
-  const scheduledStartTimeFacility = formatFacilityIso(
-    startUtc,
-    facility.timezone,
-  );
-  const scheduledEndTimeFacility = formatFacilityIso(
-    endUtc,
-    facility.timezone,
-  );
+  const scheduledStartTimeFacility = formatFacilityIso(startUtc, timezone);
+  const scheduledEndTimeFacility = formatFacilityIso(endUtc, timezone);
 
-  // 4. Resolve access levels & tap quota for physical synchronization
-  let resolvedAccessLevels: Array<{ id: string; name: string }> | undefined;
-  if (input.accessLevelIds && input.accessLevelIds.length > 0) {
-    const facilityLevels = await repository.listAccessLevels(facility.id);
-    const levelMap = new Map(facilityLevels.map((al) => [al.id, al.name]));
-    resolvedAccessLevels = input.accessLevelIds.map((id) => ({
-      id,
-      name: levelMap.get(id) ?? "Access Level",
-    }));
+  // 4. Normalize biometric face photo if supplied (JPEG 10 KB - 100 KB)
+  let wireFacePhotoBase64: string | undefined;
+  let storedFacePhotoDataUri: string | undefined;
+  if (input.facePhoto) {
+    try {
+      const normalizedPhoto = await normalizeFaceImage(input.facePhoto);
+      wireFacePhotoBase64 = normalizedPhoto.base64;
+      storedFacePhotoDataUri = normalizedPhoto.dataUri;
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Invalid biometric face photo.";
+      return {
+        ok: false,
+        error: {
+          kind: "validation",
+          message: `Face photo validation failed: ${msg}`,
+          fieldErrors: {
+            facePhoto: msg,
+          },
+          status: 400,
+        },
+      };
+    }
   }
 
-  const qrCodeValidNum =
-    input.tapQuota?.mode === "limited"
-      ? (input.tapQuota.maxTaps ?? 1)
-      : 0;
+  // 5. Resolve flat building access levels (fallback to default access levels if none selected)
+  const {
+    accessLevelIds: effectiveAccessLevelIds,
+    accessLevels: resolvedAccessLevels,
+  } = await resolveVisitAccessLevels(repository, input.accessLevelIds);
 
-  // 5. Dispatch to HikCentral OpenAPI
+  const qrCodeValidNum =
+    input.tapQuota?.mode === "limited" ? (input.tapQuota.maxTaps ?? 1) : 0;
+
+  // 6. Dispatch to HikCentral OpenAPI (POST /artemis/api/visitor/v2/appointment)
   let hikResult: HikCentralAppointmentSuccess;
   try {
     hikResult = await dispatchAppointment(
@@ -159,37 +167,51 @@ export async function createPreRegistration(
         visitorEmail: input.visitorEmail,
         certificateType: input.certificateType,
         certificateNo: input.certificateNo,
-        facePhotoData: input.facePhoto,
+        facePhotoData: wireFacePhotoBase64,
         accessLevels: resolvedAccessLevels,
         qrCodeValidNum,
       },
       {
-        mode: input.mode,
-        stubScenario: input.stubScenario,
+        mode: effectiveMode,
+        stubScenario: effectiveStubScenario,
       },
     );
   } catch (error) {
     const isHikError = error instanceof HikCentralError;
+    const errorKind: PreRegistrationErrorKind = isHikError
+      ? error.kind === "config"
+        ? "config"
+        : error.kind === "network"
+          ? "network"
+          : "upstream"
+      : "upstream";
+
     return {
       ok: false,
       error: {
-        kind: isHikError && error.kind === "config" ? "config" : "upstream",
-        message: error instanceof Error ? error.message : "HikCentral appointment failed.",
-        status: isHikError ? error.status : undefined,
+        kind: errorKind,
+        message:
+          error instanceof Error
+            ? error.message
+            : "HikCentral appointment failed.",
+        status: isHikError
+          ? (error.status ?? (errorKind === "config" ? 500 : 502))
+          : 502,
         code: isHikError ? error.code : undefined,
       },
     };
   }
 
-  // 5. Build and persist Visit record
+  // 7. Build and persist Visit record
   const currentTimeIso = getNow().toISOString();
   const monitoringFlag = parseMonitoringListFlag(hikResult);
   const visitStatus = monitoringFlag ? "SECURITY_ESCALATED" : "PENDING_APPROVAL";
+  const formattedQrDataUri = hikResult.qrCodeImage
+    ? toPngDataUri(hikResult.qrCodeImage)
+    : undefined;
 
   const visit: Visit = {
     id: generateId(),
-    facilityId: facility.id,
-    facilityName: facility.name,
     hostId: input.hostId,
     hostName: input.hostName,
     visitorFamilyName: input.visitorFamilyName,
@@ -206,15 +228,15 @@ export async function createPreRegistration(
     scheduledEndTimeFacility,
     status: visitStatus,
     monitoringListFlag: monitoringFlag,
-    facePhoto: input.facePhoto ? toJpegDataUri(input.facePhoto) : undefined,
-    accessLevelIds: input.accessLevelIds,
+    facePhoto: storedFacePhotoDataUri,
+    accessLevelIds: effectiveAccessLevelIds,
     tapQuota: input.tapQuota,
     credentialSyncStatus: "Applied",
     hikCentral: {
       appointRecordId: hikResult.appointRecordId,
       visitorId: hikResult.visitorId,
       appointCode: hikResult.appointCode,
-      qrCodeImage: hikResult.qrCodeImage,
+      qrCodeImage: formattedQrDataUri,
     },
     createdAtUtc: currentTimeIso,
     updatedAtUtc: currentTimeIso,
@@ -240,7 +262,7 @@ export interface CancelVisitResult {
 
 /**
  * Cancels a pre-registration visit:
- * 1. Validates visit existence and ensures status is cancellable (DRAFT, PENDING_APPROVAL, APPROVED).
+ * 1. Validates visit existence and ensures status is cancellable.
  * 2. Invokes HikCentral POST /artemis/api/visitor/v1/appointment/single/delete if appointRecordId exists.
  * 3. Transitions visit status to CANCELLED in the repository.
  */

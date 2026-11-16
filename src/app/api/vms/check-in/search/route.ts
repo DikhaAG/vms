@@ -1,43 +1,46 @@
 import { NextResponse } from "next/server";
 import { defaultCheckInService } from "@/lib/vms/checkin-service";
 import { isVisitStatus, type VisitStatus } from "@/lib/vms/vms-contract";
+import { withServerErrors } from "@/lib/vms/route-errors";
 
-export async function GET(request: Request) {
+export const dynamic = "force-dynamic";
+
+async function handleGET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q") || searchParams.get("query") || "";
-  const facilityId = searchParams.get("facilityId") || undefined;
-  const statusParam = searchParams.get("status");
+  const query = searchParams.get("q") ?? "";
+  const rawStatus = searchParams.getAll("status");
 
-  let status: VisitStatus | VisitStatus[] | undefined;
-  if (statusParam) {
-    if (statusParam.includes(",")) {
-      status = statusParam.split(",").filter(isVisitStatus);
-    } else if (isVisitStatus(statusParam)) {
-      status = statusParam;
-    }
+  let statusFilter: VisitStatus | VisitStatus[] | undefined;
+  const validStatuses = rawStatus.filter(isVisitStatus);
+  if (validStatuses.length === 1) {
+    statusFilter = validStatuses[0];
+  } else if (validStatuses.length > 1) {
+    statusFilter = validStatuses;
   }
 
   try {
     const visits = await defaultCheckInService.searchArrivingVisitors(
-      q,
-      facilityId,
-      status,
+      query,
+      statusFilter,
     );
+
     return NextResponse.json({
       ok: true,
       data: visits,
     });
-  } catch (err) {
+  } catch (error) {
     return NextResponse.json(
       {
         ok: false,
         error: {
           kind: "server",
           message:
-            err instanceof Error ? err.message : "Failed to search visitors.",
+            error instanceof Error ? error.message : "Failed to search visitors.",
         },
       },
       { status: 500 },
     );
   }
 }
+
+export const GET = withServerErrors(handleGET);

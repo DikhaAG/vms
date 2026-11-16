@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { InMemoryVmsRepository } from "./repository";
+import {
+  InMemoryVmsRepository,
+  TEST_FIXTURE_DOORS,
+  TEST_FIXTURE_ACCESS_LEVELS,
+} from "./repository";
 import { ActiveMonitoringService } from "./active-monitoring-service";
 import type { Visit } from "./vms-contract";
 
@@ -9,13 +13,13 @@ describe("ActiveMonitoringService", () => {
 
   beforeEach(async () => {
     repo = new InMemoryVmsRepository();
+    await repo.saveDoors(TEST_FIXTURE_DOORS);
+    await repo.saveAccessLevels(TEST_FIXTURE_ACCESS_LEVELS);
     service = new ActiveMonitoringService(repo);
 
     // Seed test visits
     const visit1: Visit = {
       id: "vis-active-1",
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorGivenName: "Alice",
       visitorFamilyName: "Smith",
       visitorPhone: "+62812345678",
@@ -44,7 +48,6 @@ describe("ActiveMonitoringService", () => {
 
     const visit2: Visit = {
       id: "vis-active-2",
-      facilityId: "fac-bali",
       visitorGivenName: "Bob",
       visitorFamilyName: "Jones",
       visitReasonType: 0, // Business
@@ -70,7 +73,7 @@ describe("ActiveMonitoringService", () => {
     it("returns active visits with computed overstay and quota calculations", async () => {
       // 10:35 UTC -> Alice is overstay (scheduledEnd: 10:00, grace: 15 min, elapsed: 35 min)
       const now = new Date("2026-11-13T10:35:00.000Z");
-      const active = await service.getActiveVisits(undefined, now);
+      const active = await service.getActiveVisits(now);
 
       expect(active).toHaveLength(2);
 
@@ -93,12 +96,37 @@ describe("ActiveMonitoringService", () => {
       expect(bob?.isOverstay).toBe(false);
       expect(bob?.overstayMinutes).toBe(0);
       expect(bob?.tapQuotaMode).toBe("unlimited");
+
     });
 
-    it("filters active visits by facilityId", async () => {
-      const activeBali = await service.getActiveVisits("fac-bali");
-      expect(activeBali).toHaveLength(1);
-      expect(activeBali[0].visitId).toBe("vis-active-2");
+    it("returns all active visits across the single site and enforces global systemSettings.overstayGraceMinutes", async () => {
+      await repo.updateSettings({
+        timezone: "Asia/Makassar",
+        overstayGraceMinutes: 30,
+      });
+
+      // 10:25 UTC -> 25 mins past Alice's scheduledEndTimeUtc (10:00).
+      // Within 30-min global grace period -> NOT overstay yet!
+      const withinGrace = await service.getActiveVisits(
+        new Date("2026-11-13T10:25:00.000Z").toISOString(),
+      );
+      expect(withinGrace).toHaveLength(2);
+      const aliceWithin = withinGrace.find((v) => v.visitId === "vis-active-1");
+      expect(aliceWithin?.isOverstay).toBe(false);
+      expect(aliceWithin?.status).toBe("CHECKED_IN");
+      expect(aliceWithin?.site.timezone).toBe("Asia/Makassar");
+
+      // 10:35 UTC -> 35 mins past 10:00 (> 30-min global grace period) -> OVERSTAY!
+      const pastGrace = await service.getActiveVisits(
+        new Date("2026-11-13T10:35:00.000Z").toISOString(),
+      );
+      const aliceOverstay = pastGrace.find((v) => v.visitId === "vis-active-1");
+      expect(aliceOverstay?.isOverstay).toBe(true);
+      expect(aliceOverstay?.overstayMinutes).toBe(35);
+      expect(aliceOverstay?.status).toBe("OVERSTAY");
+
+      const storedAlice = await repo.getVisit("vis-active-1");
+      expect(storedAlice?.status).toBe("OVERSTAY");
     });
   });
 
@@ -347,7 +375,7 @@ describe("ActiveMonitoringService", () => {
           { mode: "stub" },
         );
 
-        const summaries = await service.getActiveVisits("fac-bali");
+        const summaries = await service.getActiveVisits();
         const bob = summaries.find((s) => s.visitId === "vis-active-2");
         expect(bob?.lastSeenDoor).toBeDefined();
         expect(bob?.lastSeenDoor?.doorIndexCode).toBe("door-jkt-dc-01");
@@ -450,7 +478,6 @@ describe("ActiveMonitoringService", () => {
   describe("Emergency Access Escalation (Ticket 03)", () => {
     const restrictedVisit: Visit = {
       id: "vis-restricted-1",
-      facilityId: "fac-jakarta",
       visitorGivenName: "Bruce",
       visitorFamilyName: "Wayne",
       visitReasonType: 3,
@@ -497,7 +524,7 @@ describe("ActiveMonitoringService", () => {
         expect(res.grant.reason).toBe("Critical server rack fiber repair");
 
         // Verify active monitoring summary includes the emergency grant
-        const summaries = await service.getActiveVisits("fac-jakarta");
+        const summaries = await service.getActiveVisits();
         const bruce = summaries.find((s) => s.visitId === "vis-restricted-1");
         expect(bruce?.emergencyGrants).toHaveLength(1);
         expect(bruce?.emergencyGrants?.[0].doorIndexCodes).toContain("door-jkt-dc-01");
@@ -597,7 +624,7 @@ describe("ActiveMonitoringService", () => {
         expect(revokeRes.grant.revokedAtUtc).toBeDefined();
 
         // Active grants on visit summary should now be empty
-        const summaries = await service.getActiveVisits("fac-jakarta");
+        const summaries = await service.getActiveVisits();
         const bruce = summaries.find((s) => s.visitId === "vis-restricted-1");
         expect(bruce?.emergencyGrants).toHaveLength(0);
       });
@@ -746,8 +773,6 @@ describe("ActiveMonitoringService", () => {
     const approvedVisitId = "vis-approved-auto-1";
     const approvedVisit: Visit = {
       id: approvedVisitId,
-      facilityId: "fac-jakarta",
-      facilityName: "Jakarta Corporate HQ",
       visitorGivenName: "Bruce",
       visitorFamilyName: "Wayne",
       visitorPhone: "+6281122334455",
@@ -925,6 +950,25 @@ describe("ActiveMonitoringService", () => {
       expect(result.isQuotaExceeded).toBe(true);
       expect(result.autoCheckedOut).toBe(true);
       expect(result.visit.status).toBe("CHECKED_OUT");
+    });
+    it("honors global systemSettings.autoCheckInEarlyBufferMinutes for perimeter fast-track entry", async () => {
+      await repo.updateSettings({ autoCheckInEarlyBufferMinutes: 30 });
+
+      // 25 mins before 09:00 UTC -> permitted when global buffer is 30 mins
+      const tapTime = "2026-11-13T08:35:00.000Z";
+      const result = await service.recordTapAndEnforceQuota(
+        approvedVisitId,
+        {
+          visitId: approvedVisitId,
+          doorIndexCode: "door-turnstile-1",
+          direction: "in",
+          tappedAtUtc: tapTime,
+        },
+        { mode: "stub" },
+      );
+
+      expect(result.autoCheckedIn).toBe(true);
+      expect(result.visit.status).toBe("CHECKED_IN");
     });
   });
 });

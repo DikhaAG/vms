@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { GET as getFacilities } from "@/app/api/vms/facilities/route";
 import { POST as postPreRegistration } from "@/app/api/vms/pre-registration/route";
 import { POST as postRetrySync } from "@/app/api/vms/credentials/retry-sync/route";
 import { GET as getApprovals } from "@/app/api/vms/approvals/route";
 import { POST as postApprovalDecision } from "@/app/api/vms/approvals/[visitId]/route";
 import { defaultVmsRepository } from "@/lib/vms/repository";
-import type { Facility, PreRegistrationResult } from "@/lib/vms/vms-contract";
+import type { PreRegistrationResult } from "@/lib/vms/vms-contract";
 import {
   createSampleFaceJpegDataUri,
   normalizeFaceImage,
@@ -13,30 +12,10 @@ import {
 } from "@/lib/vms/face-normalizer";
 import { NextRequest } from "next/server";
 
-describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
-  it("executes the complete facility selection, scheduling, timezone translation, and appointment dispatch flow", async () => {
-    // 1. Fetch available facilities
-    const facilitiesResponse = await getFacilities();
-    expect(facilitiesResponse.status).toBe(200);
-
-    const facilitiesBody = (await facilitiesResponse.json()) as {
-      facilities: Facility[];
-    };
-    expect(facilitiesBody.facilities.length).toBeGreaterThanOrEqual(3);
-
-    const jakarta = facilitiesBody.facilities.find(
-      (f) => f.id === "fac-jakarta",
-    )!;
-    expect(jakarta).toBeDefined();
-    expect(jakarta.timezone).toBe("Asia/Jakarta");
-
-    const bali = facilitiesBody.facilities.find((f) => f.id === "fac-bali")!;
-    expect(bali).toBeDefined();
-    expect(bali.timezone).toBe("Asia/Makassar");
-
-    // 2. Submit pre-registration for Jakarta facility (UTC+7)
+describe("E2E Tracer Bullet: Single-Site Host Pre-Registration", () => {
+  it("executes the complete scheduling, timezone translation, and appointment dispatch flow", async () => {
+    // 1. Submit pre-registration against the global site timezone (UTC+7)
     const jakartaPayload = {
-      facilityId: "fac-jakarta",
       hostId: "emp-host-01",
       hostName: "Budi Santoso",
       visitorFamilyName: "Tanaka",
@@ -70,8 +49,6 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
 
     const visitJakarta = resJakartaBody.visit!;
     expect(visitJakarta.status).toBe("PENDING_APPROVAL");
-    expect(visitJakarta.facilityId).toBe("fac-jakarta");
-    expect(visitJakarta.facilityName).toBe("Jakarta Corporate HQ");
 
     // Timezone translation check (Jakarta 10:00 WIB -> 03:00 UTC)
     expect(visitJakarta.scheduledStartTimeUtc).toBe("2026-11-13T03:00:00.000Z");
@@ -93,10 +70,11 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
     const storedVisit = await defaultVmsRepository.getVisit(visitJakarta.id);
     expect(storedVisit).toEqual(visitJakarta);
 
-    // 3. Submit pre-registration for Bali facility (UTC+8) at the same local clock time (10:00)
+    // 3. Update global system settings timezone to Bali (UTC+8) at the same local clock time (10:00)
+    await defaultVmsRepository.updateSettings({ timezone: "Asia/Makassar" });
+
     const baliPayload = {
       ...jakartaPayload,
-      facilityId: "fac-bali",
       visitorGivenName: "Yuki",
     };
 
@@ -121,11 +99,13 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
       "2026-11-13T10:00:00+08:00",
     );
     expect(visitBali.scheduledEndTimeFacility).toBe("2026-11-13T12:00:00+08:00");
+
+    // Reset settings back to default Jakarta timezone
+    await defaultVmsRepository.updateSettings({ timezone: "Asia/Jakarta" });
   });
 
   it("handles upstream failures gracefully without leaking internal secrets", async () => {
     const errorPayload = {
-      facilityId: "fac-jakarta",
       visitorFamilyName: "Smith",
       visitorGivenName: "Alice",
       scheduledStartTime: "2026-11-13T10:00:00",
@@ -163,7 +143,6 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
 
     // 2. Submit pre-registration with biometric face photo
     const payloadWithFace = {
-      facilityId: "fac-jakarta",
       hostId: "emp-host-01",
       visitorFamilyName: "Kusuma",
       visitorGivenName: "Citra",
@@ -228,9 +207,14 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
       "@/app/api/vms/invite/[token]/route"
     );
 
+    // Configure the single global site (name + timezone) used for this invite.
+    await defaultVmsRepository.updateSettings({
+      siteName: "Jayapura Logistics Hub",
+      timezone: "Asia/Jayapura",
+    });
+
     // 1. Host creates invitation link
     const invitePayload = {
-      facilityId: "fac-jayapura",
       hostId: "emp-host-03",
       hostName: "Lukas Enembe",
       visitReasonType: 2, // Visit
@@ -263,8 +247,8 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
     expect(metaRes.status).toBe(200);
     const metaBody = await metaRes.json();
     expect(metaBody.ok).toBe(true);
-    expect(metaBody.data.facility.name).toBe("Jayapura Logistics Hub");
-    expect(metaBody.data.facility.timezone).toBe("Asia/Jayapura");
+    expect(metaBody.data.site.name).toBe("Jayapura Logistics Hub");
+    expect(metaBody.data.site.timezone).toBe("Asia/Jayapura");
     expect(metaBody.data.host.name).toBe("Lukas Enembe");
     expect(metaBody.data.scheduledStartTimeFacility).toBe(
       "2026-11-25T14:00:00+09:00",
@@ -329,6 +313,12 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
       params: Promise.resolve({ token }),
     });
     expect(metaAfterConsumed.status).toBe(410);
+
+    // Reset the global site back to the default Jakarta timezone.
+    await defaultVmsRepository.updateSettings({
+      siteName: "Gedung Utama",
+      timezone: "Asia/Jakarta",
+    });
   });
 
   it("executes the end-to-end approval workflow with monitoring list interception and security escalation", async () => {
@@ -337,7 +327,6 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        facilityId: "fac-jakarta",
         hostId: "emp-001",
         hostName: "Budi Santoso",
         visitorFamilyName: "Suryono",
@@ -363,7 +352,6 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        facilityId: "fac-jakarta",
         hostId: "emp-001",
         hostName: "Budi Santoso",
         visitorFamilyName: "Denial",
@@ -387,8 +375,7 @@ describe("E2E Tracer Bullet: Multi-Timezone Host Pre-Registration", () => {
     expect(blacklistedData.visit.monitoringListFlag?.isFlagged).toBe(true);
 
     // 3. Approver checks queue
-    const queueReq = new Request("http://localhost:3000/api/vms/approvals?facilityId=fac-jakarta");
-    const queueRes = await getApprovals(queueReq);
+    const queueRes = await getApprovals();
     expect(queueRes.status).toBe(200);
     const queueData = await queueRes.json();
     expect(queueData.data.pendingVisits.some((v: { id: string }) => v.id === normalVisitId)).toBe(true);

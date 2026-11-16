@@ -5,6 +5,10 @@ import {
   validateCheckInInput,
   validateWalkInRegistrationInput,
   validateVisitorSearchQuery,
+  verificationMethodSchema,
+  checkInInputSchema,
+  walkInRegistrationSchema,
+  visitorSearchQuerySchema,
 } from "./checkin-contract";
 
 describe("checkin-contract", () => {
@@ -139,10 +143,46 @@ describe("checkin-contract", () => {
         expect(outcome.errors.visitReasonDetail).toBeDefined();
       }
     });
+    it("accepts single-site walk-in payload without facilityId", () => {
+      const outcome = validateWalkInRegistrationInput({
+        hostId: "emp-host-01",
+        hostName: "Budi Santoso",
+        visitorFamilyName: "Pratama",
+        visitorGivenName: "Rian",
+        visitorPhone: "08123456789",
+        certificateType: 111,
+        certificateNo: "3171000000000001",
+        visitReasonType: 0,
+        receptionistUserId: "rec-01",
+        receptionistName: "Dewi Frontdesk",
+        verificationMethod: "id_card",
+      });
+
+      expect(outcome.valid).toBe(true);
+      if (outcome.valid) {
+        expect(outcome.input).not.toHaveProperty("facilityId");
+        expect(outcome.input.visitorFamilyName).toBe("Pratama");
+      }
+    });
+
+    it("accepts a legacy client payload carrying facilityId but drops it from the validated input", () => {
+      const outcome = validateWalkInRegistrationInput({
+        facilityId: "fac-jakarta",
+        visitorFamilyName: "Pratama",
+        visitorGivenName: "Rian",
+        visitReasonType: 0,
+        receptionistUserId: "rec-01",
+      });
+
+      expect(outcome.valid).toBe(true);
+      if (outcome.valid) {
+        expect(outcome.input).not.toHaveProperty("facilityId");
+      }
+    });
   });
 
   describe("validateVisitorSearchQuery", () => {
-    it("passes with search query and facilityId", () => {
+    it("searches the whole site and drops a legacy facilityId filter", () => {
       const outcome = validateVisitorSearchQuery({
         query: "Pratama",
         facilityId: "fac-jakarta",
@@ -151,7 +191,7 @@ describe("checkin-contract", () => {
       expect(outcome.valid).toBe(true);
       if (outcome.valid) {
         expect(outcome.input.query).toBe("Pratama");
-        expect(outcome.input.facilityId).toBe("fac-jakarta");
+        expect(outcome.input).not.toHaveProperty("facilityId");
       }
     });
 
@@ -181,6 +221,43 @@ describe("checkin-contract", () => {
       if (outcomeMulti.valid) {
         expect(outcomeMulti.input.status).toEqual(["APPROVED", "CHECKED_IN"]);
       }
+    });
+  });
+
+  describe("Zod canonical schemas directly", () => {
+    it("validates verificationMethodSchema", () => {
+      expect(verificationMethodSchema.safeParse("qr").success).toBe(true);
+      expect(verificationMethodSchema.safeParse("manual").success).toBe(true);
+      expect(verificationMethodSchema.safeParse("biometric").success).toBe(true);
+      expect(verificationMethodSchema.safeParse("id_card").success).toBe(true);
+      expect(verificationMethodSchema.safeParse("carrier-pigeon").success).toBe(false);
+    });
+
+    it("validates checkInInputSchema directly", () => {
+      const valid = checkInInputSchema.safeParse({
+        visitId: "vis-123",
+        receptionistUserId: "rec-01",
+        verificationMethod: "qr",
+      });
+      expect(valid.success).toBe(true);
+    });
+
+    it("validates walkInRegistrationSchema directly", () => {
+      const valid = walkInRegistrationSchema.safeParse({
+        visitorFamilyName: "Pratama",
+        visitorGivenName: "Rian",
+        visitReasonType: 0,
+        receptionistUserId: "rec-01",
+      });
+      expect(valid.success).toBe(true);
+    });
+
+    it("validates visitorSearchQuerySchema directly", () => {
+      const res = visitorSearchQuerySchema.safeParse({
+        query: "Budi",
+        status: "CHECKED_IN",
+      });
+      expect(res.success).toBe(true);
     });
   });
 });
