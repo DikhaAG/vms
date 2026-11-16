@@ -12,3 +12,7 @@
 - [ ] Emergency access modal allows operators to select and unlock perimeter doors from the complete building door list without facility scoping.
 - [ ] Operator check-out and forced check-out deauthorize visitor credentials across all building terminals instantly.
 - [ ] Tests verify auto check-in windows, overstay triggering, emergency escalation, and checkout operations end-to-end.
+
+## Comments
+
+- Commit `fe8e9ab` (ticket 04) already landed partial facility removal for this ticket: `src/app/vms/active-monitoring/` (client, columns, page, emergency-access-modal), `src/lib/vms/active-monitoring-service.ts`, and the `/api/vms/active-visits` and `/api/vms/doors` routes. This touches the boxes for the unified monitoring dashboard and the emergency access modal. Commit `20bb3c9` restored the structured 500 errors those routes lost. Remaining `facilityId` inputs live in `src/server/trpc/routers/monitoring.ts` (`listActive`, `fetchDoorTelemetry`). Verify each box against the code before building.

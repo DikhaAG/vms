@@ -9,6 +9,7 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 - Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`, never a single combined tickets file
 - Triage state is recorded as a `Status:` line near the top of each issue file (see `triage-labels.md` for the role strings)
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
+- When a commit lands part of another ticket's work, append a note under that ticket's `## Comments` naming the commit hash and the acceptance boxes it touched, so the next `/implement` starts from what is already built
 
 ## When a skill says "publish to the issue tracker"
 

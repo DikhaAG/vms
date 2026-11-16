@@ -14,7 +14,7 @@ Single-context layout (`GLOSSARY.md` and `docs/adr/` at the repo root). See `doc
 
 ### Coding standards
 
-Judgement-call conventions for `/code-review`, module boundaries, and Next.js/HikCentral contracts. See `CODING_STANDARDS.md`.
+Judgement-call conventions enforced by `mattpocock-skills:code-review` (the two-axis Standards + Spec review, not the built-in `/code-review`), module boundaries, and Next.js/HikCentral contracts. See `CODING_STANDARDS.md`.
 
 ### HikCentral API reference
 

@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+echo "🔒 [pre-commit] Running fast lint & typecheck..."
+pnpm lint
+pnpm typecheck
+
+# Check staged TypeScript files
+STAGED_TS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' || true)
+if [ -n "$STAGED_TS" ]; then
+  echo "⚡ [pre-commit] Running targeted tests for staged files..."
+  pnpm vitest related --run $STAGED_TS
+else
+  echo "⚡ [pre-commit] No TypeScript files staged; skipping unit tests in pre-commit."
+fi
+
+echo "✅ [pre-commit] Fast pre-commit checks passed."
