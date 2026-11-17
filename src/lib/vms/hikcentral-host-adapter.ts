@@ -4,14 +4,15 @@ import {
   HikCentralError,
   type HikCentralClient,
 } from "../hikcentral/client";
-import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import type { HostEmployee, PreRegistrationMode, StubScenario } from "./vms-contract";
 
 export interface SyncHikCentralHostsOptions {
   mode?: PreRegistrationMode;
   stubScenario?: StubScenario;
   client?: HikCentralClient;
-  repository?: IVmsRepository;
+  repository?: PostgresVmsRepository;
   userId?: string;
   pageNo?: number;
   pageSize?: number;

@@ -1,4 +1,4 @@
-import type { IVmsRepository } from "@/lib/vms/repository";
+import type { PostgresVmsRepository } from "@/lib/vms/postgres-repository";
 import { defaultVmsRepository } from "@/lib/vms/repository";
 
 export interface SessionInfo {
@@ -9,7 +9,7 @@ export interface SessionInfo {
 
 export interface CreateContextOptions {
   req?: Request;
-  repository?: IVmsRepository;
+  repository?: PostgresVmsRepository;
   session?: SessionInfo;
   enableHikCentralSync?: boolean;
 }

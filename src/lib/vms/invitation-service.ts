@@ -13,11 +13,12 @@ import {
 } from "./vms-contract";
 import { siteFromSettings, type Site } from "./site-contract";
 import { formatFacilityIso, parseLocalDateTimeToUtc } from "./timezone";
-import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import { resolveFallbackTimezone } from "./system-settings-defaults";
 
 export interface InvitationServiceDeps {
-  repository?: IVmsRepository;
+  repository?: PostgresVmsRepository;
   tokenGenerator?: () => string;
   idGenerator?: () => string;
   now?: () => Date;

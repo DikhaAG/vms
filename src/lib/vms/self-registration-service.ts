@@ -10,7 +10,8 @@ import {
   type HikCentralAppointmentParams,
   type HikCentralAppointmentSuccess,
 } from "./hikcentral-appointment-adapter";
-import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import {
   getBase64ByteSize,
   isFacePhotoSizeValid,
@@ -24,7 +25,7 @@ import type { Visit } from "./vms-contract";
 import { parseMonitoringListFlag } from "./hikcentral-approval-adapter";
 
 export interface SelfRegistrationServiceDeps {
-  repository?: IVmsRepository;
+  repository?: PostgresVmsRepository;
   appointmentDispatcher?: (
     params: HikCentralAppointmentParams,
     options?: DispatchAppointmentOptions,

@@ -4,12 +4,13 @@ import {
   HikCentralError,
   type HikCentralClient,
 } from "../hikcentral/client";
-import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import type { FacilityDoor, DoorAccessType } from "./checkout-contract";
 
 export interface SyncHikCentralDoorsOptions {
   client?: HikCentralClient;
-  repository?: IVmsRepository;
+  repository?: PostgresVmsRepository;
   userId?: string;
   pageNo?: number;
   pageSize?: number;

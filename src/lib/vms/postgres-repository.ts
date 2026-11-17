@@ -3,14 +3,8 @@ import type { VmsDatabase, VmsExecutor } from "../db/client";
 import { createPostgresClient } from "../db/client";
 import * as s from "../db/schema";
 import type {
-  CheckInVisitParams,
-  CheckOutVisitParams,
-  IVmsRepository,
-  ListVisitsFilter,
-  RecordDoorTapResult,
-  UpdateVisitApprovalParams,
-} from "./repository";
-import type {
+  CredentialSyncStatus,
+  HikCentralVisitReference,
   HostEmployee,
   SystemSettings,
   Visit,
@@ -32,6 +26,41 @@ import type {
 } from "./checkout-contract";
 import type { VisitorProfile } from "./group-contract";
 import type { InvitationToken } from "./invitation-contract";
+
+export interface ListVisitsFilter {
+  status?: string;
+}
+
+export interface UpdateVisitApprovalParams {
+  newStatus: VisitStatus;
+  approvalRecord: ApprovalRecord;
+  credentialSyncStatus?: CredentialSyncStatus;
+}
+
+export interface CheckInVisitParams {
+  actualCheckInTimeUtc: string;
+  receptionistUserId: string;
+  receptionistName?: string;
+  verificationMethod?: VerificationMethod | string;
+  hikCentral?: HikCentralVisitReference;
+  credentialSyncStatus?: CredentialSyncStatus;
+  notes?: string;
+}
+
+export interface CheckOutVisitParams {
+  actualCheckOutTimeUtc: string;
+  operatorUserId: string;
+  operatorName?: string;
+  reason?: string;
+  isForced: boolean;
+  appointRecordIdRevoked?: string;
+}
+
+export interface RecordDoorTapResult {
+  event: DoorTapEvent;
+  visit: Visit;
+  tapCount: number;
+}
 
 /** A tap as written to `door_tap_events`: id and time are always filled in. */
 type StoredDoorTapEvent = DoorTapEvent & { id: string; tappedAtUtc: string };
@@ -59,7 +88,7 @@ function withoutVisitCount(profile: VisitorProfile): VisitorProfile {
   return copy;
 }
 
-export class PostgresVmsRepository implements IVmsRepository {
+export class PostgresVmsRepository {
   private injectedDb?: VmsDatabase;
 
   constructor(db?: VmsDatabase) {

@@ -1,7 +1,5 @@
-import {
-  type IVmsRepository,
-  defaultVmsRepository,
-} from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import { resolveFallbackTimezone } from "./system-settings-defaults";
 import {
   validateCheckInInput,
@@ -44,7 +42,7 @@ export interface CheckInResult {
 
 export class CheckInService {
   constructor(
-    private readonly repository: IVmsRepository = defaultVmsRepository,
+    private readonly repository: PostgresVmsRepository = defaultVmsRepository,
   ) { }
 
   /**
