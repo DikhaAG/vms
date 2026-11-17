@@ -18,4 +18,4 @@
   - `ListVisitsFilter`, `UpdateVisitApprovalParams`, `CheckInVisitParams`, `CheckOutVisitParams` and `RecordDoorTapResult` moved unchanged into `postgres-repository.ts`; the class no longer has `implements`.
   - All ten services/adapters and `src/server/trpc/context.ts` import `type { PostgresVmsRepository }` from `./postgres-repository`. Constructor parameters and their `defaultVmsRepository` defaults are unchanged.
   - Verified: `tsc --noEmit` and `eslint` clean; `vitest run` 57 files / 513 tests pass; `next build` exits 0 with `DATABASE_URL` unset (lazy `db` getter untouched).
-- Still open: `CODING_STANDARDS.md` ("Isolate repository persistence behind clean interfaces") still prescribes the interface this ticket removed. Rewording it is the owner's call; both code-review axes flagged it.
+- `CODING_STANDARDS.md`: the owner approved replacing "Isolate repository persistence behind clean interfaces" with "Depend on the one PostgreSQL repository directly", which forbids reintroducing an interface, in-memory implementation or mockup data.
