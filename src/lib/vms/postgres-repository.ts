@@ -1,4 +1,4 @@
-import { eq, and, asc, desc, or } from "drizzle-orm";
+import { eq, and, asc, desc, ne, or, sql } from "drizzle-orm";
 import type { VmsDatabase, VmsExecutor } from "../db/client";
 import { createPostgresClient } from "../db/client";
 import * as s from "../db/schema";
@@ -45,6 +45,17 @@ type StoredDoorTapEvent = DoorTapEvent & { id: string; tappedAtUtc: string };
 function withoutEmergencyGrants(visit: Visit): Visit {
   const copy = structuredClone(visit);
   delete copy.emergencyGrants;
+  return copy;
+}
+
+/**
+ * A profile's Visit count is computed on listing, so it is never stored. Used on
+ * every profile write and read so rows written before this rule never surface a
+ * stale count.
+ */
+function withoutVisitCount(profile: VisitorProfile): VisitorProfile {
+  const copy = structuredClone(profile);
+  delete copy.visitCount;
   return copy;
 }
 
@@ -851,7 +862,7 @@ export class PostgresVmsRepository implements IVmsRepository {
           eq(s.visitorProfiles.isDeleted, false),
         ),
       );
-    return rows.length > 0 ? structuredClone(rows[0].data) : undefined;
+    return rows.length > 0 ? withoutVisitCount(rows[0].data) : undefined;
   }
 
   async getVisitorProfile(id: string): Promise<VisitorProfile | undefined> {
@@ -859,27 +870,41 @@ export class PostgresVmsRepository implements IVmsRepository {
       .select()
       .from(s.visitorProfiles)
       .where(eq(s.visitorProfiles.id, id));
-    return rows.length > 0 ? structuredClone(rows[0].data) : undefined;
+    return rows.length > 0 ? withoutVisitCount(rows[0].data) : undefined;
   }
 
+  /**
+   * Saves a visitor profile. One Visitor has one profile: any other profile
+   * with the same identity number is removed in the same transaction.
+   */
   async saveVisitorProfile(profile: VisitorProfile): Promise<void> {
-    const cloned = structuredClone(profile);
-    await this.db
-      .insert(s.visitorProfiles)
-      .values({
-        id: cloned.id,
-        certificateNo: cloned.certificateNo,
-        isDeleted: Boolean(cloned.isDeleted),
-        data: cloned,
-      })
-      .onConflictDoUpdate({
-        target: s.visitorProfiles.id,
-        set: {
+    const cloned = withoutVisitCount(profile);
+    await this.db.transaction(async (tx) => {
+      await tx
+        .delete(s.visitorProfiles)
+        .where(
+          and(
+            eq(s.visitorProfiles.certificateNo, cloned.certificateNo),
+            ne(s.visitorProfiles.id, cloned.id),
+          ),
+        );
+      await tx
+        .insert(s.visitorProfiles)
+        .values({
+          id: cloned.id,
           certificateNo: cloned.certificateNo,
           isDeleted: Boolean(cloned.isDeleted),
           data: cloned,
-        },
-      });
+        })
+        .onConflictDoUpdate({
+          target: s.visitorProfiles.id,
+          set: {
+            certificateNo: cloned.certificateNo,
+            isDeleted: Boolean(cloned.isDeleted),
+            data: cloned,
+          },
+        });
+    });
   }
 
   async softDeleteVisitorProfile(
@@ -908,11 +933,24 @@ export class PostgresVmsRepository implements IVmsRepository {
     includeDeleted?: boolean;
     query?: string;
   }): Promise<VisitorProfile[]> {
-    const rows = await this.db.select().from(s.visitorProfiles);
+    const visitCertificateNo = sql<string | null>`${s.visits.data}->>'certificateNo'`;
+    const [rows, visitCounts] = await Promise.all([
+      this.db.select().from(s.visitorProfiles),
+      this.db
+        .select({
+          certificateNo: visitCertificateNo,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(s.visits)
+        .groupBy(visitCertificateNo),
+    ]);
+    const countByCertificateNo = new Map(
+      visitCounts.map((c) => [c.certificateNo, c.count]),
+    );
     const q = options?.query?.trim().toLowerCase();
 
     return rows
-      .map((r) => structuredClone(r.data))
+      .map((r) => withoutVisitCount(r.data))
       .filter((p) => {
         if (!options?.includeDeleted && p.isDeleted) return false;
         if (!q) return true;
@@ -920,9 +958,14 @@ export class PostgresVmsRepository implements IVmsRepository {
         return (
           name.includes(q) ||
           p.certificateNo.toLowerCase().includes(q) ||
-          (p.phone && p.phone.toLowerCase().includes(q))
+          (p.phone?.toLowerCase().includes(q) ?? false) ||
+          (p.email?.toLowerCase().includes(q) ?? false)
         );
-      });
+      })
+      .map((p) => ({
+        ...p,
+        visitCount: countByCertificateNo.get(p.certificateNo) ?? 0,
+      }));
   }
 
   async listVisitsByGroup(groupId: string): Promise<Visit[]> {
@@ -1003,6 +1046,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       });
   }
 
+  /** Host arrival notifications, newest first. */
   async listHostNotifications(hostId?: string, visitId?: string): Promise<HostArrivalNotification[]> {
     const rows = await this.db.select().from(s.hostArrivalNotifications);
     return rows
@@ -1011,7 +1055,11 @@ export class PostgresVmsRepository implements IVmsRepository {
         if (hostId && n.hostId !== hostId) return false;
         if (visitId && n.visitId !== visitId) return false;
         return true;
-      });
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime(),
+      );
   }
 
   /**
