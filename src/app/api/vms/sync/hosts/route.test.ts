@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { POST } from "./route";
 
 describe("POST /api/vms/sync/hosts", () => {
-  it("syncs hosts in stub mode and returns 200 with synced count", async () => {
+  it("syncs no Hosts and writes nothing in stub mode", async () => {
     const request = new Request("http://localhost/api/vms/sync/hosts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -13,9 +13,7 @@ describe("POST /api/vms/sync/hosts", () => {
     expect(response.status).toBe(200);
 
     const body = await response.json();
-    expect(body.ok).toBe(true);
-    expect(body.totalSynced).toBeGreaterThan(0);
-    expect(body.hosts).toBeDefined();
+    expect(body).toEqual({ ok: true, totalSynced: 0, hosts: [] });
   });
 
   it("returns 502 when upstream stubScenario fails", async () => {

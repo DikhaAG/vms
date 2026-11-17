@@ -19,10 +19,8 @@ import {
   revokeHikCentralEmergencyGrant,
   type EmergencyAdapterOptions,
 } from "./hikcentral-emergency-adapter";
-import {
-  defaultVmsRepository,
-  type IVmsRepository,
-} from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import { resolveFallbackTimezone } from "./system-settings-defaults";
 import {
   DEFAULT_SYSTEM_SETTINGS,
@@ -53,7 +51,7 @@ export interface EmergencyAccessResult {
 }
 
 export class ActiveMonitoringService {
-  constructor(private readonly repository: IVmsRepository) { }
+  constructor(private readonly repository: PostgresVmsRepository) { }
 
   /**
    * Retrieves all currently active on-premise visitors across the single site,

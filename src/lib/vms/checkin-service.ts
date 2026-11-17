@@ -1,7 +1,5 @@
-import {
-  type IVmsRepository,
-  defaultVmsRepository,
-} from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import { resolveFallbackTimezone } from "./system-settings-defaults";
 import {
   validateCheckInInput,
@@ -44,7 +42,7 @@ export interface CheckInResult {
 
 export class CheckInService {
   constructor(
-    private readonly repository: IVmsRepository = defaultVmsRepository,
+    private readonly repository: PostgresVmsRepository = defaultVmsRepository,
   ) { }
 
   /**
@@ -402,12 +400,11 @@ export class CheckInService {
       // Non-fatal fallback
     }
 
-    // 8. Create visit record directly in CHECKED_IN status
-    const visitId = `vis-walkin-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    // 8. Create the CHECKED_IN Visit and its check-in audit event together
     const actualCheckInTimeUtc = now.toISOString();
 
-    const newVisit: Visit = {
-      id: visitId,
+    const walkInVisit: Omit<Visit, "status" | "actualCheckInTimeUtc"> = {
+      id: `vis-walkin-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       hostId: input.hostId,
       hostName: input.hostName,
       visitorFamilyName: input.visitorFamilyName,
@@ -422,8 +419,6 @@ export class CheckInService {
       scheduledEndTimeUtc,
       scheduledStartTimeFacility: scheduledStartTimeLocal,
       scheduledEndTimeFacility: scheduledEndTimeLocal,
-      actualCheckInTimeUtc,
-      status: "CHECKED_IN",
       facePhoto: normalizedFacePhoto,
       credentialSyncStatus,
       hikCentral: {
@@ -438,15 +433,11 @@ export class CheckInService {
       updatedAtUtc: actualCheckInTimeUtc,
     };
 
-    await this.repository.saveVisit(newVisit);
-
-    await this.repository.saveCheckInEvent({
-      id: `chk-audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      visitId,
-      checkedInAtUtc: actualCheckInTimeUtc,
+    const newVisit = await this.repository.checkInWalkIn(walkInVisit, {
+      actualCheckInTimeUtc,
       receptionistUserId: input.receptionistUserId,
       receptionistName: input.receptionistName,
-      verificationMethod: input.verificationMethod ?? "id_card",
+      verificationMethod: input.verificationMethod,
       notes: input.notes,
     });
 

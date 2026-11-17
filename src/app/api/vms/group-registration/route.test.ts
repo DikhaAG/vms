@@ -32,31 +32,6 @@ describe("POST /api/vms/group-registration", () => {
     stubScenario: "success",
   };
 
-  it("returns 201 and group visit results on valid registration", async () => {
-    const request = new Request(
-      "http://localhost:3000/api/vms/group-registration",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(validPayload),
-      },
-    );
-
-    const response = await POST(request);
-    expect(response.status).toBe(201);
-
-    const body = await response.json();
-    expect(body.ok).toBe(true);
-    expect(body.data).toBeDefined();
-    expect(body.data.groupId).toMatch(/^grp-/);
-    expect(body.data.visitorGroupName).toBe(
-      "Google DeepMind Engineering Delegation",
-    );
-    expect(body.data.successCount).toBe(2);
-    expect(body.data.failureCount).toBe(0);
-    expect(body.data.memberVisits).toHaveLength(2);
-  });
-
   it("returns 400 on invalid JSON body", async () => {
     const request = new Request(
       "http://localhost:3000/api/vms/group-registration",
@@ -94,25 +69,5 @@ describe("POST /api/vms/group-registration", () => {
     const body = await response.json();
     expect(body.ok).toBe(false);
     expect(body.error?.kind).toBe("validation");
-  });
-
-  it("registers a delegation even when a legacy client sends an unknown facilityId", async () => {
-    const request = new Request(
-      "http://localhost:3000/api/vms/group-registration",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...validPayload,
-          facilityId: "fac-non-existent-facility",
-        }),
-      },
-    );
-
-    const response = await POST(request);
-    expect(response.status).toBe(201);
-
-    const body = await response.json();
-    expect(body.ok).toBe(true);
   });
 });

@@ -17,7 +17,8 @@ import {
   type HikCentralAppointmentSuccess,
   type HikCentralDeleteAppointmentSuccess,
 } from "./hikcentral-appointment-adapter";
-import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import { resolveFallbackTimezone } from "./system-settings-defaults";
 import { resolveVisitAccessLevels } from "./access-level-service";
 import { HikCentralError } from "../hikcentral/client";
@@ -25,7 +26,7 @@ import { normalizeFaceImage, toPngDataUri } from "./face-normalizer";
 import { parseMonitoringListFlag } from "./hikcentral-approval-adapter";
 
 export interface PreRegistrationServiceDeps {
-  repository?: IVmsRepository;
+  repository?: PostgresVmsRepository;
   appointmentDispatcher?: (
     params: HikCentralAppointmentParams,
     options?: DispatchAppointmentOptions,

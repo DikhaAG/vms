@@ -42,13 +42,3 @@ vi.mock("nuqs", async (importOriginal) => {
     },
   };
 });
-
-// The app always uses PostgreSQL (ADR 0006). Tests swap the shared singleton for
-// the in-memory test double so they run without a database.
-vi.mock("@/lib/vms/repository", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/vms/repository")>();
-  return {
-    ...actual,
-    defaultVmsRepository: new actual.InMemoryVmsRepository(),
-  };
-});

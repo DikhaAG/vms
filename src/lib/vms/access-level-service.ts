@@ -6,7 +6,8 @@ import {
   type CreateAccessLevelInput,
   type UpdateAccessLevelInput,
 } from "./access-level-contract";
-import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import {
   createVisitorPrivilegeGroup,
   updateVisitorPrivilegeGroup,
@@ -16,7 +17,7 @@ import { HikCentralError } from "../hikcentral/client";
 import type { PreRegistrationMode, StubScenario } from "./vms-contract";
 
 export interface AccessLevelServiceDeps {
-  repository?: IVmsRepository;
+  repository?: PostgresVmsRepository;
   mode?: PreRegistrationMode;
   stubScenario?: StubScenario;
   idGenerator?: () => string;
@@ -293,7 +294,7 @@ export async function deleteAccessLevelService(
  * repository, falling back to a generic label for unknown ids.
  */
 export async function resolveVisitAccessLevels(
-  repository: IVmsRepository,
+  repository: PostgresVmsRepository,
   selectedIds: string[] | undefined,
 ): Promise<{
   accessLevelIds: string[] | undefined;

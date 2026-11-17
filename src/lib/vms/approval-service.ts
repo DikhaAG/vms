@@ -7,7 +7,8 @@ import {
   type ApproverUser,
 } from "./approval-contract";
 import type { CredentialSyncStatus, Visit, VisitStatus } from "./vms-contract";
-import { defaultVmsRepository, type IVmsRepository } from "./repository";
+import type { PostgresVmsRepository } from "./postgres-repository";
+import { defaultVmsRepository } from "./repository";
 import {
   syncApprovalToHikCentral,
   type SyncApprovalParams,
@@ -43,7 +44,7 @@ export interface ApprovalResult {
 }
 
 export interface ApprovalServiceDeps {
-  repository?: IVmsRepository;
+  repository?: PostgresVmsRepository;
   syncAdapter?: (params: SyncApprovalParams) => Promise<SyncApprovalResult>;
   enableHikCentralSync?: boolean;
   idGenerator?: () => string;
@@ -55,7 +56,7 @@ export interface ApprovalServiceDeps {
  * across the whole site.
  */
 export async function listPendingApprovals(
-  deps: { repository?: IVmsRepository } = {},
+  deps: { repository?: PostgresVmsRepository } = {},
 ): Promise<PendingApprovalsResult> {
   const repository = deps.repository ?? defaultVmsRepository;
   const visits = await repository.getVisitsByStatus([

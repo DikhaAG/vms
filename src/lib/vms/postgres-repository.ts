@@ -1,28 +1,23 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, asc, desc, ne, or, sql } from "drizzle-orm";
 import type { VmsDatabase, VmsExecutor } from "../db/client";
 import { createPostgresClient } from "../db/client";
 import * as s from "../db/schema";
 import type {
-  CheckInVisitParams,
-  CheckOutVisitParams,
-  IVmsRepository,
-  ListVisitsFilter,
-  RecordDoorTapResult,
-  UpdateVisitApprovalParams,
-} from "./repository";
-import type {
+  CredentialSyncStatus,
+  HikCentralVisitReference,
   HostEmployee,
   SystemSettings,
   Visit,
   VisitStatus,
 } from "./vms-contract";
-import { DEFAULT_SYSTEM_SETTINGS } from "./vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS, isActiveVisitStatus } from "./vms-contract";
 import { defaultSystemSettings } from "./system-settings-defaults";
 import type { AccessLevel } from "./access-level-contract";
 import type { ApprovalRecord } from "./approval-contract";
 import type { CheckInAuditEvent, VerificationMethod } from "./checkin-contract";
 import type {
   CheckOutAuditEvent,
+  DoorDirection,
   DoorTapEvent,
   EmergencyAccessGrant,
   FacilityDoor,
@@ -32,7 +27,77 @@ import type {
 import type { VisitorProfile } from "./group-contract";
 import type { InvitationToken } from "./invitation-contract";
 
-export class PostgresVmsRepository implements IVmsRepository {
+export interface ListVisitsFilter {
+  status?: string;
+}
+
+export interface UpdateVisitApprovalParams {
+  newStatus: VisitStatus;
+  approvalRecord: ApprovalRecord;
+  credentialSyncStatus?: CredentialSyncStatus;
+}
+
+export interface CheckInVisitParams {
+  actualCheckInTimeUtc: string;
+  receptionistUserId: string;
+  receptionistName?: string;
+  verificationMethod?: VerificationMethod | string;
+  hikCentral?: HikCentralVisitReference;
+  credentialSyncStatus?: CredentialSyncStatus;
+  notes?: string;
+}
+
+export interface CheckInWalkInParams {
+  actualCheckInTimeUtc: string;
+  receptionistUserId: string;
+  receptionistName?: string;
+  /** Defaults to ID card: a Walk-in Visitor shows their identity card at the desk. */
+  verificationMethod?: VerificationMethod;
+  notes?: string;
+}
+
+export interface CheckOutVisitParams {
+  actualCheckOutTimeUtc: string;
+  operatorUserId: string;
+  operatorName?: string;
+  reason?: string;
+  isForced: boolean;
+  appointRecordIdRevoked?: string;
+}
+
+export interface RecordDoorTapResult {
+  event: DoorTapEvent;
+  visit: Visit;
+  tapCount: number;
+}
+
+/** A tap as written to `door_tap_events`: id and time are always filled in. */
+type StoredDoorTapEvent = DoorTapEvent & { id: string; tappedAtUtc: string };
+
+/**
+ * A copy of the Visit without Emergency Access Grants. Grants live only in
+ * `emergency_access_grants`; a copy inside the Visit row would go stale once a
+ * grant expires or is revoked. Used on every Visit write, and on every row read
+ * so rows written before this rule never surface their old copy.
+ */
+function withoutEmergencyGrants(visit: Visit): Visit {
+  const copy = structuredClone(visit);
+  delete copy.emergencyGrants;
+  return copy;
+}
+
+/**
+ * A profile's Visit count is computed on listing, so it is never stored. Used on
+ * every profile write and read so rows written before this rule never surface a
+ * stale count.
+ */
+function withoutVisitCount(profile: VisitorProfile): VisitorProfile {
+  const copy = structuredClone(profile);
+  delete copy.visitCount;
+  return copy;
+}
+
+export class PostgresVmsRepository {
   private injectedDb?: VmsDatabase;
 
   constructor(db?: VmsDatabase) {
@@ -101,30 +166,23 @@ export class PostgresVmsRepository implements IVmsRepository {
   }
 
   // 1. Visits
+  /** Attaches the Visit's ACTIVE, unexpired grants from the grants table. */
   private async enrichVisitEmergencyGrants(visit: Visit): Promise<void> {
     const now = Date.now();
     const allGrants = await this.getEmergencyGrants(visit.id);
-    const activeGrants = allGrants.filter((g) => {
-      if (g.status === "ACTIVE") {
-        if (new Date(g.expiresAtUtc).getTime() <= now) {
-          return false;
-        }
-        return true;
-      }
-      return false;
-    });
+    const activeGrants = allGrants.filter(
+      (g) => g.status === "ACTIVE" && new Date(g.expiresAtUtc).getTime() > now,
+    );
 
     if (activeGrants.length > 0) {
-      visit.emergencyGrants = activeGrants.map((g) => structuredClone(g));
-    } else if (visit.emergencyGrants !== undefined) {
-      visit.emergencyGrants = [];
+      visit.emergencyGrants = activeGrants;
     }
   }
 
   async getVisit(id: string): Promise<Visit | undefined> {
     const rows = await this.db.select().from(s.visits).where(eq(s.visits.id, id));
     if (rows.length === 0) return undefined;
-    const visit = structuredClone(rows[0].data);
+    const visit = withoutEmergencyGrants(rows[0].data);
     await this.enrichVisitEmergencyGrants(visit);
     return visit;
   }
@@ -141,7 +199,7 @@ export class PostgresVmsRepository implements IVmsRepository {
         ? await query.where(and(...conditions)).orderBy(desc(s.visits.createdAtUtc))
         : await query.orderBy(desc(s.visits.createdAtUtc));
 
-    return rows.map((r) => structuredClone(r.data));
+    return rows.map((r) => withoutEmergencyGrants(r.data));
   }
 
   async saveVisit(visit: Visit): Promise<void> {
@@ -149,20 +207,20 @@ export class PostgresVmsRepository implements IVmsRepository {
   }
 
   private async writeVisit(executor: VmsExecutor, visit: Visit): Promise<void> {
-    const cloned = structuredClone(visit);
+    const stored = withoutEmergencyGrants(visit);
     await executor
       .insert(s.visits)
       .values({
-        id: cloned.id,
-        status: cloned.status,
-        createdAtUtc: cloned.createdAtUtc,
-        data: cloned,
+        id: stored.id,
+        status: stored.status,
+        createdAtUtc: stored.createdAtUtc,
+        data: stored,
       })
       .onConflictDoUpdate({
         target: s.visits.id,
         set: {
-          status: cloned.status,
-          data: cloned,
+          status: stored.status,
+          data: stored,
         },
       });
   }
@@ -263,8 +321,37 @@ export class PostgresVmsRepository implements IVmsRepository {
     return structuredClone(updated);
   }
 
-  async saveCheckInEvent(event: CheckInAuditEvent): Promise<void> {
-    await this.writeCheckInEvent(this.db, event);
+  /**
+   * Walk-in check-in: a Receptionist registers an unscheduled Visitor and checks
+   * them in. The new CHECKED_IN Visit and its check-in audit event are written in
+   * one transaction. The repository, not the caller, marks the Visit checked in.
+   */
+  async checkInWalkIn(
+    visit: Omit<Visit, "status" | "actualCheckInTimeUtc">,
+    checkIn: CheckInWalkInParams,
+  ): Promise<Visit> {
+    const checkedIn: Visit = {
+      ...visit,
+      status: "CHECKED_IN",
+      actualCheckInTimeUtc: checkIn.actualCheckInTimeUtc,
+    };
+
+    const auditEvent: CheckInAuditEvent = {
+      id: `chk-audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId: visit.id,
+      checkedInAtUtc: checkIn.actualCheckInTimeUtc,
+      receptionistUserId: checkIn.receptionistUserId,
+      receptionistName: checkIn.receptionistName,
+      verificationMethod: checkIn.verificationMethod ?? "id_card",
+      notes: checkIn.notes,
+    };
+
+    // Visit first: the audit event belongs to a Visit that this transaction creates.
+    await this.db.transaction(async (tx) => {
+      await this.writeVisit(tx, checkedIn);
+      await this.writeCheckInEvent(tx, auditEvent);
+    });
+    return structuredClone(checkedIn);
   }
 
   private async writeCheckInEvent(
@@ -478,9 +565,7 @@ export class PostgresVmsRepository implements IVmsRepository {
   // 7. Active Visits, Door Taps & Check-out
   async listActiveVisits(): Promise<Visit[]> {
     const all = await this.listVisits({});
-    const active = all.filter(
-      (v) => v.status === "CHECKED_IN" || v.status === "OVERSTAY",
-    );
+    const active = all.filter((v) => isActiveVisitStatus(v.status));
     for (const v of active) {
       await this.enrichVisitEmergencyGrants(v);
     }
@@ -497,15 +582,20 @@ export class PostgresVmsRepository implements IVmsRepository {
     const direction = tapEvent.direction ?? "in";
     const inAndOutType = tapEvent.inAndOutType ?? (direction === "in" ? 1 : 2);
 
-    // Auto-enrich door metadata if available
-    const door = await this.getDoor(tapEvent.doorIndexCode);
+    // A gateway retry repeats the event id, or the same time, Door and direction.
+    const existingTap = await this.findRecordedTap(tapEvent, direction);
+    if (existingTap) {
+      return this.replayedTap(existing, existingTap);
+    }
+
+    const door = await this.resolveTapDoor(tapEvent);
     const doorName = tapEvent.doorName ?? door?.doorName;
     const isPerimeter = tapEvent.isPerimeter ?? door?.isPerimeter ?? false;
 
     const eventId =
       tapEvent.id ||
       `tap-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const eventToStore: DoorTapEvent = {
+    const eventToStore: StoredDoorTapEvent = {
       ...tapEvent,
       id: eventId,
       tappedAtUtc: tapEvent.tappedAtUtc || new Date().toISOString(),
@@ -518,13 +608,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       transitionNote: tapEvent.transitionNote,
     };
 
-    await this.db.insert(s.doorTapEvents).values({
-      id: eventId,
-      visitId: tapEvent.visitId,
-      tappedAtUtc: eventToStore.tappedAtUtc,
-      data: eventToStore,
-    });
-
+    // Implicit taps (Implicit Room Transition) do not count against the Tap Quota.
     const newTapCount = (existing.tapCount ?? 0) + (isImplicit ? 0 : 1);
 
     const updatedLastSeenDoor: VisitLastSeenDoor = {
@@ -542,13 +626,91 @@ export class PostgresVmsRepository implements IVmsRepository {
       lastSeenDoor: updatedLastSeenDoor,
       updatedAtUtc: new Date().toISOString(),
     };
-    await this.saveVisit(updatedVisit);
+
+    const recorded = await this.db.transaction(async (tx) => {
+      if (!(await this.writeDoorTapEvent(tx, eventToStore))) return false;
+      await this.writeVisit(tx, updatedVisit);
+      return true;
+    });
+
+    if (!recorded) {
+      // A concurrent delivery of the same event id won the insert.
+      const raced = await this.findRecordedTap(eventToStore, direction);
+      if (!raced) {
+        throw new Error(`Door tap id already used by another Visit: ${eventId}`);
+      }
+      const current = await this.getVisit(tapEvent.visitId);
+      return this.replayedTap(current ?? existing, raced);
+    }
 
     return {
       event: structuredClone(eventToStore),
       visit: structuredClone(updatedVisit),
       tapCount: newTapCount,
     };
+  }
+
+  /** The tapped Door: by index code, falling back to a case-insensitive name match. */
+  private async resolveTapDoor(tapEvent: DoorTapEvent): Promise<FacilityDoor | undefined> {
+    return (
+      (await this.getDoor(tapEvent.doorIndexCode)) ??
+      (tapEvent.doorName ? await this.getDoorByName(tapEvent.doorName) : undefined)
+    );
+  }
+
+  private replayedTap(visit: Visit, event: StoredDoorTapEvent): RecordDoorTapResult {
+    return {
+      event,
+      visit: structuredClone(visit),
+      tapCount: visit.tapCount ?? 0,
+    };
+  }
+
+  private async findRecordedTap(
+    tapEvent: DoorTapEvent,
+    direction: DoorDirection,
+  ): Promise<StoredDoorTapEvent | undefined> {
+    const matchers = [];
+    if (tapEvent.id) matchers.push(eq(s.doorTapEvents.id, tapEvent.id));
+    if (tapEvent.tappedAtUtc) {
+      matchers.push(eq(s.doorTapEvents.tappedAtUtc, tapEvent.tappedAtUtc));
+    }
+    if (matchers.length === 0) return undefined;
+
+    const rows = await this.db
+      .select()
+      .from(s.doorTapEvents)
+      .where(and(eq(s.doorTapEvents.visitId, tapEvent.visitId), or(...matchers)));
+
+    const match = rows.find(
+      (r) =>
+        (Boolean(tapEvent.id) && r.id === tapEvent.id) ||
+        (r.tappedAtUtc === tapEvent.tappedAtUtc &&
+          r.data.doorIndexCode === tapEvent.doorIndexCode &&
+          r.data.direction === direction),
+    );
+    return match
+      ? { ...structuredClone(match.data), id: match.id, tappedAtUtc: match.tappedAtUtc }
+      : undefined;
+  }
+
+  /** Inserts the tap; returns false when a tap with the same id already exists. */
+  private async writeDoorTapEvent(
+    executor: VmsExecutor,
+    event: StoredDoorTapEvent,
+  ): Promise<boolean> {
+    const cloned = structuredClone(event);
+    const inserted = await executor
+      .insert(s.doorTapEvents)
+      .values({
+        id: cloned.id,
+        visitId: cloned.visitId,
+        tappedAtUtc: cloned.tappedAtUtc,
+        data: cloned,
+      })
+      .onConflictDoNothing({ target: s.doorTapEvents.id })
+      .returning({ id: s.doorTapEvents.id });
+    return inserted.length > 0;
   }
 
   async listDoorTapEvents(visitId?: string): Promise<DoorTapEvent[]> {
@@ -767,7 +929,7 @@ export class PostgresVmsRepository implements IVmsRepository {
           eq(s.visitorProfiles.isDeleted, false),
         ),
       );
-    return rows.length > 0 ? structuredClone(rows[0].data) : undefined;
+    return rows.length > 0 ? withoutVisitCount(rows[0].data) : undefined;
   }
 
   async getVisitorProfile(id: string): Promise<VisitorProfile | undefined> {
@@ -775,27 +937,41 @@ export class PostgresVmsRepository implements IVmsRepository {
       .select()
       .from(s.visitorProfiles)
       .where(eq(s.visitorProfiles.id, id));
-    return rows.length > 0 ? structuredClone(rows[0].data) : undefined;
+    return rows.length > 0 ? withoutVisitCount(rows[0].data) : undefined;
   }
 
+  /**
+   * Saves a visitor profile. One Visitor has one profile: any other profile
+   * with the same identity number is removed in the same transaction.
+   */
   async saveVisitorProfile(profile: VisitorProfile): Promise<void> {
-    const cloned = structuredClone(profile);
-    await this.db
-      .insert(s.visitorProfiles)
-      .values({
-        id: cloned.id,
-        certificateNo: cloned.certificateNo,
-        isDeleted: Boolean(cloned.isDeleted),
-        data: cloned,
-      })
-      .onConflictDoUpdate({
-        target: s.visitorProfiles.id,
-        set: {
+    const cloned = withoutVisitCount(profile);
+    await this.db.transaction(async (tx) => {
+      await tx
+        .delete(s.visitorProfiles)
+        .where(
+          and(
+            eq(s.visitorProfiles.certificateNo, cloned.certificateNo),
+            ne(s.visitorProfiles.id, cloned.id),
+          ),
+        );
+      await tx
+        .insert(s.visitorProfiles)
+        .values({
+          id: cloned.id,
           certificateNo: cloned.certificateNo,
           isDeleted: Boolean(cloned.isDeleted),
           data: cloned,
-        },
-      });
+        })
+        .onConflictDoUpdate({
+          target: s.visitorProfiles.id,
+          set: {
+            certificateNo: cloned.certificateNo,
+            isDeleted: Boolean(cloned.isDeleted),
+            data: cloned,
+          },
+        });
+    });
   }
 
   async softDeleteVisitorProfile(
@@ -824,11 +1000,24 @@ export class PostgresVmsRepository implements IVmsRepository {
     includeDeleted?: boolean;
     query?: string;
   }): Promise<VisitorProfile[]> {
-    const rows = await this.db.select().from(s.visitorProfiles);
+    const visitCertificateNo = sql<string | null>`${s.visits.data}->>'certificateNo'`;
+    const [rows, visitCounts] = await Promise.all([
+      this.db.select().from(s.visitorProfiles),
+      this.db
+        .select({
+          certificateNo: visitCertificateNo,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(s.visits)
+        .groupBy(visitCertificateNo),
+    ]);
+    const countByCertificateNo = new Map(
+      visitCounts.map((c) => [c.certificateNo, c.count]),
+    );
     const q = options?.query?.trim().toLowerCase();
 
     return rows
-      .map((r) => structuredClone(r.data))
+      .map((r) => withoutVisitCount(r.data))
       .filter((p) => {
         if (!options?.includeDeleted && p.isDeleted) return false;
         if (!q) return true;
@@ -836,9 +1025,14 @@ export class PostgresVmsRepository implements IVmsRepository {
         return (
           name.includes(q) ||
           p.certificateNo.toLowerCase().includes(q) ||
-          (p.phone && p.phone.toLowerCase().includes(q))
+          (p.phone?.toLowerCase().includes(q) ?? false) ||
+          (p.email?.toLowerCase().includes(q) ?? false)
         );
-      });
+      })
+      .map((p) => ({
+        ...p,
+        visitCount: countByCertificateNo.get(p.certificateNo) ?? 0,
+      }));
   }
 
   async listVisitsByGroup(groupId: string): Promise<Visit[]> {
@@ -896,8 +1090,15 @@ export class PostgresVmsRepository implements IVmsRepository {
 
   // 12. Host arrival notifications & touchless auto check-in
   async saveHostNotification(notification: HostArrivalNotification): Promise<void> {
+    await this.writeHostNotification(this.db, notification);
+  }
+
+  private async writeHostNotification(
+    executor: VmsExecutor,
+    notification: HostArrivalNotification,
+  ): Promise<void> {
     const cloned = structuredClone(notification);
-    await this.db
+    await executor
       .insert(s.hostArrivalNotifications)
       .values({
         id: cloned.id,
@@ -912,6 +1113,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       });
   }
 
+  /** Host arrival notifications, newest first. */
   async listHostNotifications(hostId?: string, visitId?: string): Promise<HostArrivalNotification[]> {
     const rows = await this.db.select().from(s.hostArrivalNotifications);
     return rows
@@ -920,41 +1122,138 @@ export class PostgresVmsRepository implements IVmsRepository {
         if (hostId && n.hostId !== hostId) return false;
         if (visitId && n.visitId !== visitId) return false;
         return true;
-      });
+      })
+      .sort(
+        (a, b) =>
+          new Date(b.createdAtUtc).getTime() - new Date(a.createdAtUtc).getTime(),
+      );
   }
 
+  /**
+   * Fast-Track Auto Check-In: an approved Visitor's biometric scan at a Perimeter
+   * Door checks the Visit in. The entry tap, the check-in audit event, the Host
+   * arrival notification and the CHECKED_IN Visit are written in one transaction.
+   * A Visit that is already CHECKED_IN or OVERSTAY is returned unchanged.
+   */
   async autoCheckInVisit(params: {
     visitId: string;
     actualCheckInTimeUtc: string;
     tapEvent: DoorTapEvent;
     hostNotification?: HostArrivalNotification;
   }): Promise<{ visit: Visit; event: DoorTapEvent; notification?: HostArrivalNotification }> {
-    const visit = await this.getVisit(params.visitId);
-    if (!visit) {
+    const existing = await this.getVisit(params.visitId);
+    if (!existing) {
       throw new Error(`Visit not found: ${params.visitId}`);
     }
+    if (isActiveVisitStatus(existing.status)) {
+      return this.replayedAutoCheckIn(existing, params.tapEvent);
+    }
 
-    const updated = await this.updateVisit(params.visitId, {
+    const { tapEvent } = params;
+    const door = await this.resolveTapDoor(tapEvent);
+    const doorName = tapEvent.doorName ?? door?.doorName;
+    // Only Perimeter Doors trigger Fast-Track, so an unknown Door counts as one.
+    const isPerimeter = tapEvent.isPerimeter ?? door?.isPerimeter ?? true;
+
+    const eventToStore: StoredDoorTapEvent = {
+      ...tapEvent,
+      id:
+        tapEvent.id ||
+        `tap-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId: params.visitId,
+      tappedAtUtc: tapEvent.tappedAtUtc || params.actualCheckInTimeUtc,
+      direction: "in",
+      doorName,
+      inAndOutType: 1,
+      isPerimeter,
+    };
+
+    const auditEvent: CheckInAuditEvent = {
+      id: `chk-audit-auto-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId: params.visitId,
+      checkedInAtUtc: params.actualCheckInTimeUtc,
+      receptionistUserId: "system-auto-checkin",
+      receptionistName: "Touchless Perimeter Fast-Track",
+      verificationMethod: "biometric",
+      // Active monitoring recognises "auto check-in" in the note as a Fast-Track entry.
+      notes: `Fast-Track auto check-in at Perimeter Door: ${doorName || tapEvent.doorIndexCode}`,
+    };
+
+    const updatedVisit: Visit = {
+      ...existing,
       status: "CHECKED_IN",
       actualCheckInTimeUtc: params.actualCheckInTimeUtc,
+      // The entry tap is the first tap against the Tap Quota.
+      tapCount: 1,
       lastSeenDoor: {
-        doorIndexCode: params.tapEvent.doorIndexCode,
-        doorName: params.tapEvent.doorName,
-        tappedAtUtc: params.tapEvent.tappedAtUtc,
-        direction: params.tapEvent.direction,
+        doorIndexCode: eventToStore.doorIndexCode,
+        doorName: eventToStore.doorName,
+        tappedAtUtc: eventToStore.tappedAtUtc,
+        direction: "in",
+        accessType: door?.accessType,
+        isPerimeter,
       },
+      isFastTrack: true,
+      updatedAtUtc: new Date().toISOString(),
+    };
+
+    const recorded = await this.db.transaction(async (tx) => {
+      // The tap goes first: if a concurrent delivery already stored this event id,
+      // stop before writing the audit event, notification or Visit.
+      if (!(await this.writeDoorTapEvent(tx, eventToStore))) return false;
+      await this.writeCheckInEvent(tx, auditEvent);
+      if (params.hostNotification) {
+        await this.writeHostNotification(tx, params.hostNotification);
+      }
+      await this.writeVisit(tx, updatedVisit);
+      return true;
     });
 
-    const tapResult = await this.recordDoorTap(params.tapEvent);
-
-    if (params.hostNotification) {
-      await this.saveHostNotification(params.hostNotification);
+    if (!recorded) {
+      // A concurrent delivery of the same event id won and checked the Visit in.
+      const raced = await this.findRecordedTap(eventToStore, "in");
+      if (!raced) {
+        throw new Error(`Door tap id already used by another Visit: ${eventToStore.id}`);
+      }
+      const current = await this.getVisit(params.visitId);
+      return { visit: structuredClone(current ?? existing), event: raced };
     }
 
     return {
-      visit: updated,
-      event: tapResult.event,
-      notification: params.hostNotification,
+      visit: structuredClone(updatedVisit),
+      event: structuredClone(eventToStore),
+      notification: params.hostNotification
+        ? structuredClone(params.hostNotification)
+        : undefined,
     };
+  }
+
+  /**
+   * The no-op result for a perimeter scan on a Visit that is already checked in:
+   * the stored Visit and the tap that matches this scan (same event id, or same
+   * time, Door and direction), else the Visit's first tap. Nothing is written,
+   * so no notification is returned.
+   */
+  private async replayedAutoCheckIn(
+    visit: Visit,
+    tapEvent: DoorTapEvent,
+  ): Promise<{ visit: Visit; event: DoorTapEvent }> {
+    const match =
+      (await this.findRecordedTap({ ...tapEvent, visitId: visit.id }, "in")) ??
+      (await this.findFirstTap(visit.id));
+    return {
+      visit: structuredClone(visit),
+      event: structuredClone(match ?? tapEvent),
+    };
+  }
+
+  private async findFirstTap(visitId: string): Promise<DoorTapEvent | undefined> {
+    const rows = await this.db
+      .select()
+      .from(s.doorTapEvents)
+      .where(eq(s.doorTapEvents.visitId, visitId))
+      .orderBy(asc(s.doorTapEvents.tappedAtUtc))
+      .limit(1);
+    return rows.length > 0 ? structuredClone(rows[0].data) : undefined;
   }
 }
