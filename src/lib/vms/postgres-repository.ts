@@ -36,6 +36,18 @@ import type { InvitationToken } from "./invitation-contract";
 /** A tap as written to `door_tap_events`: id and time are always filled in. */
 type StoredDoorTapEvent = DoorTapEvent & { id: string; tappedAtUtc: string };
 
+/**
+ * A copy of the Visit without Emergency Access Grants. Grants live only in
+ * `emergency_access_grants`; a copy inside the Visit row would go stale once a
+ * grant expires or is revoked. Used on every Visit write, and on every row read
+ * so rows written before this rule never surface their old copy.
+ */
+function withoutEmergencyGrants(visit: Visit): Visit {
+  const copy = structuredClone(visit);
+  delete copy.emergencyGrants;
+  return copy;
+}
+
 export class PostgresVmsRepository implements IVmsRepository {
   private injectedDb?: VmsDatabase;
 
@@ -105,30 +117,23 @@ export class PostgresVmsRepository implements IVmsRepository {
   }
 
   // 1. Visits
+  /** Attaches the Visit's ACTIVE, unexpired grants from the grants table. */
   private async enrichVisitEmergencyGrants(visit: Visit): Promise<void> {
     const now = Date.now();
     const allGrants = await this.getEmergencyGrants(visit.id);
-    const activeGrants = allGrants.filter((g) => {
-      if (g.status === "ACTIVE") {
-        if (new Date(g.expiresAtUtc).getTime() <= now) {
-          return false;
-        }
-        return true;
-      }
-      return false;
-    });
+    const activeGrants = allGrants.filter(
+      (g) => g.status === "ACTIVE" && new Date(g.expiresAtUtc).getTime() > now,
+    );
 
     if (activeGrants.length > 0) {
-      visit.emergencyGrants = activeGrants.map((g) => structuredClone(g));
-    } else if (visit.emergencyGrants !== undefined) {
-      visit.emergencyGrants = [];
+      visit.emergencyGrants = activeGrants;
     }
   }
 
   async getVisit(id: string): Promise<Visit | undefined> {
     const rows = await this.db.select().from(s.visits).where(eq(s.visits.id, id));
     if (rows.length === 0) return undefined;
-    const visit = structuredClone(rows[0].data);
+    const visit = withoutEmergencyGrants(rows[0].data);
     await this.enrichVisitEmergencyGrants(visit);
     return visit;
   }
@@ -145,7 +150,7 @@ export class PostgresVmsRepository implements IVmsRepository {
         ? await query.where(and(...conditions)).orderBy(desc(s.visits.createdAtUtc))
         : await query.orderBy(desc(s.visits.createdAtUtc));
 
-    return rows.map((r) => structuredClone(r.data));
+    return rows.map((r) => withoutEmergencyGrants(r.data));
   }
 
   async saveVisit(visit: Visit): Promise<void> {
@@ -153,20 +158,20 @@ export class PostgresVmsRepository implements IVmsRepository {
   }
 
   private async writeVisit(executor: VmsExecutor, visit: Visit): Promise<void> {
-    const cloned = structuredClone(visit);
+    const stored = withoutEmergencyGrants(visit);
     await executor
       .insert(s.visits)
       .values({
-        id: cloned.id,
-        status: cloned.status,
-        createdAtUtc: cloned.createdAtUtc,
-        data: cloned,
+        id: stored.id,
+        status: stored.status,
+        createdAtUtc: stored.createdAtUtc,
+        data: stored,
       })
       .onConflictDoUpdate({
         target: s.visits.id,
         set: {
-          status: cloned.status,
-          data: cloned,
+          status: stored.status,
+          data: stored,
         },
       });
   }
