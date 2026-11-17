@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or } from "drizzle-orm";
 import type { VmsDatabase, VmsExecutor } from "../db/client";
 import { createPostgresClient } from "../db/client";
 import * as s from "../db/schema";
@@ -23,6 +23,7 @@ import type { ApprovalRecord } from "./approval-contract";
 import type { CheckInAuditEvent, VerificationMethod } from "./checkin-contract";
 import type {
   CheckOutAuditEvent,
+  DoorDirection,
   DoorTapEvent,
   EmergencyAccessGrant,
   FacilityDoor,
@@ -31,6 +32,9 @@ import type {
 } from "./checkout-contract";
 import type { VisitorProfile } from "./group-contract";
 import type { InvitationToken } from "./invitation-contract";
+
+/** A tap as written to `door_tap_events`: id and time are always filled in. */
+type StoredDoorTapEvent = DoorTapEvent & { id: string; tappedAtUtc: string };
 
 export class PostgresVmsRepository implements IVmsRepository {
   private injectedDb?: VmsDatabase;
@@ -497,15 +501,22 @@ export class PostgresVmsRepository implements IVmsRepository {
     const direction = tapEvent.direction ?? "in";
     const inAndOutType = tapEvent.inAndOutType ?? (direction === "in" ? 1 : 2);
 
-    // Auto-enrich door metadata if available
-    const door = await this.getDoor(tapEvent.doorIndexCode);
+    // A gateway retry repeats the event id, or the same time, Door and direction.
+    const existingTap = await this.findRecordedTap(tapEvent, direction);
+    if (existingTap) {
+      return this.replayedTap(existing, existingTap);
+    }
+
+    const door =
+      (await this.getDoor(tapEvent.doorIndexCode)) ??
+      (tapEvent.doorName ? await this.getDoorByName(tapEvent.doorName) : undefined);
     const doorName = tapEvent.doorName ?? door?.doorName;
     const isPerimeter = tapEvent.isPerimeter ?? door?.isPerimeter ?? false;
 
     const eventId =
       tapEvent.id ||
       `tap-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const eventToStore: DoorTapEvent = {
+    const eventToStore: StoredDoorTapEvent = {
       ...tapEvent,
       id: eventId,
       tappedAtUtc: tapEvent.tappedAtUtc || new Date().toISOString(),
@@ -518,13 +529,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       transitionNote: tapEvent.transitionNote,
     };
 
-    await this.db.insert(s.doorTapEvents).values({
-      id: eventId,
-      visitId: tapEvent.visitId,
-      tappedAtUtc: eventToStore.tappedAtUtc,
-      data: eventToStore,
-    });
-
+    // Implicit taps (Implicit Room Transition) do not count against the Tap Quota.
     const newTapCount = (existing.tapCount ?? 0) + (isImplicit ? 0 : 1);
 
     const updatedLastSeenDoor: VisitLastSeenDoor = {
@@ -542,13 +547,83 @@ export class PostgresVmsRepository implements IVmsRepository {
       lastSeenDoor: updatedLastSeenDoor,
       updatedAtUtc: new Date().toISOString(),
     };
-    await this.saveVisit(updatedVisit);
+
+    const recorded = await this.db.transaction(async (tx) => {
+      if (!(await this.writeDoorTapEvent(tx, eventToStore))) return false;
+      await this.writeVisit(tx, updatedVisit);
+      return true;
+    });
+
+    if (!recorded) {
+      // A concurrent delivery of the same event id won the insert.
+      const raced = await this.findRecordedTap(eventToStore, direction);
+      if (!raced) {
+        throw new Error(`Door tap id already used by another Visit: ${eventId}`);
+      }
+      const current = await this.getVisit(tapEvent.visitId);
+      return this.replayedTap(current ?? existing, raced);
+    }
 
     return {
       event: structuredClone(eventToStore),
       visit: structuredClone(updatedVisit),
       tapCount: newTapCount,
     };
+  }
+
+  private replayedTap(visit: Visit, event: StoredDoorTapEvent): RecordDoorTapResult {
+    return {
+      event,
+      visit: structuredClone(visit),
+      tapCount: visit.tapCount ?? 0,
+    };
+  }
+
+  private async findRecordedTap(
+    tapEvent: DoorTapEvent,
+    direction: DoorDirection,
+  ): Promise<StoredDoorTapEvent | undefined> {
+    const matchers = [];
+    if (tapEvent.id) matchers.push(eq(s.doorTapEvents.id, tapEvent.id));
+    if (tapEvent.tappedAtUtc) {
+      matchers.push(eq(s.doorTapEvents.tappedAtUtc, tapEvent.tappedAtUtc));
+    }
+    if (matchers.length === 0) return undefined;
+
+    const rows = await this.db
+      .select()
+      .from(s.doorTapEvents)
+      .where(and(eq(s.doorTapEvents.visitId, tapEvent.visitId), or(...matchers)));
+
+    const match = rows.find(
+      (r) =>
+        (Boolean(tapEvent.id) && r.id === tapEvent.id) ||
+        (r.tappedAtUtc === tapEvent.tappedAtUtc &&
+          r.data.doorIndexCode === tapEvent.doorIndexCode &&
+          r.data.direction === direction),
+    );
+    return match
+      ? { ...structuredClone(match.data), id: match.id, tappedAtUtc: match.tappedAtUtc }
+      : undefined;
+  }
+
+  /** Inserts the tap; returns false when a tap with the same id already exists. */
+  private async writeDoorTapEvent(
+    executor: VmsExecutor,
+    event: StoredDoorTapEvent,
+  ): Promise<boolean> {
+    const cloned = structuredClone(event);
+    const inserted = await executor
+      .insert(s.doorTapEvents)
+      .values({
+        id: cloned.id,
+        visitId: cloned.visitId,
+        tappedAtUtc: cloned.tappedAtUtc,
+        data: cloned,
+      })
+      .onConflictDoNothing({ target: s.doorTapEvents.id })
+      .returning({ id: s.doorTapEvents.id });
+    return inserted.length > 0;
   }
 
   async listDoorTapEvents(visitId?: string): Promise<DoorTapEvent[]> {
