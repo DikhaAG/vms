@@ -1,4 +1,4 @@
-import { eq, and, desc, or } from "drizzle-orm";
+import { eq, and, asc, desc, or } from "drizzle-orm";
 import type { VmsDatabase, VmsExecutor } from "../db/client";
 import { createPostgresClient } from "../db/client";
 import * as s from "../db/schema";
@@ -16,7 +16,7 @@ import type {
   Visit,
   VisitStatus,
 } from "./vms-contract";
-import { DEFAULT_SYSTEM_SETTINGS } from "./vms-contract";
+import { DEFAULT_SYSTEM_SETTINGS, isActiveVisitStatus } from "./vms-contract";
 import { defaultSystemSettings } from "./system-settings-defaults";
 import type { AccessLevel } from "./access-level-contract";
 import type { ApprovalRecord } from "./approval-contract";
@@ -482,9 +482,7 @@ export class PostgresVmsRepository implements IVmsRepository {
   // 7. Active Visits, Door Taps & Check-out
   async listActiveVisits(): Promise<Visit[]> {
     const all = await this.listVisits({});
-    const active = all.filter(
-      (v) => v.status === "CHECKED_IN" || v.status === "OVERSTAY",
-    );
+    const active = all.filter((v) => isActiveVisitStatus(v.status));
     for (const v of active) {
       await this.enrichVisitEmergencyGrants(v);
     }
@@ -507,9 +505,7 @@ export class PostgresVmsRepository implements IVmsRepository {
       return this.replayedTap(existing, existingTap);
     }
 
-    const door =
-      (await this.getDoor(tapEvent.doorIndexCode)) ??
-      (tapEvent.doorName ? await this.getDoorByName(tapEvent.doorName) : undefined);
+    const door = await this.resolveTapDoor(tapEvent);
     const doorName = tapEvent.doorName ?? door?.doorName;
     const isPerimeter = tapEvent.isPerimeter ?? door?.isPerimeter ?? false;
 
@@ -569,6 +565,14 @@ export class PostgresVmsRepository implements IVmsRepository {
       visit: structuredClone(updatedVisit),
       tapCount: newTapCount,
     };
+  }
+
+  /** The tapped Door: by index code, falling back to a case-insensitive name match. */
+  private async resolveTapDoor(tapEvent: DoorTapEvent): Promise<FacilityDoor | undefined> {
+    return (
+      (await this.getDoor(tapEvent.doorIndexCode)) ??
+      (tapEvent.doorName ? await this.getDoorByName(tapEvent.doorName) : undefined)
+    );
   }
 
   private replayedTap(visit: Visit, event: StoredDoorTapEvent): RecordDoorTapResult {
@@ -971,8 +975,15 @@ export class PostgresVmsRepository implements IVmsRepository {
 
   // 12. Host arrival notifications & touchless auto check-in
   async saveHostNotification(notification: HostArrivalNotification): Promise<void> {
+    await this.writeHostNotification(this.db, notification);
+  }
+
+  private async writeHostNotification(
+    executor: VmsExecutor,
+    notification: HostArrivalNotification,
+  ): Promise<void> {
     const cloned = structuredClone(notification);
-    await this.db
+    await executor
       .insert(s.hostArrivalNotifications)
       .values({
         id: cloned.id,
@@ -998,38 +1009,131 @@ export class PostgresVmsRepository implements IVmsRepository {
       });
   }
 
+  /**
+   * Fast-Track Auto Check-In: an approved Visitor's biometric scan at a Perimeter
+   * Door checks the Visit in. The entry tap, the check-in audit event, the Host
+   * arrival notification and the CHECKED_IN Visit are written in one transaction.
+   * A Visit that is already CHECKED_IN or OVERSTAY is returned unchanged.
+   */
   async autoCheckInVisit(params: {
     visitId: string;
     actualCheckInTimeUtc: string;
     tapEvent: DoorTapEvent;
     hostNotification?: HostArrivalNotification;
   }): Promise<{ visit: Visit; event: DoorTapEvent; notification?: HostArrivalNotification }> {
-    const visit = await this.getVisit(params.visitId);
-    if (!visit) {
+    const existing = await this.getVisit(params.visitId);
+    if (!existing) {
       throw new Error(`Visit not found: ${params.visitId}`);
     }
+    if (isActiveVisitStatus(existing.status)) {
+      return this.replayedAutoCheckIn(existing, params.tapEvent);
+    }
 
-    const updated = await this.updateVisit(params.visitId, {
+    const { tapEvent } = params;
+    const door = await this.resolveTapDoor(tapEvent);
+    const doorName = tapEvent.doorName ?? door?.doorName;
+    // Only Perimeter Doors trigger Fast-Track, so an unknown Door counts as one.
+    const isPerimeter = tapEvent.isPerimeter ?? door?.isPerimeter ?? true;
+
+    const eventToStore: StoredDoorTapEvent = {
+      ...tapEvent,
+      id:
+        tapEvent.id ||
+        `tap-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId: params.visitId,
+      tappedAtUtc: tapEvent.tappedAtUtc || params.actualCheckInTimeUtc,
+      direction: "in",
+      doorName,
+      inAndOutType: 1,
+      isPerimeter,
+    };
+
+    const auditEvent: CheckInAuditEvent = {
+      id: `chk-audit-auto-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId: params.visitId,
+      checkedInAtUtc: params.actualCheckInTimeUtc,
+      receptionistUserId: "system-auto-checkin",
+      receptionistName: "Touchless Perimeter Fast-Track",
+      verificationMethod: "biometric",
+      // Active monitoring recognises "auto check-in" in the note as a Fast-Track entry.
+      notes: `Fast-Track auto check-in at Perimeter Door: ${doorName || tapEvent.doorIndexCode}`,
+    };
+
+    const updatedVisit: Visit = {
+      ...existing,
       status: "CHECKED_IN",
       actualCheckInTimeUtc: params.actualCheckInTimeUtc,
+      // The entry tap is the first tap against the Tap Quota.
+      tapCount: 1,
       lastSeenDoor: {
-        doorIndexCode: params.tapEvent.doorIndexCode,
-        doorName: params.tapEvent.doorName,
-        tappedAtUtc: params.tapEvent.tappedAtUtc,
-        direction: params.tapEvent.direction,
+        doorIndexCode: eventToStore.doorIndexCode,
+        doorName: eventToStore.doorName,
+        tappedAtUtc: eventToStore.tappedAtUtc,
+        direction: "in",
+        accessType: door?.accessType,
+        isPerimeter,
       },
+      isFastTrack: true,
+      updatedAtUtc: new Date().toISOString(),
+    };
+
+    const recorded = await this.db.transaction(async (tx) => {
+      // The tap goes first: if a concurrent delivery already stored this event id,
+      // stop before writing the audit event, notification or Visit.
+      if (!(await this.writeDoorTapEvent(tx, eventToStore))) return false;
+      await this.writeCheckInEvent(tx, auditEvent);
+      if (params.hostNotification) {
+        await this.writeHostNotification(tx, params.hostNotification);
+      }
+      await this.writeVisit(tx, updatedVisit);
+      return true;
     });
 
-    const tapResult = await this.recordDoorTap(params.tapEvent);
-
-    if (params.hostNotification) {
-      await this.saveHostNotification(params.hostNotification);
+    if (!recorded) {
+      // A concurrent delivery of the same event id won and checked the Visit in.
+      const raced = await this.findRecordedTap(eventToStore, "in");
+      if (!raced) {
+        throw new Error(`Door tap id already used by another Visit: ${eventToStore.id}`);
+      }
+      const current = await this.getVisit(params.visitId);
+      return { visit: structuredClone(current ?? existing), event: raced };
     }
 
     return {
-      visit: updated,
-      event: tapResult.event,
-      notification: params.hostNotification,
+      visit: structuredClone(updatedVisit),
+      event: structuredClone(eventToStore),
+      notification: params.hostNotification
+        ? structuredClone(params.hostNotification)
+        : undefined,
     };
+  }
+
+  /**
+   * The no-op result for a perimeter scan on a Visit that is already checked in:
+   * the stored Visit and the tap that matches this scan (same event id, or same
+   * time, Door and direction), else the Visit's first tap. Nothing is written,
+   * so no notification is returned.
+   */
+  private async replayedAutoCheckIn(
+    visit: Visit,
+    tapEvent: DoorTapEvent,
+  ): Promise<{ visit: Visit; event: DoorTapEvent }> {
+    const match =
+      (await this.findRecordedTap({ ...tapEvent, visitId: visit.id }, "in")) ??
+      (await this.findFirstTap(visit.id));
+    return {
+      visit: structuredClone(visit),
+      event: structuredClone(match ?? tapEvent),
+    };
+  }
+
+  private async findFirstTap(visitId: string): Promise<DoorTapEvent | undefined> {
+    const rows = await this.db
+      .select()
+      .from(s.doorTapEvents)
+      .where(eq(s.doorTapEvents.visitId, visitId))
+      .orderBy(asc(s.doorTapEvents.tappedAtUtc))
+      .limit(1);
+    return rows.length > 0 ? structuredClone(rows[0].data) : undefined;
   }
 }

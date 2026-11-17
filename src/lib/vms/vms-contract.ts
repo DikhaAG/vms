@@ -63,6 +63,15 @@ export const VISIT_STATUSES = [
 export const visitStatusSchema = z.enum(VISIT_STATUSES);
 export type VisitStatus = z.infer<typeof visitStatusSchema>;
 
+/** Statuses of a Visit whose Visitor is on site (checked in, possibly overstaying). */
+export const ACTIVE_VISIT_STATUSES = ["CHECKED_IN", "OVERSTAY"] as const satisfies readonly VisitStatus[];
+
+export function isActiveVisitStatus(
+  status: VisitStatus,
+): status is (typeof ACTIVE_VISIT_STATUSES)[number] {
+  return (ACTIVE_VISIT_STATUSES as readonly VisitStatus[]).includes(status);
+}
+
 export const VISIT_REASON_TYPES = [0, 1, 2, 3, 4] as const;
 const [firstReason, ...restReasons] = VISIT_REASON_TYPES.map((t) =>
   z.literal(t),
