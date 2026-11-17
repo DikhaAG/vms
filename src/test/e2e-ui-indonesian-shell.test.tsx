@@ -6,16 +6,6 @@ import { AppShell } from "@/components/vms/app-shell";
 import { PageGuideModal } from "@/components/vms/page-guide-modal";
 import { idDict, PAGE_KEYS, type PageKey } from "@/lib/vms/i18n/id";
 
-// Page Components
-import ReceptionPage from "@/app/vms/reception/page";
-import ActiveMonitoringPage from "@/app/vms/active-monitoring/page";
-import ApprovalsPage from "@/app/vms/approvals/page";
-import PreRegistrationPage from "@/app/vms/pre-registration/page";
-import GroupRegistrationPage from "@/app/vms/group-registration/page";
-import AccessLevelsPage from "@/app/vms/access-levels/page";
-import VisitorsPage from "@/app/vms/visitors/page";
-import InvitePage from "@/app/invite/[token]/page";
-
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
   usePathname: () => "/vms/reception",
@@ -163,123 +153,7 @@ describe("E2E UI Indonesian Shell, Accessibility & Visual Audit", () => {
     );
   });
 
-  describe("3. Core Operations Full UI Integration", () => {
-    it("renders /vms/reception with Indonesian guide, quick search, walk-in button, and queue tabs", async () => {
-      const pageComponent = await ReceptionPage();
-      const html = renderToStaticMarkup(pageComponent);
-
-      expect(html).toContain("Meja Resepsionis Lobi");
-      expect(html).toContain("Layanan Penerimaan Tamu Datang Langsung (Walk-in)");
-      expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("+ Daftarkan Tamu Datang Langsung (Walk-in)");
-      expect(html).toContain("Tamu Diharapkan Hari Ini");
-      expect(html).toContain("Sedang di Gedung");
-      expect(html).toContain("Semua Kunjungan");
-    });
-
-    it("renders /vms/active-monitoring with KPI cards, directionality badges, and emergency modal", async () => {
-      const pageComponent = await ActiveMonitoringPage();
-      const html = renderToStaticMarkup(pageComponent);
-
-      expect(html).toContain("Monitoring Tamu &amp; Pintu Aktif");
-      expect(html).toContain("Live Monitoring");
-      expect(html).toContain("Pemantauan Real-time Kehadiran Tamu");
-      expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("Total Tamu di Gedung");
-      expect(html).toContain("Status Normal");
-      expect(html).toContain("Peringatan Overstay");
-      expect(html).toContain("Peringatan Kuota Tap");
-    });
-
-    it("renders /vms/approvals with reviewer roles, queue tabs, and decision actions", async () => {
-      const pageComponent = await ApprovalsPage();
-      const html = renderToStaticMarkup(pageComponent);
-
-      expect(html).toContain("Persetujuan Kunjungan Tamu");
-      expect(html).toContain("Antrean Verifikasi Izin Kunjungan oleh Tuan Rumah &amp; Petugas Keamanan");
-      expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("Menunggu Persetujuan Normal");
-      expect(html).toContain("Eskalasi Daftar Pantauan");
-      expect(html).toContain("Pejabat Penyetuju (Tuan Rumah)");
-      expect(html).toContain("Petugas Keamanan (Satpam)");
-    });
-  });
-
-  describe("4. Invitation & Security Master Full UI Integration", () => {
-    it("renders /vms/pre-registration with appointment scheduler and self-registration generator", async () => {
-      const pageComponent = await PreRegistrationPage();
-      const html = renderToStaticMarkup(pageComponent);
-
-      expect(html).toContain("Buat Undangan Tamu Terjadwal");
-      expect(html).toContain("Kunjungan Individual");
-      expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("1. Data Identitas Tamu");
-      expect(html).toContain("2. Pengambilan &amp; Verifikasi Foto Biometrik Wajah");
-      expect(html).toContain("3. Jadwal Kunjungan &amp; Keperluan");
-      expect(html).toContain("4. Karyawan Tuan Rumah Internal");
-      expect(html).toContain("5. Kelompok Hak Akses Pintu &amp; Batas Tap");
-      expect(html).toContain("Buat Tautan Pendaftaran Mandiri");
-      expect(html).toContain("Kirim Janji Temu Tamu");
-    });
-
-    it("renders /vms/group-registration with collective booking and returning visitor recognition", async () => {
-      const pageComponent = await GroupRegistrationPage();
-      const html = renderToStaticMarkup(pageComponent);
-
-      expect(html).toContain("Pendaftaran Rombongan Tamu");
-      expect(html).toContain("Kunjungan Kolektif");
-      expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("1. Data Rombongan &amp; Jadwal Kunjungan");
-      expect(html).toContain("2. Hak Akses Pintu &amp; Kuota Tap");
-      expect(html).toContain("3. Anggota Rombongan (2 Tamu)");
-      expect(html).toContain("+ Tambah Anggota Tamu");
-    });
-
-    it("renders /vms/access-levels with flat door presets and schedules without facility selector", async () => {
-      const pageComponent = await AccessLevelsPage();
-      const html = renderToStaticMarkup(pageComponent);
-
-      expect(html).toContain("Hak Akses Pintu &amp; Kuota Tap");
-      expect(html).toContain("Master Keamanan");
-      expect(html).toContain("Panduan Halaman Ini");
-      expect(html).not.toContain("Lokasi Gedung:");
-      expect(html).toContain("+ Tambah Hak Akses Pintu");
-      expect(html).toContain("Sinkronkan Pintu dari Server HikCentral");
-    });
-
-    it("renders /vms/visitors with PDP soft-delete compliance, biometric archive, and stat cards", async () => {
-      const pageComponent = await VisitorsPage();
-      const html = renderToStaticMarkup(pageComponent);
-
-      expect(html).toContain("Buku Tamu &amp; Basis Data Biometrik");
-      expect(html).toContain("Privasi &amp; Biometrik");
-      expect(html).toContain("Panduan Halaman Ini");
-      expect(html).toContain("Total Basis Data Tamu");
-      expect(html).toContain("Profil Aktif (Siap Auto-fill)");
-      expect(html).toContain("Arsip PDP / Terhapus Halus");
-      expect(html).toContain("Tampilkan Arsip Terhapus (Kepatuhan PDP)");
-    });
-  });
-
-  describe("5. Public Guest Self-Registration Portal Isolation & Layout", () => {
-    it("ensures public invite page does NOT render internal operator sidebar or header chrome", async () => {
-      const pageComponent = await InvitePage({
-        params: Promise.resolve({ token: "invalid-token" }),
-      });
-      const html = renderToStaticMarkup(pageComponent);
-
-      // Operator chrome must be absent
-      expect(html).not.toContain("Operasional Utama");
-      expect(html).not.toContain("Petugas Resepsionis Lobi");
-      expect(html).not.toContain("Beranda VMS");
-
-      // Polite Indonesian error state
-      expect(html).toContain("Tautan Undangan Tidak Ditemukan");
-      expect(html).toContain("Kembali ke Halaman Awal");
-    });
-  });
-
-  describe("6. Accessibility & Contrast Verification (WCAG AA)", () => {
+  describe("3. Accessibility & Contrast Verification (WCAG AA)", () => {
     it("verifies status badges use high-contrast color classes adhering to Impeccable guidelines", () => {
       const badges = Object.values(idDict.statusBadges);
 

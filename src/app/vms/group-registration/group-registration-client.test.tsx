@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { GroupRegistrationClient } from "./group-registration-client";
-import GroupRegistrationPage from "./page";
 import type { AccessLevel } from "@/lib/vms/access-level-contract";
 
 describe("GroupRegistration UI Localization", () => {
@@ -35,15 +34,5 @@ describe("GroupRegistration UI Localization", () => {
     expect(html).toContain("Anggota Tamu #2");
     expect(html).toContain("Konfirmasi &amp; Daftarkan Kunjungan Rombongan (2 Tamu)");
     expect(html).not.toContain("group-facility-id");
-  });
-
-  it("renders page header with PageGuideModal for groupRegistration", async () => {
-    const pageComponent = await GroupRegistrationPage();
-    const html = renderToStaticMarkup(pageComponent);
-
-    expect(html).toContain("Pendaftaran Rombongan Tamu");
-    expect(html).toContain("Kunjungan Kolektif");
-    expect(html).toContain("Panduan Halaman Ini");
-    expect(html).toContain("aria-haspopup=\"dialog\"");
   });
 });

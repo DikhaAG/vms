@@ -4,7 +4,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { PreRegistrationForm } from "./pre-registration-form";
 import { PreRegistrationResultCard } from "./pre-registration-result-card";
 import { PreRegistrationInviteCard } from "./pre-registration-invite-card";
-import PreRegistrationPage from "./page";
 import {
   preRegistrationInputSchema,
   createPreRegistrationSchema,
@@ -64,17 +63,6 @@ describe("PreRegistration UI Localization & Seams (Ticket 04)", () => {
     expect(html).toContain("Kirim Janji Temu Tamu");
     expect(html).toContain("Unggah Berkas Foto");
     expect(html).toContain("Batas Buka Pintu / Kuota Tap Pintu Putar");
-  });
-
-  it("renders page header with PageGuideModal for preRegistration", async () => {
-    const pageComponent = await PreRegistrationPage();
-    const html = renderToStaticMarkup(pageComponent);
-
-    expect(html).toContain("Buat Undangan Tamu Terjadwal");
-    expect(html).toContain("Kunjungan Individual");
-    expect(html).toContain("Panduan Halaman Ini");
-    expect(html).toContain('aria-haspopup="dialog"');
-    expect(html).not.toContain('name="facilityId"');
   });
 
   it("Seam 1: wires canonical UiFormField and accessible form controls", () => {

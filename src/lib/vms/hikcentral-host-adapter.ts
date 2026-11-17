@@ -84,43 +84,9 @@ export async function syncHikCentralHosts(
       };
     }
 
-    const stubHosts: HostEmployee[] = [
-      {
-        id: "emp-101",
-        personCode: "emp-101",
-        name: "Budi Santoso",
-        email: "budi.santoso@example.com",
-        phone: "+628123456789",
-        orgIndexCode: "org-dept-engineering",
-        departmentName: "Engineering",
-      },
-      {
-        id: "emp-102",
-        personCode: "emp-102",
-        name: "Siti Rahma",
-        email: "siti.rahma@example.com",
-        phone: "+628198765432",
-        orgIndexCode: "org-dept-hr",
-        departmentName: "Human Resources",
-      },
-      {
-        id: "emp-host-01",
-        personCode: "emp-host-01",
-        name: "Rudi Host",
-        email: "rudi.host@example.com",
-        phone: "+628111222333",
-        orgIndexCode: "org-dept-operations",
-        departmentName: "Operations",
-      },
-    ];
-
-    await repository.saveHosts(stubHosts);
-
-    return {
-      ok: true,
-      totalSynced: stubHosts.length,
-      hosts: stubHosts,
-    };
+    // Stub mode exercises the error scenarios only: it never invents Hosts
+    // and never writes to the repository, so no fictional record reaches PostgreSQL.
+    return { ok: true, totalSynced: 0, hosts: [] };
   }
 
   // Live client dispatch

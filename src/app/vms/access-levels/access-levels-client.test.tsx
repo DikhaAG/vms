@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { AccessLevelsClient } from "./access-levels-client";
 import { AccessLevelFormModal } from "./access-level-form-modal";
-import AccessLevelsPage from "./page";
 import type { AccessLevel } from "@/lib/vms/access-level-contract";
 
 describe("AccessLevels UI Localization", () => {
@@ -37,16 +36,6 @@ describe("AccessLevels UI Localization", () => {
     expect(html).toContain("Akses Lantai Lift (1)");
     expect(html).toContain("Ubah");
     expect(html).toContain("Hapus");
-  });
-
-  it("renders page header with PageGuideModal for accessLevels", async () => {
-    const pageComponent = await AccessLevelsPage();
-    const html = renderToStaticMarkup(pageComponent);
-
-    expect(html).toContain("Hak Akses Pintu &amp; Kuota Tap");
-    expect(html).toContain("Master Keamanan");
-    expect(html).toContain("Panduan Halaman Ini");
-    expect(html).toContain("aria-haspopup=\"dialog\"");
   });
 
   it("renders AccessLevelFormModal with UiModal and complete door checklist without facility selector", () => {

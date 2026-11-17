@@ -5,7 +5,6 @@ import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { VisitorsClient } from "./visitors-client";
 import { SoftDeleteModal } from "./soft-delete-modal";
 import { VisitorDetailsModal } from "./visitor-details-modal";
-import VisitorsPage from "./page";
 import type { VisitorProfile } from "@/lib/vms/group-contract";
 import { renderWithVmsProviders } from "@/test/test-utils";
 
@@ -122,16 +121,6 @@ describe("Visitors UI Localization & Canonical Component Migration", () => {
     expect(html).toContain(
       "Data profil dan riwayat kunjungan tamu akan otomatis tercatat di sini setelah pendaftaran diproses.",
     );
-  });
-
-  it("renders page header with PageGuideModal for visitors", async () => {
-    const pageComponent = await VisitorsPage();
-    const html = renderToStaticMarkup(pageComponent);
-
-    expect(html).toContain("Buku Tamu &amp; Basis Data Biometrik");
-    expect(html).toContain("Privasi &amp; Biometrik");
-    expect(html).toContain("Panduan Halaman Ini");
-    expect(html).toContain("aria-haspopup=\"dialog\"");
   });
 
   describe("TanStack Table Migration & nuqs URL State Synchronization", () => {

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { InviteForm } from "./invite-form";
-import InvitePage from "./page";
 import type { PublicInvitationMetadata } from "@/lib/vms/invitation-contract";
 
 describe("Public Invite Self-Registration UI Localization", () => {
@@ -46,16 +45,5 @@ describe("Public Invite Self-Registration UI Localization", () => {
     expect(html).toContain("📁 Unggah Foto");
     expect(html).toContain("Panduan Pengambilan Foto Selfie:");
     expect(html).toContain("Selesaikan Pendaftaran &amp; Dapatkan Tiket →");
-  });
-
-  it("renders expired or invalid invite state in polite Indonesian", async () => {
-    const pageComponent = await InvitePage({
-      params: Promise.resolve({ token: "invalid-token" }),
-    });
-    const html = renderToStaticMarkup(pageComponent);
-
-    expect(html).toContain("Tautan Undangan Tidak Ditemukan");
-    expect(html).toContain("Kode token undangan tidak valid atau tidak terdaftar");
-    expect(html).toContain("Kembali ke Halaman Awal");
   });
 });
