@@ -47,6 +47,15 @@ export interface CheckInVisitParams {
   notes?: string;
 }
 
+export interface CheckInWalkInParams {
+  actualCheckInTimeUtc: string;
+  receptionistUserId: string;
+  receptionistName?: string;
+  /** Defaults to ID card: a Walk-in Visitor shows their identity card at the desk. */
+  verificationMethod?: VerificationMethod;
+  notes?: string;
+}
+
 export interface CheckOutVisitParams {
   actualCheckOutTimeUtc: string;
   operatorUserId: string;
@@ -312,8 +321,37 @@ export class PostgresVmsRepository {
     return structuredClone(updated);
   }
 
-  async saveCheckInEvent(event: CheckInAuditEvent): Promise<void> {
-    await this.writeCheckInEvent(this.db, event);
+  /**
+   * Walk-in check-in: a Receptionist registers an unscheduled Visitor and checks
+   * them in. The new CHECKED_IN Visit and its check-in audit event are written in
+   * one transaction. The repository, not the caller, marks the Visit checked in.
+   */
+  async checkInWalkIn(
+    visit: Omit<Visit, "status" | "actualCheckInTimeUtc">,
+    checkIn: CheckInWalkInParams,
+  ): Promise<Visit> {
+    const checkedIn: Visit = {
+      ...visit,
+      status: "CHECKED_IN",
+      actualCheckInTimeUtc: checkIn.actualCheckInTimeUtc,
+    };
+
+    const auditEvent: CheckInAuditEvent = {
+      id: `chk-audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      visitId: visit.id,
+      checkedInAtUtc: checkIn.actualCheckInTimeUtc,
+      receptionistUserId: checkIn.receptionistUserId,
+      receptionistName: checkIn.receptionistName,
+      verificationMethod: checkIn.verificationMethod ?? "id_card",
+      notes: checkIn.notes,
+    };
+
+    // Visit first: the audit event belongs to a Visit that this transaction creates.
+    await this.db.transaction(async (tx) => {
+      await this.writeVisit(tx, checkedIn);
+      await this.writeCheckInEvent(tx, auditEvent);
+    });
+    return structuredClone(checkedIn);
   }
 
   private async writeCheckInEvent(
